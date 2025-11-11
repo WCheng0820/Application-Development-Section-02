@@ -1,4 +1,4 @@
-// src/Dashboard.jsx
+// src/pages/StudentDashboard.jsx
 import React from "react";
 import {
   Box,
@@ -11,6 +11,7 @@ import {
   ListItemText,
   Typography,
   Chip,
+  Button,
 } from "@mui/material";
 import CalendarMonthIcon from "@mui/icons-material/CalendarMonth";
 import AccessTimeIcon from "@mui/icons-material/AccessTime";
@@ -22,7 +23,7 @@ import MessageIcon from "@mui/icons-material/Message";
 import ScheduleIcon from "@mui/icons-material/Schedule";
 import { useAuth } from "../context/AuthContext";
 
-export default function Dashboard() {
+export default function StudentDashboard() {
   const { currentUser } = useAuth();
 
   return (
@@ -31,11 +32,11 @@ export default function Dashboard() {
       <Box sx={{ p: 4 }}>
         <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
           <Typography variant="h5" sx={{ fontWeight: "bold", mr: 2 }}>
-            Welcome back, {currentUser?.profile.fullName}!
+            Welcome back, {currentUser?.profile.firstName} {currentUser?.profile.lastName}!
           </Typography>
           <Chip
-            label={currentUser?.role.charAt(0).toUpperCase() + currentUser?.role.slice(1)}
-            color={currentUser?.role === 'admin' ? 'secondary' : currentUser?.role === 'tutor' ? 'primary' : 'default'}
+            label="Student"
+            color="default"
             size="small"
           />
         </Box>
@@ -138,7 +139,7 @@ export default function Dashboard() {
                       </Typography>
                     </Box>
                     <Button variant="outlined" size="small">
-                      View
+                      Join Session
                     </Button>
                   </Box>
                 ))}
@@ -159,12 +160,12 @@ export default function Dashboard() {
                 </Typography>
                 <List>
                   {[
-                    { text: "Find a Tutor", icon: <SearchIcon /> },
-                    { text: "Browse Learning Materials", icon: <FolderIcon /> },
-                    { text: "Messages", icon: <MessageIcon /> },
-                    { text: "Manage Schedule", icon: <ScheduleIcon /> },
+                    { text: "Find a Tutor", icon: <SearchIcon />, path: "/find-tutors" },
+                    { text: "Browse Learning Materials", icon: <FolderIcon />, path: "/materials" },
+                    { text: "Messages", icon: <MessageIcon />, path: "/messages" },
+                    { text: "Manage Schedule", icon: <ScheduleIcon />, path: "/bookings" },
                   ].map((item, i) => (
-                    <ListItem key={i} button>
+                    <ListItem key={i} button component="a" href={item.path}>
                       <ListItemIcon>{item.icon}</ListItemIcon>
                       <ListItemText primary={item.text} />
                     </ListItem>

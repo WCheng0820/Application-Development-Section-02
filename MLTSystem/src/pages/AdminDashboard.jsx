@@ -1,4 +1,4 @@
-// src/Dashboard.jsx
+// src/pages/AdminDashboard.jsx
 import React from "react";
 import {
   Box,
@@ -11,8 +11,9 @@ import {
   ListItemText,
   Typography,
   Chip,
+  Button,
 } from "@mui/material";
-import CalendarMonthIcon from "@mui/icons-material/CalendarMonth";
+import PeopleIcon from "@mui/icons-material/People";
 import AccessTimeIcon from "@mui/icons-material/AccessTime";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import ChatBubbleOutlineIcon from "@mui/icons-material/ChatBubbleOutline";
@@ -20,9 +21,10 @@ import SearchIcon from "@mui/icons-material/Search";
 import FolderIcon from "@mui/icons-material/Folder";
 import MessageIcon from "@mui/icons-material/Message";
 import ScheduleIcon from "@mui/icons-material/Schedule";
+import SettingsIcon from "@mui/icons-material/Settings";
 import { useAuth } from "../context/AuthContext";
 
-export default function Dashboard() {
+export default function AdminDashboard() {
   const { currentUser } = useAuth();
 
   return (
@@ -31,16 +33,16 @@ export default function Dashboard() {
       <Box sx={{ p: 4 }}>
         <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
           <Typography variant="h5" sx={{ fontWeight: "bold", mr: 2 }}>
-            Welcome back, {currentUser?.profile.fullName}!
+            Welcome back, {currentUser?.profile.firstName} {currentUser?.profile.lastName}!
           </Typography>
           <Chip
-            label={currentUser?.role.charAt(0).toUpperCase() + currentUser?.role.slice(1)}
-            color={currentUser?.role === 'admin' ? 'secondary' : currentUser?.role === 'tutor' ? 'primary' : 'default'}
+            label="Admin"
+            color="secondary"
             size="small"
           />
         </Box>
         <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-          Here's what's happening with your Mandarin learning journey
+          System administration and management overview
         </Typography>
 
         {/* Summary Cards */}
@@ -49,11 +51,11 @@ export default function Dashboard() {
             <Card>
               <CardContent>
                 <Typography variant="subtitle2" color="text.secondary">
-                  Upcoming Sessions
+                  Total Users
                 </Typography>
                 <Box display="flex" alignItems="center" justifyContent="space-between">
-                  <Typography variant="h5" fontWeight="bold">3</Typography>
-                  <CalendarMonthIcon color="primary" />
+                  <Typography variant="h5" fontWeight="bold">156</Typography>
+                  <PeopleIcon color="primary" />
                 </Box>
               </CardContent>
             </Card>
@@ -63,10 +65,10 @@ export default function Dashboard() {
             <Card>
               <CardContent>
                 <Typography variant="subtitle2" color="text.secondary">
-                  Learning Hours
+                  Active Sessions
                 </Typography>
                 <Box display="flex" alignItems="center" justifyContent="space-between">
-                  <Typography variant="h5" fontWeight="bold">24</Typography>
+                  <Typography variant="h5" fontWeight="bold">23</Typography>
                   <AccessTimeIcon color="success" />
                 </Box>
               </CardContent>
@@ -77,10 +79,10 @@ export default function Dashboard() {
             <Card>
               <CardContent>
                 <Typography variant="subtitle2" color="text.secondary">
-                  Completed Lessons
+                  System Health
                 </Typography>
                 <Box display="flex" alignItems="center" justifyContent="space-between">
-                  <Typography variant="h5" fontWeight="bold">12</Typography>
+                  <Typography variant="h5" fontWeight="bold">98%</Typography>
                   <CheckCircleIcon color="secondary" />
                 </Box>
               </CardContent>
@@ -91,10 +93,10 @@ export default function Dashboard() {
             <Card>
               <CardContent>
                 <Typography variant="subtitle2" color="text.secondary">
-                  Unread Messages
+                  Pending Reports
                 </Typography>
                 <Box display="flex" alignItems="center" justifyContent="space-between">
-                  <Typography variant="h5" fontWeight="bold">2</Typography>
+                  <Typography variant="h5" fontWeight="bold">7</Typography>
                   <ChatBubbleOutlineIcon color="warning" />
                 </Box>
               </CardContent>
@@ -104,18 +106,19 @@ export default function Dashboard() {
 
         {/* Bottom Sections */}
         <Grid container spacing={3}>
-          {/* Upcoming Sessions */}
+          {/* System Overview */}
           <Grid item xs={12} md={6}>
             <Card sx={{ height: "100%" }}>
               <CardContent>
                 <Typography variant="h6" sx={{ mb: 2 }}>
-                  Upcoming Sessions
+                  System Overview
                 </Typography>
                 {[
-                  { title: "Conversational Practice", tutor: "Li Ming", time: "Today, 2:00 PM" },
-                  { title: "Grammar Fundamentals", tutor: "Zhang Wei", time: "Tomorrow, 10:00 AM" },
-                  { title: "Business Mandarin", tutor: "Li Ming", time: "Nov 7, 3:00 PM" },
-                ].map((s, i) => (
+                  { title: "User Registrations", value: "12 new today", status: "up" },
+                  { title: "Active Tutors", value: "28 online", status: "stable" },
+                  { title: "Completed Sessions", value: "45 this week", status: "up" },
+                  { title: "System Uptime", value: "99.9%", status: "stable" },
+                ].map((item, i) => (
                   <Box
                     key={i}
                     sx={{
@@ -129,42 +132,39 @@ export default function Dashboard() {
                     }}
                   >
                     <Box>
-                      <Typography fontWeight="bold">{s.title}</Typography>
+                      <Typography fontWeight="bold">{item.title}</Typography>
                       <Typography variant="body2" color="text.secondary">
-                        with {s.tutor}
-                      </Typography>
-                      <Typography variant="body2" color="text.secondary">
-                        {s.time}
+                        {item.value}
                       </Typography>
                     </Box>
-                    <Button variant="outlined" size="small">
-                      View
-                    </Button>
+                    <Typography variant="body2" color={item.status === 'up' ? 'success.main' : 'text.secondary'}>
+                      {item.status === 'up' ? '↗' : '→'}
+                    </Typography>
                   </Box>
                 ))}
 
                 <Button variant="text" fullWidth sx={{ mt: 2 }}>
-                  View All Bookings
+                  View Detailed Reports
                 </Button>
               </CardContent>
             </Card>
           </Grid>
 
-          {/* Quick Actions */}
+          {/* Admin Actions */}
           <Grid item xs={12} md={6}>
             <Card sx={{ height: "100%" }}>
               <CardContent>
                 <Typography variant="h6" sx={{ mb: 2 }}>
-                  Quick Actions
+                  Admin Actions
                 </Typography>
                 <List>
                   {[
-                    { text: "Find a Tutor", icon: <SearchIcon /> },
-                    { text: "Browse Learning Materials", icon: <FolderIcon /> },
-                    { text: "Messages", icon: <MessageIcon /> },
-                    { text: "Manage Schedule", icon: <ScheduleIcon /> },
+                    { text: "Manage Users", icon: <PeopleIcon />, path: "/admin/users" },
+                    { text: "System Settings", icon: <SettingsIcon />, path: "/admin/settings" },
+                    { text: "View Reports", icon: <FolderIcon />, path: "/admin/reports" },
+                    { text: "Monitor Sessions", icon: <ScheduleIcon />, path: "/admin/sessions" },
                   ].map((item, i) => (
-                    <ListItem key={i} button>
+                    <ListItem key={i} button component="a" href={item.path}>
                       <ListItemIcon>{item.icon}</ListItemIcon>
                       <ListItemText primary={item.text} />
                     </ListItem>
