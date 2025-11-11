@@ -31,7 +31,7 @@ export default function Dashboard() {
       <Box sx={{ p: 4 }}>
         <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
           <Typography variant="h5" sx={{ fontWeight: "bold", mr: 2 }}>
-            Welcome back, {currentUser?.profile.fullName}!
+            Welcome back, {currentUser?.profile.firstName} {currentUser?.profile.lastName}!
           </Typography>
           <Chip
             label={currentUser?.role.charAt(0).toUpperCase() + currentUser?.role.slice(1)}
@@ -39,6 +39,11 @@ export default function Dashboard() {
             size="small"
           />
         </Box>
+        {currentUser?.profile.bio && (
+          <Typography variant="body1" color="text.secondary" sx={{ mb: 2, fontStyle: 'italic' }}>
+            "{currentUser.profile.bio}"
+          </Typography>
+        )}
         <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
           Here's what's happening with your Mandarin learning journey
         </Typography>

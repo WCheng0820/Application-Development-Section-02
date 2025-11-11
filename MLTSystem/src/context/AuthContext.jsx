@@ -75,8 +75,8 @@ export const AuthProvider = ({ children }) => {
       userData.password,
       userData.role,
       {
-        firstName: userData.firstName,
-        lastName: userData.lastName,
+        firstName: userData.firstName || '',
+        lastName: userData.lastName || '',
         bio: userData.bio || ''
       }
     );
@@ -95,18 +95,42 @@ export const AuthProvider = ({ children }) => {
   const updateProfile = async (profileData) => {
     if (!currentUser) return { success: false, error: 'No user logged in' };
 
-    const updatedUser = { ...currentUser };
-    updatedUser.updateProfile(profileData);
+    console.log('updateProfile called with:', profileData);
+    console.log('Current user before update:', currentUser);
+
+    // Separate profile fields from user-level fields
+    const { email, password, ...profileFields } = profileData;
+
+    console.log('Profile fields:', profileFields);
+    console.log('Password provided:', !!password);
+
+    // Create a new User instance to maintain prototype methods
+    const updatedUser = new User(
+      currentUser.id,
+      currentUser.email,
+      currentUser.password,
+      currentUser.role,
+      currentUser.profile
+    );
+
+    console.log('User instance created:', updatedUser);
+
+    // Update profile using the method
+    updatedUser.updateProfile(profileFields);
+
+    console.log('After updateProfile call:', updatedUser);
 
     // If password is provided, update it
-    if (profileData.password) {
-      updatedUser.password = profileData.password;
+    if (password) {
+      updatedUser.password = password;
     }
 
     // Update in users array
     setUsers(prev => prev.map(u => u.id === currentUser.id ? updatedUser : u));
     setCurrentUser(updatedUser);
     localStorage.setItem('currentUser', JSON.stringify(updatedUser));
+
+    console.log('Final updated user:', updatedUser);
 
     return { success: true };
   };

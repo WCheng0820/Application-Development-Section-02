@@ -61,15 +61,18 @@ export default function EditProfile() {
     }
 
     try {
+      console.log('Updating profile with data:', formData);
       const result = await updateProfile(formData);
+      console.log('Update result:', result);
       if (result.success) {
         setSuccess('Profile updated successfully!');
         setTimeout(() => navigate('/'), 2000);
       } else {
-        setError(result.error);
+        setError(result.error || 'Failed to update profile');
       }
     } catch (err) {
-      setError('An error occurred while updating profile');
+      console.error('Profile update error:', err);
+      setError(`An error occurred while updating profile: ${err.message}`);
     } finally {
       setIsLoading(false);
     }

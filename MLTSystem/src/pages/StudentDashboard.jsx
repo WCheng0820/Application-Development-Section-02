@@ -40,6 +40,11 @@ export default function StudentDashboard() {
             size="small"
           />
         </Box>
+        {currentUser?.profile.bio && (
+          <Typography variant="body1" color="text.secondary" sx={{ mb: 2, fontStyle: 'italic' }}>
+            "{currentUser.profile.bio}"
+          </Typography>
+        )}
         <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
           Here's what's happening with your Mandarin learning journey
         </Typography>

@@ -96,11 +96,11 @@ const Navbar = () => {
               color="inherit"
             >
               <Avatar sx={{ bgcolor: "grey.700" }}>
-                {currentUser.profile.fullName?.[0]}
+                {currentUser.profile.firstName?.[0]}{currentUser.profile.lastName?.[0]}
               </Avatar>
             </IconButton>
             <Typography variant="body1">
-              {currentUser.profile.fullName}
+              {currentUser.profile.firstName} {currentUser.profile.lastName}
             </Typography>
             <Menu
               id="menu-appbar"
