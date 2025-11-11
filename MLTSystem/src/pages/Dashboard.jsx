@@ -24,8 +24,15 @@ import SearchIcon from "@mui/icons-material/Search";
 import FolderIcon from "@mui/icons-material/Folder";
 import MessageIcon from "@mui/icons-material/Message";
 import ScheduleIcon from "@mui/icons-material/Schedule";
+import GridLayout from "react-grid-layout";
 
 export default function Dashboard() {
+  const layout = [
+    { i: "a", x: 0, y: 0, w: 1, h: 2, },
+    { i: "b", x: 1, y: 0, w: 3, h: 2, minW: 2, maxW: 4 },
+    { i: "c", x: 4, y: 0, w: 1, h: 2 }
+  ];
+  
   return (
     <Box sx={{ bgcolor: "#f8f9fb", minHeight: "100vh" }}>
       {/* Top AppBar */}
