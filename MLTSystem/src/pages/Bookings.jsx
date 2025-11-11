@@ -1,38 +1,20 @@
-import React, { useState } from "react";
-import {
-  Container,
-  Typography,
-  Card,
-  CardContent,
-  Grid,
-  Button,
-  Box,
-  Chip,
-} from "@mui/material";
-import CalendarMonthIcon from "@mui/icons-material/CalendarMonth";
-import AccessTimeIcon from "@mui/icons-material/AccessTime";
-import PersonIcon from "@mui/icons-material/Person";
+import React, { useState, useEffect } from "react";
+import { Container, Typography, Card, Grid } from "@mui/material";
+import BookingCards from "../components/BookingCard";
+import * as BookingsController from "../controllers/BookingsController";
 
 export default function Bookings() {
-  const [bookings, setBookings] = useState([
-    {
-      id: 1,
-      tutor: "Ms. Chen",
-      date: "2025-11-10",
-      time: "10:00 AM",
-      status: "Confirmed",
-    },
-    {
-      id: 2,
-      tutor: "Mr. Lee",
-      date: "2025-11-12",
-      time: "4:30 PM",
-      status: "Pending",
-    },
-  ]);
+  // View: keeps its own UI state but delegates data ops to Controller
+  const [bookings, setBookings] = useState([]);
+
+  useEffect(() => {
+    const all = BookingsController.fetchBookings();
+    setBookings(all);
+  }, []);
 
   const handleCancel = (id) => {
-    setBookings((prev) => prev.filter((booking) => booking.id !== id));
+    const updated = BookingsController.cancelBooking(id);
+    setBookings(updated);
   };
 
   return (
@@ -51,50 +33,26 @@ export default function Bookings() {
       ) : (
         <Grid container spacing={3}>
           {bookings.map((booking) => (
-            <Grid item xs={12} key={booking.id}>
+            <Grid item xs={12} sm={6} md={4} key={booking.id}>
               <Card
                 sx={{
                   borderRadius: 3,
                   boxShadow: 3,
                   "&:hover": { boxShadow: 6 },
                   transition: "0.3s",
+                  height: '100%',
+                  display: 'flex',
+                  flexDirection: 'column',
                 }}
               >
-                <CardContent>
-                  <Box display="flex" justifyContent="space-between" alignItems="center">
-                    <Box>
-                      <Typography variant="h6" fontWeight="bold">
-                        {booking.tutor}
-                      </Typography>
-
-                      <Box display="flex" alignItems="center" gap={1} mt={1}>
-                        <CalendarMonthIcon fontSize="small" />
-                        <Typography>{booking.date}</Typography>
-                      </Box>
-
-                      <Box display="flex" alignItems="center" gap={1}>
-                        <AccessTimeIcon fontSize="small" />
-                        <Typography>{booking.time}</Typography>
-                      </Box>
-                    </Box>
-
-                    <Box textAlign="right">
-                      <Chip
-                        label={booking.status}
-                        color={booking.status === "Confirmed" ? "success" : "warning"}
-                        sx={{ mb: 1 }}
-                      />
-                      <Button
-                        variant="outlined"
-                        color="error"
-                        size="small"
-                        onClick={() => handleCancel(booking.id)}
-                      >
-                        Cancel
-                      </Button>
-                    </Box>
-                  </Box>
-                </CardContent>
+                <BookingCards
+                  tutor={booking.tutor}
+                  date={booking.date}
+                  time={booking.time}
+                  status={booking.status}
+                  id={booking.id}
+                  onCancel={handleCancel}
+                />
               </Card>
             </Grid>
           ))}
