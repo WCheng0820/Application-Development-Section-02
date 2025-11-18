@@ -1,5 +1,6 @@
-// Simple in-memory message + notification store for demo purposes
-// This follows the same lightweight pattern as BookingModel used elsewhere in the app.
+// In-memory message + notification store with support for bidirectional messaging
+// Integrates with User and Role modules for proper user identification
+// Structure is MySQL-ready: replace these in-memory arrays with async DB queries
 
 let _nextMessageId = 1;
 let _nextNotificationId = 1;
@@ -7,51 +8,121 @@ let _nextNotificationId = 1;
 const MAX_ATTACHMENT_BYTES = 2 * 1024 * 1024; // 2 MB
 
 let messages = [
-  // sample shape:
-  // { id, bookingId, sender, content, attachment:{name,type,size,dataUrl}, timestamp, readBy: [] }
+  // Enhanced shape for bidirectional messaging:
+  // {
+  //   id,
+  //   bookingId,
+  //   senderId,        // User ID of sender (not just name)
+  //   senderName,      // Display name (for convenience)
+  //   recipientId,     // User ID of recipient (for 1-to-1 or group chats)
+  //   content,
+  //   attachment: { name, type, size, dataUrl } or null,
+  //   timestamp,
+  //   readBy: [{ userId, readAt }],  // Track who read and when
+  //   status: 'sent' | 'delivered' | 'read'
+  // }
 ];
 
 let notifications = [
-  // { id, recipient, from, bookingId, messageId, text, timestamp, read }
+  // Enhanced shape for better tracking:
+  // {
+  //   id,
+  //   recipientId,     // User ID (not username)
+  //   senderId,        // Who sent the message
+  //   bookingId,
+  //   messageId,
+  //   text,
+  //   timestamp,
+  //   read,
+  //   type: 'message' | 'booking' | 'material'  // notification type
+  // }
 ];
 
+// Retrieve all messages for a booking (bidirectional - all messages in the conversation)
 export function getMessages(bookingId) {
   return messages.filter((m) => m.bookingId === bookingId).slice();
 }
 
-export function addMessage({ bookingId, sender, content = "", attachment = null }) {
+// Retrieve messages between two specific users in a booking (1-to-1 thread)
+export function getMessagesBetween(bookingId, userId1, userId2) {
+  return messages.filter((m) => 
+    m.bookingId === bookingId &&
+    ((m.senderId === userId1 && m.recipientId === userId2) ||
+     (m.senderId === userId2 && m.recipientId === userId1))
+  ).slice();
+}
+
+// Add a message with userId references (bidirectional support)
+export function addMessage({ bookingId, senderId, senderName, recipientId, content = "", attachment = null }) {
+  if (!senderId || !recipientId) {
+    throw new Error("senderId and recipientId are required");
+  }
+
   const id = _nextMessageId++;
   const msg = {
     id,
     bookingId,
-    sender,
+    senderId,
+    senderName: senderName || `User ${senderId}`,
+    recipientId,
     content,
     attachment: attachment ? sanitizeAttachment(attachment) : null,
     timestamp: Date.now(),
-    readBy: [sender],
+    readBy: [{ userId: senderId, readAt: Date.now() }],  // Sender has read their own message
+    status: 'sent',
   };
   messages.push(msg);
   return msg;
 }
 
-export function markMessageRead(messageId, username) {
+// Mark message as read by a user and update status
+export function markMessageRead(messageId, userId) {
   const msg = messages.find((m) => m.id === messageId);
   if (!msg) return null;
-  if (!msg.readBy.includes(username)) msg.readBy.push(username);
+  
+  const alreadyRead = msg.readBy.find((r) => r.userId === userId);
+  if (!alreadyRead) {
+    msg.readBy.push({ userId, readAt: Date.now() });
+  }
+  
+  // Update status: if both sender and recipient have read, mark as 'read'
+  if (msg.readBy.length >= 2) {
+    msg.status = 'read';
+  } else if (msg.status === 'sent') {
+    msg.status = 'delivered';
+  }
+  
   return msg;
 }
 
-export function getNotificationsForUser(username) {
-  return notifications.filter((n) => n.recipient === username).slice();
+// Get notifications for a specific user (by userId)
+export function getNotificationsForUser(userId) {
+  return notifications.filter((n) => n.recipientId === userId).slice();
 }
 
-export function addNotification({ recipient, from, bookingId, messageId, text = "New message" }) {
+// Add notification when a message is sent (bidirectional - notify the other participant)
+export function addNotification({ recipientId, senderId, bookingId, messageId, text = "New message", type = "message" }) {
+  if (!recipientId || !senderId) {
+    throw new Error("recipientId and senderId are required");
+  }
+
   const id = _nextNotificationId++;
-  const n = { id, recipient, from, bookingId, messageId, text, timestamp: Date.now(), read: false };
+  const n = { 
+    id, 
+    recipientId, 
+    senderId, 
+    bookingId, 
+    messageId, 
+    text, 
+    type,
+    timestamp: Date.now(), 
+    read: false 
+  };
   notifications.push(n);
   return n;
 }
 
+// Mark notification as read
 export function markNotificationRead(notificationId) {
   const n = notifications.find((x) => x.id === notificationId);
   if (!n) return null;
@@ -59,8 +130,14 @@ export function markNotificationRead(notificationId) {
   return n;
 }
 
-export function clearAllForUser(username) {
-  notifications = notifications.filter((n) => n.recipient !== username);
+// Clear all notifications for a user
+export function clearAllForUser(userId) {
+  notifications = notifications.filter((n) => n.recipientId !== userId);
+}
+
+// Get unread notification count for a user
+export function getUnreadCount(userId) {
+  return notifications.filter((n) => n.recipientId === userId && !n.read).length;
 }
 
 function sanitizeAttachment(att) {

@@ -1,10 +1,11 @@
 // Simple in-memory model for bookings
 // This is the "Model" in MVC: holds data and basic operations.
+// Uses User IDs from AuthContext for tutorId/studentId (Alice=1, Li Ming=2)
 
 let bookings = [
-  { id: 1, tutor: "Ms. Chen", date: "2025-11-10", time: "10:00 AM", status: "Confirmed" },
-  { id: 2, tutor: "Mr. Lee", date: "2025-11-12", time: "4:30 PM", status: "Pending" },
-  { id: 3, tutor: "Ms. Wang", date: "2025-11-20", time: "2:00 PM", status: "Confirmed" },
+  { id: 1, tutorId: 2, studentId: 1, date: "2025-11-10", time: "10:00 AM", status: "Confirmed" },
+  { id: 2, tutorId: 2, studentId: 1, date: "2025-11-12", time: "4:30 PM", status: "Pending" },
+  { id: 3, tutorId: 2, studentId: 1, date: "2025-11-20", time: "2:00 PM", status: "Confirmed" },
 ];
 
 export function getBookings() {
