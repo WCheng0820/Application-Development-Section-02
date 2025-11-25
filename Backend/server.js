@@ -1,0 +1,71 @@
+const express = require('express');
+const cors = require('cors');
+const { pool, query } = require('./config/database');
+const initDatabase = require('./config/db.init');
+
+const app = express();
+
+// Middleware
+app.use(cors());
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
+// Initialize database on server start
+let dbReady = false;
+
+initDatabase()
+    .then(() => {
+        console.log('✅ Database ready');
+        dbReady = true;
+    })
+    .catch(err => {
+        console.error('❌ Database initialization failed:', err);
+        console.error('Server will continue but database operations may fail');
+    });
+
+// Health check endpoint
+app.get('/api/health', async (req, res) => {
+    try {
+        await query('SELECT 1');
+        res.json({ 
+            status: 'ok', 
+            message: 'Server and database are running',
+            timestamp: new Date().toISOString()
+        });
+    } catch (error) {
+        res.status(500).json({ 
+            status: 'error', 
+            message: 'Database connection failed',
+            error: error.message 
+        });
+    }
+});
+
+// Import routes
+const authRoutes = require('./routes/auth');
+app.use('/api/auth', authRoutes);
+
+// Error handling middleware
+app.use((err, req, res, next) => {
+    console.error('Error:', err);
+    res.status(err.status || 500).json({
+        success: false,
+        error: err.message || 'Internal server error'
+    });
+});
+
+// 404 handler
+app.use((req, res) => {
+    res.status(404).json({
+        success: false,
+        error: 'Route not found'
+    });
+});
+
+const PORT = process.env.PORT || 5000;
+
+app.listen(PORT, () => {
+    console.log(`🚀 Server running on http://localhost:${PORT}`);
+    console.log(`📊 API endpoints available at http://localhost:${PORT}/api`);
+});
+
