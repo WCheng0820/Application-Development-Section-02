@@ -1,6 +1,14 @@
 // src/context/AuthContext.jsx
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { User } from '../models/User';
+import {
+  createSession,
+  getSession,
+  clearSession,
+  refreshSession,
+  shouldRefreshSession,
+  getSessionTimeRemaining
+} from '../utils/sessionManager';
 
 const AuthContext = createContext();
 
@@ -15,6 +23,7 @@ export const useAuth = () => {
 export const AuthProvider = ({ children }) => {
   const [currentUser, setCurrentUser] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
+  const sessionCheckInterval = useRef(null);
 
   // Mock user database - in a real app, this would be an API call
   const [users, setUsers] = useState([
@@ -26,7 +35,8 @@ export const AuthProvider = ({ children }) => {
     new User(2, 'li.ming@example.com', 'password123', 'tutor', {
       firstName: 'Li',
       lastName: 'Ming',
-      bio: 'Experienced Mandarin tutor'
+      bio: 'Experienced Mandarin tutor',
+      verificationDocuments: []
     }),
     new User(3, 'admin@mltsystem.com', 'admin123', 'admin', {
       firstName: 'Admin',
@@ -35,29 +45,92 @@ export const AuthProvider = ({ children }) => {
     })
   ]);
 
+  // Initialize: Approve existing tutor for demo purposes
   useEffect(() => {
-    // Check for stored user session on app load
-    const storedUser = localStorage.getItem('currentUser');
-    if (storedUser) {
-      try {
-        const userData = JSON.parse(storedUser);
-        const user = User.fromData(userData);
-        setCurrentUser(user);
-      } catch (error) {
-        console.error('Error parsing stored user:', error);
-        localStorage.removeItem('currentUser');
-      }
+    const existingTutor = users.find(u => u.id === 2 && u.role === 'tutor');
+    if (existingTutor && !existingTutor.isApproved) {
+      existingTutor.approve();
+      setUsers(prev => prev.map(u => u.id === 2 ? existingTutor : u));
     }
-    setIsLoading(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Initialize session on app load
+  useEffect(() => {
+    const initializeSession = () => {
+      const session = getSession();
+      if (session && session.user) {
+        try {
+          const user = User.fromData(session.user);
+          setCurrentUser(user);
+        } catch (error) {
+          console.error('Error initializing session:', error);
+          clearSession();
+        }
+      }
+      setIsLoading(false);
+    };
+
+    initializeSession();
+  }, []);
+
+  // Set up session validation interval (check every 5 minutes)
+  useEffect(() => {
+    if (!currentUser) {
+      // Clear interval if no user
+      if (sessionCheckInterval.current) {
+        clearInterval(sessionCheckInterval.current);
+        sessionCheckInterval.current = null;
+      }
+      return;
+    }
+
+    // Set up session validation interval
+    sessionCheckInterval.current = setInterval(() => {
+      const session = getSession();
+      if (!session) {
+        // Session expired or invalid
+        setCurrentUser(null);
+        clearSession();
+      } else if (shouldRefreshSession()) {
+        // Refresh session if needed
+        const user = User.fromData(session.user);
+        refreshSession(user);
+      }
+    }, 5 * 60 * 1000); // Check every 5 minutes
+
+    // Cleanup interval on unmount or when user changes
+    return () => {
+      if (sessionCheckInterval.current) {
+        clearInterval(sessionCheckInterval.current);
+        sessionCheckInterval.current = null;
+      }
+    };
+  }, [currentUser]);
 
   const login = async (email, password) => {
     // Mock authentication - in a real app, this would be an API call
     const user = users.find(u => u.email === email && u.password === password);
     if (user) {
+      // Check if tutor is approved
+      if (user.role === 'tutor' && !user.isApproved) {
+        return { 
+          success: false, 
+          error: 'Your account is pending admin approval. Please wait for approval before logging in.' 
+        };
+      }
+      
+      // Create session with token
+      const session = createSession(user);
       setCurrentUser(user);
-      localStorage.setItem('currentUser', JSON.stringify(user));
-      return { success: true };
+      
+      return { 
+        success: true,
+        session: {
+          expiresAt: new Date(session.expiryTime),
+          timeRemaining: getSessionTimeRemaining()
+        }
+      };
     }
     return { success: false, error: 'Invalid email or password' };
   };
@@ -69,27 +142,52 @@ export const AuthProvider = ({ children }) => {
       return { success: false, error: 'Email already exists' };
     }
 
+    // Parse fullName into firstName and lastName
+    const nameParts = (userData.fullName || '').trim().split(' ');
+    const firstName = nameParts[0] || '';
+    const lastName = nameParts.slice(1).join(' ') || '';
+
     const newUser = new User(
       users.length + 1,
       userData.email,
       userData.password,
       userData.role,
       {
-        firstName: userData.firstName || '',
-        lastName: userData.lastName || '',
-        bio: userData.bio || ''
+        firstName: firstName,
+        lastName: lastName,
+        bio: userData.bio || '',
+        verificationDocuments: userData.verificationDocuments || []
       }
     );
 
+    // Set verification documents if provided
+    if (userData.verificationDocuments && userData.verificationDocuments.length > 0) {
+      newUser.verificationDocuments = userData.verificationDocuments;
+    }
+
     setUsers(prev => [...prev, newUser]);
-    setCurrentUser(newUser);
-    localStorage.setItem('currentUser', JSON.stringify(newUser));
+    
+    // Only set current user if not a tutor (tutors need approval)
+    if (userData.role !== 'tutor') {
+      // Create session for non-tutor users
+      const session = createSession(newUser);
+      setCurrentUser(newUser);
+      
+      return { 
+        success: true,
+        session: {
+          expiresAt: new Date(session.expiryTime),
+          timeRemaining: getSessionTimeRemaining()
+        }
+      };
+    }
+    
     return { success: true };
   };
 
   const logout = () => {
     setCurrentUser(null);
-    localStorage.removeItem('currentUser');
+    clearSession();
   };
 
   const updateProfile = async (profileData) => {
@@ -128,11 +226,66 @@ export const AuthProvider = ({ children }) => {
     // Update in users array
     setUsers(prev => prev.map(u => u.id === currentUser.id ? updatedUser : u));
     setCurrentUser(updatedUser);
-    localStorage.setItem('currentUser', JSON.stringify(updatedUser));
+    
+    // Refresh session with updated user data
+    refreshSession(updatedUser);
 
     console.log('Final updated user:', updatedUser);
 
     return { success: true };
+  };
+
+  // Get all users (for admin dashboard)
+  const getAllUsers = () => {
+    return users;
+  };
+
+  // Get pending tutors (for admin approval)
+  const getPendingTutors = () => {
+    return users.filter(u => u.role === 'tutor' && u.approvalStatus === 'pending');
+  };
+
+  // Approve tutor
+  const approveTutor = (tutorId) => {
+    setUsers(prev => prev.map(u => {
+      if (u.id === tutorId && u.role === 'tutor') {
+        u.approve();
+        return u;
+      }
+      return u;
+    }));
+    // Update current user if it's the approved tutor
+    if (currentUser && currentUser.id === tutorId) {
+      const updatedUser = users.find(u => u.id === tutorId);
+      if (updatedUser) {
+        updatedUser.approve();
+        setCurrentUser(updatedUser);
+        refreshSession(updatedUser);
+      }
+    }
+  };
+
+  // Reject tutor
+  const rejectTutor = (tutorId) => {
+    setUsers(prev => prev.map(u => {
+      if (u.id === tutorId && u.role === 'tutor') {
+        u.reject();
+        return u;
+      }
+      return u;
+    }));
+  };
+
+  // Get session info
+  const getSessionInfo = () => {
+    if (!currentUser) return null;
+    const timeRemaining = getSessionTimeRemaining();
+    const session = getSession();
+    return {
+      expiresAt: session ? new Date(session.expiryTime) : null,
+      timeRemaining,
+      isExpired: timeRemaining === 0
+    };
   };
 
   const value = {
@@ -142,7 +295,12 @@ export const AuthProvider = ({ children }) => {
     register,
     logout,
     updateProfile,
-    isAuthenticated: !!currentUser
+    isAuthenticated: !!currentUser,
+    getAllUsers,
+    getPendingTutors,
+    approveTutor,
+    rejectTutor,
+    getSessionInfo
   };
 
   return (

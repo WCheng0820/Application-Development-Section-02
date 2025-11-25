@@ -2,6 +2,7 @@ import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "./context/AuthContext";
 import Navbar from "./components/Navbar";
 import PrivateRoute from "./components/PrivateRoute";
+import SessionTimeout from "./components/SessionTimeout";
 import RoleBasedDashboard from "./components/RoleBasedDashboard";
 import FindTutors from "./pages/FindTutors";
 import Bookings from "./pages/Bookings";
@@ -16,6 +17,7 @@ export default function App() {
     <AuthProvider>
       <Router>
         <Navbar />
+        <SessionTimeout />
         <Routes>
           {/* Public routes */}
           <Route path="/login" element={<Login />} />

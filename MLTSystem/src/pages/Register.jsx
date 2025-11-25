@@ -12,11 +12,13 @@ import {
   FormControl,
   InputLabel,
   Select,
-  MenuItem
+  MenuItem,
+  FormHelperText
 } from '@mui/material';
 import { Link as RouterLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { ROLES } from '../models/Role';
+import UploadFileIcon from '@mui/icons-material/UploadFile';
 
 export default function Register() {
   const [formData, setFormData] = useState({
@@ -25,6 +27,7 @@ export default function Register() {
     password: '',
     role: 'student'
   });
+  const [verificationDocuments, setVerificationDocuments] = useState([]);
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
@@ -38,6 +41,36 @@ export default function Register() {
     });
   };
 
+  const handleFileChange = (e) => {
+    const files = Array.from(e.target.files);
+    if (files.length > 0) {
+      // Convert files to base64 for storage (in a real app, upload to server)
+      const filePromises = files.map(file => {
+        return new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = (event) => {
+            resolve({
+              name: file.name,
+              type: file.type,
+              size: file.size,
+              data: event.target.result // base64 encoded
+            });
+          };
+          reader.onerror = reject;
+          reader.readAsDataURL(file);
+        });
+      });
+
+      Promise.all(filePromises)
+        .then(fileData => {
+          setVerificationDocuments(fileData);
+        })
+        .catch(err => {
+          setError('Error reading file. Please try again.');
+        });
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
@@ -48,12 +81,28 @@ export default function Register() {
       return;
     }
 
+    // For tutors, require verification documents
+    if (formData.role === 'tutor' && verificationDocuments.length === 0) {
+      setError('Please upload verification documents to show your experience in teaching Mandarin');
+      return;
+    }
+
     setIsLoading(true);
 
     try {
-      const result = await register(formData);
+      const registrationData = {
+        ...formData,
+        verificationDocuments: formData.role === 'tutor' ? verificationDocuments : []
+      };
+      const result = await register(registrationData);
       if (result.success) {
-        navigate('/');
+        if (formData.role === 'tutor') {
+          // Show success message and redirect to login
+          alert('Registration successful! Your account is pending admin approval. You will be notified once approved.');
+          navigate('/login');
+        } else {
+          navigate('/');
+        }
       } else {
         setError(result.error);
       }
@@ -137,8 +186,47 @@ export default function Register() {
               autoComplete="new-password"
               value={formData.password}
               onChange={handleChange}
-              sx={{ mb: 3 }}
+              sx={{ mb: 2 }}
             />
+
+            {formData.role === 'tutor' && (
+              <Box sx={{ mb: 2 }}>
+                <input
+                  accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                  style={{ display: 'none' }}
+                  id="verification-documents-upload"
+                  multiple
+                  type="file"
+                  onChange={handleFileChange}
+                />
+                <label htmlFor="verification-documents-upload">
+                  <Button
+                    variant="outlined"
+                    component="span"
+                    fullWidth
+                    startIcon={<UploadFileIcon />}
+                    sx={{ mb: 1 }}
+                  >
+                    Upload Verification Documents
+                  </Button>
+                </label>
+                <FormHelperText>
+                  Upload documents showing your experience in teaching Mandarin (e.g., certificates, diplomas, teaching credentials)
+                </FormHelperText>
+                {verificationDocuments.length > 0 && (
+                  <Box sx={{ mt: 1 }}>
+                    <Typography variant="body2" color="text.secondary">
+                      {verificationDocuments.length} file(s) selected:
+                    </Typography>
+                    {verificationDocuments.map((doc, index) => (
+                      <Typography key={index} variant="caption" display="block" color="success.main">
+                        • {doc.name}
+                      </Typography>
+                    ))}
+                  </Box>
+                )}
+              </Box>
+            )}
 
             <Button
               type="submit"

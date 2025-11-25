@@ -1,12 +1,24 @@
 // src/components/PrivateRoute.jsx
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { Box, CircularProgress } from '@mui/material';
+import { getSession } from '../utils/sessionManager';
 
 const PrivateRoute = ({ children, requiredRole }) => {
-  const { currentUser, isLoading } = useAuth();
+  const { currentUser, isLoading, logout } = useAuth();
   const location = useLocation();
+
+  // Check session validity
+  useEffect(() => {
+    if (!isLoading && currentUser) {
+      const session = getSession();
+      if (!session) {
+        // Session expired or invalid, logout user
+        logout();
+      }
+    }
+  }, [currentUser, isLoading, logout]);
 
   if (isLoading) {
     return (
