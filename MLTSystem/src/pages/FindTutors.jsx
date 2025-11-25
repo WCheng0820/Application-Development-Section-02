@@ -42,34 +42,45 @@ export default function FindTutors() {
 
   // Initialize
   useEffect(() => {
-    const allTutors = TutorsController.fetchAllTutors();
+  const initializeTutors = async () => {
+    // Fetch tutors from backend
+    await TutorsController.fetchTutors();
+    
+    // Get cached tutors for display
+    const allTutors = TutorsController.getAllTutors();
     setTutors(allTutors);
     setFilteredTutors(allTutors);
 
-    const availableSubjects = TutorsController.getAvailableSubjects();
+    // Set subjects and ranges
+    const availableSubjects = TutorsController.getUniqueSubjects();
     setSubjects(availableSubjects);
 
-    const priceRange = TutorsController.getPriceRange();
-    setPriceMax(priceRange.max);
-    setPriceRange([0, priceRange.max]);
+    const priceMaxValue = TutorsController.getMaxRate();
+    setPriceMax(priceMaxValue);
+    setPriceRange([0, priceMaxValue]);
 
-    const expRange = TutorsController.getExperienceRange();
-    setExperienceMax(expRange.max);
-  }, []);
+    const expMaxValue = TutorsController.getMaxExperience();
+    setExperienceMax(expMaxValue);
+  };
+
+  initializeTutors();
+}, []);
+
 
   // Apply filters
   useEffect(() => {
-    const filters = {
-      keywords,
-      subject: selectedSubject,
-      minExperience,
-      maxPrice: priceRange[1],
-      minRating,
-    };
+  const filters = {
+    keywords,
+    subject: selectedSubject,
+    minExperience,
+    maxPrice: priceRange[1],
+    minRating,
+  };
 
-    const results = TutorsController.searchAndFilterTutors(filters);
-    setFilteredTutors(results);
-  }, [keywords, selectedSubject, priceRange, minExperience, minRating]);
+  const results = TutorsController.filterTutors(filters);
+  setFilteredTutors(results);
+}, [keywords, selectedSubject, priceRange, minExperience, minRating]);
+
 
   const handleResetFilters = () => {
     setKeywords("");
