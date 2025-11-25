@@ -22,19 +22,10 @@ import UploadFileIcon from '@mui/icons-material/UploadFile';
 
 export default function Register() {
   const [formData, setFormData] = useState({
-    username: '',
     fullName: '',
     email: '',
     password: '',
-    nophone: '',
-    role: 'student',
-    // Student fields
-    yearOfStudy: 1,
-    programme: '',
-    faculty: '',
-    // Tutor fields
-    yearsOfExperience: 0,
-    availability: ''
+    role: 'student'
   });
   const [verificationDocuments, setVerificationDocuments] = useState([]);
   const [error, setError] = useState('');
@@ -43,16 +34,30 @@ export default function Register() {
   const { register } = useAuth();
   const navigate = useNavigate();
 
+  // Debug: log formData on mount and updates
+  React.useEffect(() => {
+    console.log('Register component mounted. formData:', formData, 'verificationDocuments:', verificationDocuments);
+  }, []);
+
   const handleChange = (e) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value
-    });
+    if (!e || !e.target) {
+      console.error('Invalid change event:', e);
+      return;
+    }
+    const { name, value } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: value || ''
+    }));
   };
 
   const handleFileChange = (e) => {
-    const files = Array.from(e.target.files);
-    if (files.length > 0) {
+    if (!e.target || !e.target.files) {
+      console.error('File input event invalid:', e);
+      return;
+    }
+    const files = Array.from(e.target.files || []);
+    if (files && files.length > 0) {
       // Convert files to base64 for storage (in a real app, upload to server)
       const filePromises = files.map(file => {
         return new Promise((resolve, reject) => {
@@ -85,7 +90,10 @@ export default function Register() {
     setError('');
 
     // Validation
-    if (!formData.username || !formData.username.trim()) {
+<<<<<<< Updated upstream
+    if (formData.password.length < 6) {
+=======
+    if (!formData || !formData.username || !formData.username.trim()) {
       setError('Username is required');
       return;
     }
@@ -95,13 +103,14 @@ export default function Register() {
       return;
     }
 
-    if (formData.password.length < 6) {
+    if (!formData.password || formData.password.length < 6) {
+>>>>>>> Stashed changes
       setError('Password must be at least 6 characters long');
       return;
     }
 
     // For tutors, require verification documents
-    if (formData.role === 'tutor' && verificationDocuments.length === 0) {
+    if (formData.role === 'tutor' && (!Array.isArray(verificationDocuments) || verificationDocuments.length === 0)) {
       setError('Please upload verification documents to show your experience in teaching Mandarin');
       return;
     }
@@ -109,24 +118,27 @@ export default function Register() {
     setIsLoading(true);
 
     try {
-      // Prepare registration data with all form fields
       const registrationData = {
-        username: formData.username.trim(),
-        email: formData.email.trim(),
-        password: formData.password,
-        role: formData.role,
-        fullName: formData.fullName.trim(),
-        nophone: formData.nophone.trim() || null,
-        verificationDocuments: formData.role === 'tutor' ? verificationDocuments : [],
+<<<<<<< Updated upstream
+        ...formData,
+        verificationDocuments: formData.role === 'tutor' ? verificationDocuments : []
+=======
+        username: (formData?.username || '').trim(),
+        email: (formData?.email || '').trim(),
+        password: formData?.password || '',
+        role: formData?.role || 'student',
+        fullName: (formData?.fullName || '').trim(),
+        nophone: (formData?.nophone || '').trim() || null,
+        verificationDocuments: formData?.role === 'tutor' ? verificationDocuments : [],
         // Student-specific fields
-        yearOfStudy: formData.role === 'student' ? parseInt(formData.yearOfStudy) || 1 : undefined,
-        programme: formData.role === 'student' ? formData.programme.trim() || null : undefined,
-        faculty: formData.role === 'student' ? formData.faculty.trim() || null : undefined,
+        yearOfStudy: formData?.role === 'student' ? parseInt(formData?.yearOfStudy) || 1 : undefined,
+        programme: formData?.role === 'student' ? (formData?.programme || '').trim() || null : undefined,
+        faculty: formData?.role === 'student' ? (formData?.faculty || '').trim() || null : undefined,
         // Tutor-specific fields
-        yearsOfExperience: formData.role === 'tutor' ? parseInt(formData.yearsOfExperience) || 0 : undefined,
-        availability: formData.role === 'tutor' ? formData.availability.trim() || null : undefined
+        yearsOfExperience: formData?.role === 'tutor' ? parseInt(formData?.yearsOfExperience) || 0 : undefined,
+        availability: formData?.role === 'tutor' ? (formData?.availability || '').trim() || null : undefined
+>>>>>>> Stashed changes
       };
-
       const result = await register(registrationData);
       if (result.success) {
         if (formData.role === 'tutor') {
@@ -172,19 +184,6 @@ export default function Register() {
 
           <Box component="form" onSubmit={handleSubmit} sx={{ mt: 1 }}>
             <TextField
-              required
-              fullWidth
-              id="username"
-              label="Username"
-              name="username"
-              autoComplete="username"
-              value={formData.username}
-              onChange={handleChange}
-              autoFocus
-              sx={{ mb: 2 }}
-              helperText="Choose a unique username for login"
-            />
-            <TextField
               autoComplete="name"
               name="fullName"
               required
@@ -193,6 +192,7 @@ export default function Register() {
               label="Full Name"
               value={formData.fullName}
               onChange={handleChange}
+              autoFocus
               sx={{ mb: 2 }}
             />
             <TextField
@@ -206,17 +206,6 @@ export default function Register() {
               value={formData.email}
               onChange={handleChange}
               sx={{ mb: 2 }}
-            />
-            <TextField
-              fullWidth
-              id="nophone"
-              label="Phone Number"
-              name="nophone"
-              type="tel"
-              value={formData.nophone}
-              onChange={handleChange}
-              sx={{ mb: 2 }}
-              helperText="Optional contact number"
             />
             <FormControl fullWidth sx={{ mb: 2 }}>
               <InputLabel id="role-label">Role</InputLabel>
@@ -243,70 +232,7 @@ export default function Register() {
               value={formData.password}
               onChange={handleChange}
               sx={{ mb: 2 }}
-              helperText="Must be at least 6 characters"
             />
-
-            {/* Student-specific fields */}
-            {formData.role === 'student' && (
-              <Box sx={{ mb: 2 }}>
-                <TextField
-                  fullWidth
-                  type="number"
-                  name="yearOfStudy"
-                  label="Year of Study"
-                  value={formData.yearOfStudy}
-                  onChange={handleChange}
-                  inputProps={{ min: 1, max: 10 }}
-                  sx={{ mb: 2 }}
-                  helperText="What year are you in?"
-                />
-                <TextField
-                  fullWidth
-                  name="programme"
-                  label="Programme/Course"
-                  value={formData.programme}
-                  onChange={handleChange}
-                  sx={{ mb: 2 }}
-                  helperText="e.g., Computer Science, Engineering"
-                />
-                <TextField
-                  fullWidth
-                  name="faculty"
-                  label="Faculty"
-                  value={formData.faculty}
-                  onChange={handleChange}
-                  helperText="e.g., Faculty of Engineering"
-                />
-              </Box>
-            )}
-
-            {/* Tutor-specific fields */}
-            {formData.role === 'tutor' && (
-              <Box sx={{ mb: 2 }}>
-                <TextField
-                  fullWidth
-                  type="number"
-                  name="yearsOfExperience"
-                  label="Years of Experience"
-                  value={formData.yearsOfExperience}
-                  onChange={handleChange}
-                  inputProps={{ min: 0 }}
-                  sx={{ mb: 2 }}
-                  helperText="How many years of teaching experience do you have?"
-                />
-                <TextField
-                  fullWidth
-                  name="availability"
-                  label="Availability"
-                  value={formData.availability}
-                  onChange={handleChange}
-                  multiline
-                  rows={3}
-                  sx={{ mb: 2 }}
-                  helperText="e.g., Monday-Friday, 9am-5pm"
-                />
-              </Box>
-            )}
 
             {formData.role === 'tutor' && (
               <Box sx={{ mb: 2 }}>
@@ -332,12 +258,12 @@ export default function Register() {
                 <FormHelperText>
                   Upload documents showing your experience in teaching Mandarin (e.g., certificates, diplomas, teaching credentials)
                 </FormHelperText>
-                {verificationDocuments.length > 0 && (
+                {verificationDocuments && verificationDocuments.length > 0 && (
                   <Box sx={{ mt: 1 }}>
                     <Typography variant="body2" color="text.secondary">
                       {verificationDocuments.length} file(s) selected:
                     </Typography>
-                    {verificationDocuments.map((doc, index) => (
+                    {verificationDocuments && verificationDocuments.map((doc, index) => (
                       <Typography key={index} variant="caption" display="block" color="success.main">
                         • {doc.name}
                       </Typography>

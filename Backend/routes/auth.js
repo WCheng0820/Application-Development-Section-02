@@ -396,4 +396,124 @@ router.post('/logout', async (req, res) => {
     }
 });
 
+// Approve tutor (admin only)
+router.post('/approve-tutor', async (req, res) => {
+    try {
+        const { tutorId } = req.body;
+
+        if (!tutorId) {
+            return res.status(400).json({
+                success: false,
+                error: 'Tutor ID is required'
+            });
+        }
+
+        // Find the tutor user by tutorId
+        const [tutors] = await query(
+            'SELECT user_id FROM tutor WHERE tutorId = ?',
+            [tutorId]
+        );
+
+        if (tutors.length === 0) {
+            return res.status(404).json({
+                success: false,
+                error: 'Tutor not found'
+            });
+        }
+
+        const userId = tutors[0].user_id;
+
+        // Update user status to 'active'
+        await query(
+            'UPDATE users SET status = ? WHERE id = ?',
+            ['active', userId]
+        );
+
+        // Get updated user with role data
+        const userData = await getUserWithRoleData(userId, 'tutor');
+
+        res.json({
+            success: true,
+            message: 'Tutor approved successfully',
+            user: userData
+        });
+    } catch (error) {
+        console.error('Approve tutor error:', error);
+        res.status(500).json({
+            success: false,
+            error: error.message || 'An error occurred during approval'
+        });
+    }
+});
+
+// Get pending tutors
+router.get('/pending-tutors', async (req, res) => {
+    try {
+        const [users] = await query(
+            'SELECT * FROM users WHERE role = ? AND status = ?',
+            ['tutor', 'pending']
+        );
+
+        // Get full data for each pending tutor
+        const tutors = await Promise.all(
+            users.map(user => getUserWithRoleData(user.id, 'tutor'))
+        );
+
+        res.json({
+            success: true,
+            tutors: tutors.filter(t => t !== null)
+        });
+    } catch (error) {
+        console.error('Get pending tutors error:', error);
+        res.status(500).json({
+            success: false,
+            error: error.message || 'An error occurred'
+        });
+    }
+});
+
+// Reject tutor (admin only)
+router.post('/reject-tutor', async (req, res) => {
+    try {
+        const { tutorId } = req.body;
+
+        if (!tutorId) {
+            return res.status(400).json({
+                success: false,
+                error: 'Tutor ID is required'
+            });
+        }
+
+        // Find the tutor user by tutorId
+        const [tutors] = await query(
+            'SELECT user_id FROM tutor WHERE tutorId = ?',
+            [tutorId]
+        );
+
+        if (tutors.length === 0) {
+            return res.status(404).json({
+                success: false,
+                error: 'Tutor not found'
+            });
+        }
+
+        const userId = tutors[0].user_id;
+
+        // Delete the user account (rejection)
+        await query('DELETE FROM tutor WHERE user_id = ?', [userId]);
+        await query('DELETE FROM users WHERE id = ?', [userId]);
+
+        res.json({
+            success: true,
+            message: 'Tutor registration rejected'
+        });
+    } catch (error) {
+        console.error('Reject tutor error:', error);
+        res.status(500).json({
+            success: false,
+            error: error.message || 'An error occurred during rejection'
+        });
+    }
+});
+
 module.exports = router;

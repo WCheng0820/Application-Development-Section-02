@@ -1,3 +1,4 @@
+import React from "react";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "./context/AuthContext";
 import Navbar from "./components/Navbar";
@@ -13,6 +14,27 @@ import Register from "./pages/Register";
 import EditProfile from "./pages/EditProfile";
 
 export default function App() {
+  React.useEffect(() => {
+    // Global error handler for uncaught errors
+    const handleError = (event) => {
+      console.error('⚠️ Global error caught:', event.error);
+      console.error('Stack:', event.error?.stack);
+    };
+    
+    // Global error handler for unhandled promise rejections
+    const handleUnhandledRejection = (event) => {
+      console.error('⚠️ Unhandled promise rejection:', event.reason);
+    };
+
+    window.addEventListener('error', handleError);
+    window.addEventListener('unhandledrejection', handleUnhandledRejection);
+
+    return () => {
+      window.removeEventListener('error', handleError);
+      window.removeEventListener('unhandledrejection', handleUnhandledRejection);
+    };
+  }, []);
+
   return (
     <AuthProvider>
       <Router>

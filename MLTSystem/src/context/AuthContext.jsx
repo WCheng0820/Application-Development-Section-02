@@ -109,30 +109,128 @@ export const AuthProvider = ({ children }) => {
   }, [currentUser]);
 
   const login = async (email, password) => {
-    // Mock authentication - in a real app, this would be an API call
-    const user = users.find(u => u.email === email && u.password === password);
-    if (user) {
-      // Check if tutor is approved
-      if (user.role === 'tutor' && !user.isApproved) {
+    try {
+<<<<<<< Updated upstream
+      const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+      const response = await fetch(`${API_URL}/api/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password })
+=======
+      // Call backend API for login
+      const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+      const response = await fetch(`${API_URL}/api/auth/login`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email,
+          password
+        })
+>>>>>>> Stashed changes
+      });
+
+      const result = await response.json();
+
+      if (!response.ok || !result.success) {
+<<<<<<< Updated upstream
+        return { success: false, error: result.error || 'Login failed' };
+      }
+
+      // Construct a User instance from backend user data
+      const apiUser = result.user;
+      const user = new User(
+=======
         return { 
           success: false, 
-          error: 'Your account is pending admin approval. Please wait for approval before logging in.' 
+          error: result.error || 'Login failed' 
         };
       }
+
+      // Convert API response to User object
+      const apiUser = result.user;
       
-      // Create session with token
-      const session = createSession(user);
+      // Parse name into first and last name safely
+      const nameParts = apiUser.name ? apiUser.name.split(' ') : [];
+      const firstName = apiUser.profile?.firstName || nameParts[0] || '';
+      const lastName = apiUser.profile?.lastName || (nameParts.length > 1 ? nameParts.slice(1).join(' ') : '');
+      
+      const newUser = new User(
+>>>>>>> Stashed changes
+        apiUser.id,
+        apiUser.email,
+        '', // Password not stored in frontend
+        apiUser.role,
+        {
+<<<<<<< Updated upstream
+          firstName: apiUser.name?.split(' ')[0] || '',
+          lastName: apiUser.name?.split(' ').slice(1).join(' ') || '',
+=======
+          firstName: firstName,
+          lastName: lastName,
+>>>>>>> Stashed changes
+          bio: apiUser.bio || '',
+          verificationDocuments: apiUser.verificationDocuments || []
+        }
+      );
+
+<<<<<<< Updated upstream
+      // Store session token and info in sessionStorage
+=======
+      // Set approval status from API
+      if (apiUser.isApproved !== undefined) {
+        newUser.isApproved = apiUser.isApproved;
+      }
+      if (apiUser.approvalStatus !== undefined) {
+        newUser.approvalStatus = apiUser.approvalStatus;
+      }
+      if (apiUser.status) {
+        newUser.isApproved = apiUser.status === 'active';
+        newUser.approvalStatus = apiUser.status === 'active' ? 'approved' : apiUser.status;
+      }
+
+      // Store session token
+>>>>>>> Stashed changes
+      if (result.session && result.session.token) {
+        sessionStorage.setItem('mlt_session_token', result.session.token);
+        sessionStorage.setItem('mlt_session_expiry', new Date(result.session.expiresAt).getTime().toString());
+        sessionStorage.setItem('mlt_session_user', JSON.stringify(apiUser));
+<<<<<<< Updated upstream
+      }
+
       setCurrentUser(user);
-      
-      return { 
+      setIsLoading(false);
+
+      return {
         success: true,
         session: {
-          expiresAt: new Date(session.expiryTime),
+          token: result.session.token,
+=======
+        
+        // Create session
+        const session = createSession(newUser);
+        setCurrentUser(newUser);
+      }
+
+      return { 
+        success: true,
+        session: result.session ? {
+>>>>>>> Stashed changes
+          expiresAt: new Date(result.session.expiresAt),
           timeRemaining: getSessionTimeRemaining()
-        }
+        } : undefined
       };
+    } catch (error) {
+      console.error('Login error:', error);
+      return { 
+        success: false, 
+        error: error.message || 'An error occurred during login' 
+      };
+    } catch (error) {
+      console.error('Login error:', error);
+      return { success: false, error: 'An error occurred during login' };
     }
-    return { success: false, error: 'Invalid email or password' };
   };
 
   const register = async (userData) => {
@@ -173,26 +271,31 @@ export const AuthProvider = ({ children }) => {
 
       // Convert API response to User object
       const apiUser = result.user;
+      
+      // Parse name into first and last name safely
+      const nameParts = apiUser.name ? apiUser.name.split(' ') : [];
+      const firstName = apiUser.profile?.firstName || nameParts[0] || '';
+      const lastName = apiUser.profile?.lastName || (nameParts.length > 1 ? nameParts.slice(1).join(' ') : '');
+      
       const newUser = new User(
         apiUser.id,
         apiUser.email,
         '', // Password not stored in frontend
         apiUser.role,
         {
-          firstName: apiUser.profile?.firstName || apiUser.name?.split(' ')[0] || '',
-          lastName: apiUser.profile?.lastName || apiUser.name?.split(' ').slice(1).join(' ') || '',
+<<<<<<< Updated upstream
+          firstName: apiUser.name?.split(' ')[0] || '',
+          lastName: apiUser.name?.split(' ').slice(1).join(' ') || '',
+=======
+          firstName: firstName,
+          lastName: lastName,
+>>>>>>> Stashed changes
           bio: apiUser.bio || '',
           verificationDocuments: apiUser.verificationDocuments || []
         }
       );
 
       // Set approval status from API
-      if (apiUser.isApproved !== undefined) {
-        newUser.isApproved = apiUser.isApproved;
-      }
-      if (apiUser.approvalStatus !== undefined) {
-        newUser.approvalStatus = apiUser.approvalStatus;
-      }
       if (apiUser.status) {
         newUser.isApproved = apiUser.status === 'active';
         newUser.approvalStatus = apiUser.status === 'active' ? 'approved' : apiUser.status;
@@ -211,6 +314,7 @@ export const AuthProvider = ({ children }) => {
         // Create session
         const session = createSession(newUser);
         setCurrentUser(newUser);
+        setIsLoading(false);
         
         return { 
           success: true,
@@ -287,39 +391,70 @@ export const AuthProvider = ({ children }) => {
   };
 
   // Get pending tutors (for admin approval)
-  const getPendingTutors = () => {
-    return users.filter(u => u.role === 'tutor' && u.approvalStatus === 'pending');
+  const getPendingTutors = async () => {
+    try {
+      const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+      const response = await fetch(`${API_URL}/api/auth/pending-tutors`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        }
+      });
+      const result = await response.json();
+      if (result.success) {
+        return result.tutors || [];
+      }
+      return [];
+    } catch (error) {
+      console.error('Error fetching pending tutors:', error);
+      return [];
+    }
   };
 
   // Approve tutor
-  const approveTutor = (tutorId) => {
-    setUsers(prev => prev.map(u => {
-      if (u.id === tutorId && u.role === 'tutor') {
-        u.approve();
-        return u;
+  const approveTutor = async (tutorId) => {
+    try {
+      const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+      const response = await fetch(`${API_URL}/api/auth/approve-tutor`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ tutorId })
+      });
+      const result = await response.json();
+      if (result.success) {
+        console.log('Tutor approved successfully');
+        return { success: true };
       }
-      return u;
-    }));
-    // Update current user if it's the approved tutor
-    if (currentUser && currentUser.id === tutorId) {
-      const updatedUser = users.find(u => u.id === tutorId);
-      if (updatedUser) {
-        updatedUser.approve();
-        setCurrentUser(updatedUser);
-        refreshSession(updatedUser);
-      }
+      return { success: false, error: result.error };
+    } catch (error) {
+      console.error('Error approving tutor:', error);
+      return { success: false, error: error.message };
     }
   };
 
   // Reject tutor
-  const rejectTutor = (tutorId) => {
-    setUsers(prev => prev.map(u => {
-      if (u.id === tutorId && u.role === 'tutor') {
-        u.reject();
-        return u;
+  const rejectTutor = async (tutorId) => {
+    try {
+      const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+      const response = await fetch(`${API_URL}/api/auth/reject-tutor`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ tutorId })
+      });
+      const result = await response.json();
+      if (result.success) {
+        console.log('Tutor rejected successfully');
+        return { success: true };
       }
-      return u;
-    }));
+      return { success: false, error: result.error };
+    } catch (error) {
+      console.error('Error rejecting tutor:', error);
+      return { success: false, error: error.message };
+    }
   };
 
   // Get session info

@@ -44,23 +44,43 @@ export default function AdminDashboard() {
 
   useEffect(() => {
     // Refresh pending tutors list
-    const tutors = getPendingTutors();
-    setPendingTutors(tutors);
-  }, [getPendingTutors]);
+    const fetchTutors = async () => {
+      try {
+        const tutors = await getPendingTutors();
+        setPendingTutors(tutors || []);
+      } catch (error) {
+        console.error('Error fetching pending tutors:', error);
+        setPendingTutors([]);
+      }
+    };
+    fetchTutors();
+  }, []);
 
-  const handleApprove = (tutorId) => {
-    approveTutor(tutorId);
-    // Refresh the list
-    const tutors = getPendingTutors();
-    setPendingTutors(tutors);
+  const handleApprove = async (tutorId) => {
+    try {
+      const result = await approveTutor(tutorId);
+      if (result && result.success) {
+        // Refresh the list
+        const tutors = await getPendingTutors();
+        setPendingTutors(tutors || []);
+      }
+    } catch (error) {
+      console.error('Error approving tutor:', error);
+    }
   };
 
-  const handleReject = (tutorId) => {
+  const handleReject = async (tutorId) => {
     if (window.confirm('Are you sure you want to reject this tutor registration?')) {
-      rejectTutor(tutorId);
-      // Refresh the list
-      const tutors = getPendingTutors();
-      setPendingTutors(tutors);
+      try {
+        const result = await rejectTutor(tutorId);
+        if (result && result.success) {
+          // Refresh the list
+          const tutors = await getPendingTutors();
+          setPendingTutors(tutors || []);
+        }
+      } catch (error) {
+        console.error('Error rejecting tutor:', error);
+      }
     }
   };
 
