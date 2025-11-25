@@ -59,6 +59,7 @@ const createTablesIfNotExist = () => {
             languages JSON,
             experience_years INT,
             hourly_rate DECIMAL(10, 2),
+            rating INT,
             availability JSON,
             bio TEXT,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
