@@ -293,19 +293,10 @@ export default function Messages() {
                             )}
                           </Box>
                         )}
-                        <Box sx={{ mt: 1, display: "flex", alignItems: "center", gap: 0.5 }}>
-                          {/* Tick marks for message status */}
-                          {m.readBy && m.readBy.length >= 2 ? (
-                            <Typography variant="caption" sx={{ color: "#2196F3", fontWeight: "bold" }}>
-                              ✓✓
-                            </Typography>
-                          ) : (
-                            <Typography variant="caption" sx={{ color: "#999" }}>
-                              ✓
-                            </Typography>
-                          )}
+                        <Box sx={{ mt: 1 }}>
                           <Typography variant="caption" color="text.secondary">
-                            {m.readBy && m.readBy.length >= 2 ? "Read" : "Sent"}
+                            Read by:{" "}
+                            {m.readBy?.map((r) => getCurrentUserName(r.userId)).join(", ") || "-"}
                           </Typography>
                         </Box>
                       </Box>

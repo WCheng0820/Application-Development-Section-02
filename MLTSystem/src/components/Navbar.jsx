@@ -8,48 +8,17 @@ import {
   Menu,
   MenuItem,
   IconButton,
-  Badge,
 } from "@mui/material";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import AccountCircle from "@mui/icons-material/AccountCircle";
-import * as MessagesController from "../controllers/MessagesController";
 
 const Navbar = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { currentUser, logout, isAuthenticated } = useAuth();
   const [anchorEl, setAnchorEl] = useState(null);
-  const [unreadCount, setUnreadCount] = useState(0);
-
-  // Fetch unread message count when user logs in or navigates
-  useEffect(() => {
-    if (currentUser?.id) {
-      fetchUnreadCount();
-      // Refresh unread count every 3 seconds
-      const interval = setInterval(fetchUnreadCount, 3000);
-      return () => clearInterval(interval);
-    }
-  }, [currentUser?.id]);
-
-  // Reset unread count when navigating to Messages page
-  useEffect(() => {
-    if (location.pathname === "/messages") {
-      setUnreadCount(0);
-    }
-  }, [location.pathname]);
-
-  async function fetchUnreadCount() {
-    if (!currentUser?.id) return;
-    try {
-      const conversations = await MessagesController.fetchConversations(currentUser.id);
-      const unread = conversations.reduce((count, c) => count + (c.unread ? 1 : 0), 0);
-      setUnreadCount(unread);
-    } catch (err) {
-      console.error("Failed to fetch unread count:", err);
-    }
-  }
 
   const navItems = [
     { label: "Dashboard", path: "/" },
@@ -98,25 +67,20 @@ const Navbar = () => {
         {isAuthenticated && (
           <Box>
             {navItems.map((item) => (
-              <Badge
+              <Button
                 key={item.path}
-                badgeContent={item.path === "/messages" ? unreadCount : 0}
-                color="error"
+                component={Link}
+                to={item.path}
+                sx={{
+                  mx: 1,
+                  color:
+                    location.pathname === item.path ? "black" : "text.secondary",
+                  fontWeight:
+                    location.pathname === item.path ? "bold" : "normal",
+                }}
               >
-                <Button
-                  component={Link}
-                  to={item.path}
-                  sx={{
-                    mx: 1,
-                    color:
-                      location.pathname === item.path ? "black" : "text.secondary",
-                    fontWeight:
-                      location.pathname === item.path ? "bold" : "normal",
-                  }}
-                >
-                  {item.label}
-                </Button>
-              </Badge>
+                {item.label}
+              </Button>
             ))}
           </Box>
         )}
