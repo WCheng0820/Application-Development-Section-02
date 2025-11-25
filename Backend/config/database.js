@@ -43,6 +43,8 @@ const query = async (sql, params) => {
 };
 
 module.exports = {
-    query
+    pool,
+    query,
+    dbConfig
 };
 

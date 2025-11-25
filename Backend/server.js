@@ -1,6 +1,6 @@
 const express = require('express');
 const cors = require('cors');
-const { query } = require('./config/database');
+const { pool, query } = require('./config/database');
 const initDatabase = require('./config/db.init');
 
 const app = express();
@@ -11,9 +11,12 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // Initialize database on server start
+let dbReady = false;
+
 initDatabase()
     .then(() => {
         console.log('✅ Database ready');
+        dbReady = true;
     })
     .catch(err => {
         console.error('❌ Database initialization failed:', err);

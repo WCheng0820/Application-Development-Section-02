@@ -109,36 +109,63 @@ export const AuthProvider = ({ children }) => {
   }, [currentUser]);
 
   const login = async (email, password) => {
-    // Mock authentication - in a real app, this would be an API call
-    const user = users.find(u => u.email === email && u.password === password);
-    if (user) {
-      // Check if tutor is approved
-      if (user.role === 'tutor' && !user.isApproved) {
-        return { 
-          success: false, 
-          error: 'Your account is pending admin approval. Please wait for approval before logging in.' 
-        };
+    try {
+      const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+      const response = await fetch(`${API_URL}/api/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password })
+      });
+
+      const result = await response.json();
+
+      if (!response.ok || !result.success) {
+        return { success: false, error: result.error || 'Login failed' };
       }
-      
-      // Create session with token
-      const session = createSession(user);
+
+      // Construct a User instance from backend user data
+      const apiUser = result.user;
+      const user = new User(
+        apiUser.id,
+        apiUser.email,
+        '', // Password not stored in frontend
+        apiUser.role,
+        {
+          firstName: apiUser.name?.split(' ')[0] || '',
+          lastName: apiUser.name?.split(' ').slice(1).join(' ') || '',
+          bio: apiUser.bio || '',
+          verificationDocuments: apiUser.verificationDocuments || []
+        }
+      );
+
+      // Store session token and info in sessionStorage
+      if (result.session && result.session.token) {
+        sessionStorage.setItem('mlt_session_token', result.session.token);
+        sessionStorage.setItem('mlt_session_expiry', new Date(result.session.expiresAt).getTime().toString());
+        sessionStorage.setItem('mlt_session_user', JSON.stringify(apiUser));
+      }
+
       setCurrentUser(user);
-      
-      return { 
+      setIsLoading(false);
+
+      return {
         success: true,
         session: {
-          expiresAt: new Date(session.expiryTime),
+          token: result.session.token,
+          expiresAt: new Date(result.session.expiresAt),
           timeRemaining: getSessionTimeRemaining()
         }
       };
+    } catch (error) {
+      console.error('Login error:', error);
+      return { success: false, error: 'An error occurred during login' };
     }
-    return { success: false, error: 'Invalid email or password' };
   };
 
   const register = async (userData) => {
     try {
       // Call backend API for registration
-      const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+      const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
       const response = await fetch(`${API_URL}/api/auth/register`, {
         method: 'POST',
         headers: {
@@ -179,20 +206,14 @@ export const AuthProvider = ({ children }) => {
         '', // Password not stored in frontend
         apiUser.role,
         {
-          firstName: apiUser.profile?.firstName || apiUser.name?.split(' ')[0] || '',
-          lastName: apiUser.profile?.lastName || apiUser.name?.split(' ').slice(1).join(' ') || '',
+          firstName: apiUser.name?.split(' ')[0] || '',
+          lastName: apiUser.name?.split(' ').slice(1).join(' ') || '',
           bio: apiUser.bio || '',
           verificationDocuments: apiUser.verificationDocuments || []
         }
       );
 
       // Set approval status from API
-      if (apiUser.isApproved !== undefined) {
-        newUser.isApproved = apiUser.isApproved;
-      }
-      if (apiUser.approvalStatus !== undefined) {
-        newUser.approvalStatus = apiUser.approvalStatus;
-      }
       if (apiUser.status) {
         newUser.isApproved = apiUser.status === 'active';
         newUser.approvalStatus = apiUser.status === 'active' ? 'approved' : apiUser.status;
@@ -211,6 +232,7 @@ export const AuthProvider = ({ children }) => {
         // Create session
         const session = createSession(newUser);
         setCurrentUser(newUser);
+        setIsLoading(false);
         
         return { 
           success: true,

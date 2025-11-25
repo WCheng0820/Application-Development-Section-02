@@ -14,31 +14,16 @@ const generateToken = () => {
     return crypto.randomBytes(32).toString('hex');
 };
 
-// Helper function to generate ID based on role and user ID
-const generateRoleId = (role, userId) => {
-    const paddedId = String(userId).padStart(6, '0');
-    switch (role) {
-        case 'admin':
-            return `ADM${paddedId}`;
-        case 'tutor':
-            return `TUT${paddedId}`;
-        case 'student':
-            return `STU${paddedId}`;
-        default:
-            return `${role.toUpperCase().substring(0, 3)}${paddedId}`;
-    }
-};
-
 // Register new user
 router.post('/register', async (req, res) => {
     try {
-        const { username, email, password, role, nophone, fullName, verificationDocuments, yearOfStudy, programme, faculty, yearsOfExperience, availability } = req.body;
+        const { email, password, role, fullName, verificationDocuments } = req.body;
 
         // Validation
-        if (!username || !email || !password || !role) {
+        if (!email || !password || !role) {
             return res.status(400).json({
                 success: false,
-                error: 'Username, email, password, and role are required'
+                error: 'Email, password, and role are required'
             });
         }
 
@@ -51,19 +36,25 @@ router.post('/register', async (req, res) => {
 
         // Check if user already exists
         const [existingUsers] = await query(
-            'SELECT id FROM users WHERE email = ? OR username = ?',
-            [email, username]
+            'SELECT id FROM users WHERE email = ?',
+            [email]
         );
 
         if (existingUsers.length > 0) {
             return res.status(400).json({
                 success: false,
-                error: 'Email or username already exists'
+                error: 'Email already exists'
             });
         }
 
-        // Set status based on role (tutors need approval)
-        const status = role === 'tutor' ? 'pending' : 'active';
+        // Parse fullName
+        const nameParts = (fullName || '').trim().split(' ');
+        const firstName = nameParts[0] || '';
+        const lastName = nameParts.slice(1).join(' ') || '';
+
+        // Set approval status for tutors
+        const isApproved = role === 'tutor' ? false : true;
+        const approvalStatus = role === 'tutor' ? 'pending' : 'approved';
 
         // For tutors, require verification documents
         if (role === 'tutor' && (!verificationDocuments || verificationDocuments.length === 0)) {
@@ -78,67 +69,25 @@ router.post('/register', async (req, res) => {
 
         // Insert user
         const [result] = await query(
-            `INSERT INTO users (username, email, password, role, status, nophone) 
-             VALUES (?, ?, ?, ?, ?, ?)`,
+            `INSERT INTO users (email, password, role, is_approved, approval_status, first_name, last_name, verification_documents) 
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
             [
-                username,
                 email,
                 hashedPassword,
                 role,
-                status,
-                nophone || null
+                isApproved,
+                approvalStatus,
+                firstName,
+                lastName,
+                JSON.stringify(verificationDocuments || [])
             ]
         );
 
         const userId = result.insertId;
-        const roleId = generateRoleId(role, userId);
 
-        // Create role-specific record
-        try {
-            if (role === 'admin') {
-                await query(
-                    'INSERT INTO admin (adminId, user_id, name) VALUES (?, ?, ?)',
-                    [roleId, userId, fullName || username]
-                );
-                console.log(`✅ Admin record created: ${roleId}`);
-            } else if (role === 'tutor') {
-                await query(
-                    `INSERT INTO tutor (tutorId, user_id, name, availability, yearsOfExperience, verification_documents) 
-                     VALUES (?, ?, ?, ?, ?, ?)`,
-                    [
-                        roleId,
-                        userId,
-                        fullName || username,
-                        availability || null,
-                        yearsOfExperience || 0,
-                        JSON.stringify(verificationDocuments || [])
-                    ]
-                );
-                console.log(`✅ Tutor record created: ${roleId}`);
-            } else if (role === 'student') {
-                await query(
-                    `INSERT INTO student (studentId, user_id, yearOfStudy, programme, faculty) 
-                     VALUES (?, ?, ?, ?, ?)`,
-                    [
-                        roleId,
-                        userId,
-                        yearOfStudy || 1,
-                        programme || null,
-                        faculty || null
-                    ]
-                );
-                console.log(`✅ Student record created: ${roleId} for user ${userId}`);
-            }
-        } catch (roleError) {
-            console.error(`❌ Error creating ${role} record:`, roleError);
-            // Rollback user creation if role record fails
-            await query('DELETE FROM users WHERE id = ?', [userId]);
-            throw new Error(`Failed to create ${role} record: ${roleError.message}`);
-        }
-
-        // Create session if user is active (not pending)
+        // Create session if user is not a tutor (tutors need approval)
         let session = null;
-        if (status === 'active') {
+        if (role !== 'tutor') {
             const token = generateToken();
             const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
 
@@ -153,51 +102,60 @@ router.post('/register', async (req, res) => {
             };
         }
 
-        // Get user with role-specific data
-        const userData = await getUserWithRoleData(userId, role);
+        // Return user data (without password)
+        const [newUser] = await query(
+            'SELECT id, email, role, is_approved, approval_status, first_name, last_name, bio, verification_documents, created_at FROM users WHERE id = ?',
+            [userId]
+        );
 
         res.status(201).json({
             success: true,
             message: role === 'tutor' 
                 ? 'Registration successful! Your account is pending admin approval.'
                 : 'Registration successful!',
-            user: userData,
+            user: {
+                ...newUser[0],
+                verificationDocuments: JSON.parse(newUser[0].verification_documents || '[]'),
+                profile: {
+                    firstName: newUser[0].first_name,
+                    lastName: newUser[0].last_name,
+                    bio: newUser[0].bio
+                }
+            },
             session
         });
     } catch (error) {
         console.error('Registration error:', error);
-        console.error('Error stack:', error.stack);
         res.status(500).json({
             success: false,
-            error: error.message || 'An error occurred during registration',
-            details: process.env.NODE_ENV === 'development' ? error.stack : undefined
+            error: 'An error occurred during registration'
         });
     }
 });
 
-// Login user (can use username or email)
+// Login user
 router.post('/login', async (req, res) => {
     try {
-        const { username, email, password } = req.body;
+        const { email, password } = req.body;
 
         // Validation
-        if (!password || (!username && !email)) {
+        if (!email || !password) {
             return res.status(400).json({
                 success: false,
-                error: 'Username/email and password are required'
+                error: 'Email and password are required'
             });
         }
 
-        // Find user by username or email
+        // Find user
         const [users] = await query(
-            'SELECT * FROM users WHERE username = ? OR email = ?',
-            [username || email, email || username]
+            'SELECT * FROM users WHERE email = ?',
+            [email]
         );
 
         if (users.length === 0) {
             return res.status(401).json({
                 success: false,
-                error: 'Invalid username/email or password'
+                error: 'Invalid email or password'
             });
         }
 
@@ -208,17 +166,15 @@ router.post('/login', async (req, res) => {
         if (user.password !== hashedPassword) {
             return res.status(401).json({
                 success: false,
-                error: 'Invalid username/email or password'
+                error: 'Invalid email or password'
             });
         }
 
-        // Check if account is active
-        if (user.status !== 'active') {
+        // Check if tutor is approved
+        if (user.role === 'tutor' && !user.is_approved) {
             return res.status(403).json({
                 success: false,
-                error: user.status === 'pending' 
-                    ? 'Your account is pending admin approval. Please wait for approval before logging in.'
-                    : 'Your account is inactive. Please contact administrator.'
+                error: 'Your account is pending admin approval. Please wait for approval before logging in.'
             });
         }
 
@@ -232,12 +188,22 @@ router.post('/login', async (req, res) => {
             [user.id, token, expiresAt]
         );
 
-        // Get user with role-specific data
-        const userData = await getUserWithRoleData(user.id, user.role);
-
+        // Return user data (without password)
         res.json({
             success: true,
-            user: userData,
+            user: {
+                id: user.id,
+                email: user.email,
+                role: user.role,
+                isApproved: user.is_approved,
+                approvalStatus: user.approval_status,
+                profile: {
+                    firstName: user.first_name,
+                    lastName: user.last_name,
+                    bio: user.bio
+                },
+                verificationDocuments: JSON.parse(user.verification_documents || '[]')
+            },
             session: {
                 token,
                 expiresAt: expiresAt.toISOString()
@@ -251,72 +217,6 @@ router.post('/login', async (req, res) => {
         });
     }
 });
-
-// Helper function to get user with role-specific data
-async function getUserWithRoleData(userId, role) {
-    const [users] = await query(
-        'SELECT id, username, email, role, status, nophone, created_at FROM users WHERE id = ?',
-        [userId]
-    );
-
-    if (users.length === 0) {
-        return null;
-    }
-
-    const user = users[0];
-    let roleData = {};
-
-    if (role === 'admin') {
-        const [admins] = await query(
-            'SELECT adminId, name FROM admin WHERE user_id = ?',
-            [userId]
-        );
-        if (admins.length > 0) {
-            roleData = {
-                adminId: admins[0].adminId,
-                name: admins[0].name
-            };
-        }
-    } else if (role === 'tutor') {
-        const [tutors] = await query(
-            'SELECT tutorId, name, availability, yearsOfExperience, verification_documents FROM tutor WHERE user_id = ?',
-            [userId]
-        );
-        if (tutors.length > 0) {
-            roleData = {
-                tutorId: tutors[0].tutorId,
-                name: tutors[0].name,
-                availability: tutors[0].availability,
-                yearsOfExperience: tutors[0].yearsOfExperience,
-                verificationDocuments: JSON.parse(tutors[0].verification_documents || '[]')
-            };
-        }
-    } else if (role === 'student') {
-        const [students] = await query(
-            'SELECT studentId, yearOfStudy, programme, faculty FROM student WHERE user_id = ?',
-            [userId]
-        );
-        if (students.length > 0) {
-            roleData = {
-                studentId: students[0].studentId,
-                yearOfStudy: students[0].yearOfStudy,
-                programme: students[0].programme,
-                faculty: students[0].faculty
-            };
-        }
-    }
-
-    return {
-        id: user.id,
-        username: user.username,
-        email: user.email,
-        role: user.role,
-        status: user.status,
-        nophone: user.nophone,
-        ...roleData,
-        createdAt: user.created_at
-    };
-}
 
 // Verify session token
 router.get('/verify', async (req, res) => {
@@ -347,7 +247,7 @@ router.get('/verify', async (req, res) => {
 
         // Get user
         const [users] = await query(
-            'SELECT id, username, email, role, status FROM users WHERE id = ?',
+            'SELECT id, email, role, is_approved, approval_status, first_name, last_name, bio FROM users WHERE id = ?',
             [session.user_id]
         );
 
@@ -359,11 +259,21 @@ router.get('/verify', async (req, res) => {
         }
 
         const user = users[0];
-        const userData = await getUserWithRoleData(user.id, user.role);
 
         res.json({
             success: true,
-            user: userData
+            user: {
+                id: user.id,
+                email: user.email,
+                role: user.role,
+                isApproved: user.is_approved,
+                approvalStatus: user.approval_status,
+                profile: {
+                    firstName: user.first_name,
+                    lastName: user.last_name,
+                    bio: user.bio
+                }
+            }
         });
     } catch (error) {
         console.error('Token verification error:', error);
@@ -397,3 +307,4 @@ router.post('/logout', async (req, res) => {
 });
 
 module.exports = router;
+

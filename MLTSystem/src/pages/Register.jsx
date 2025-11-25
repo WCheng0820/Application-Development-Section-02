@@ -22,19 +22,10 @@ import UploadFileIcon from '@mui/icons-material/UploadFile';
 
 export default function Register() {
   const [formData, setFormData] = useState({
-    username: '',
     fullName: '',
     email: '',
     password: '',
-    nophone: '',
-    role: 'student',
-    // Student fields
-    yearOfStudy: 1,
-    programme: '',
-    faculty: '',
-    // Tutor fields
-    yearsOfExperience: 0,
-    availability: ''
+    role: 'student'
   });
   const [verificationDocuments, setVerificationDocuments] = useState([]);
   const [error, setError] = useState('');
@@ -85,16 +76,6 @@ export default function Register() {
     setError('');
 
     // Validation
-    if (!formData.username || !formData.username.trim()) {
-      setError('Username is required');
-      return;
-    }
-
-    if (!formData.email || !formData.email.trim()) {
-      setError('Email is required');
-      return;
-    }
-
     if (formData.password.length < 6) {
       setError('Password must be at least 6 characters long');
       return;
@@ -109,24 +90,10 @@ export default function Register() {
     setIsLoading(true);
 
     try {
-      // Prepare registration data with all form fields
       const registrationData = {
-        username: formData.username.trim(),
-        email: formData.email.trim(),
-        password: formData.password,
-        role: formData.role,
-        fullName: formData.fullName.trim(),
-        nophone: formData.nophone.trim() || null,
-        verificationDocuments: formData.role === 'tutor' ? verificationDocuments : [],
-        // Student-specific fields
-        yearOfStudy: formData.role === 'student' ? parseInt(formData.yearOfStudy) || 1 : undefined,
-        programme: formData.role === 'student' ? formData.programme.trim() || null : undefined,
-        faculty: formData.role === 'student' ? formData.faculty.trim() || null : undefined,
-        // Tutor-specific fields
-        yearsOfExperience: formData.role === 'tutor' ? parseInt(formData.yearsOfExperience) || 0 : undefined,
-        availability: formData.role === 'tutor' ? formData.availability.trim() || null : undefined
+        ...formData,
+        verificationDocuments: formData.role === 'tutor' ? verificationDocuments : []
       };
-
       const result = await register(registrationData);
       if (result.success) {
         if (formData.role === 'tutor') {
@@ -172,19 +139,6 @@ export default function Register() {
 
           <Box component="form" onSubmit={handleSubmit} sx={{ mt: 1 }}>
             <TextField
-              required
-              fullWidth
-              id="username"
-              label="Username"
-              name="username"
-              autoComplete="username"
-              value={formData.username}
-              onChange={handleChange}
-              autoFocus
-              sx={{ mb: 2 }}
-              helperText="Choose a unique username for login"
-            />
-            <TextField
               autoComplete="name"
               name="fullName"
               required
@@ -193,6 +147,7 @@ export default function Register() {
               label="Full Name"
               value={formData.fullName}
               onChange={handleChange}
+              autoFocus
               sx={{ mb: 2 }}
             />
             <TextField
@@ -206,17 +161,6 @@ export default function Register() {
               value={formData.email}
               onChange={handleChange}
               sx={{ mb: 2 }}
-            />
-            <TextField
-              fullWidth
-              id="nophone"
-              label="Phone Number"
-              name="nophone"
-              type="tel"
-              value={formData.nophone}
-              onChange={handleChange}
-              sx={{ mb: 2 }}
-              helperText="Optional contact number"
             />
             <FormControl fullWidth sx={{ mb: 2 }}>
               <InputLabel id="role-label">Role</InputLabel>
@@ -243,70 +187,7 @@ export default function Register() {
               value={formData.password}
               onChange={handleChange}
               sx={{ mb: 2 }}
-              helperText="Must be at least 6 characters"
             />
-
-            {/* Student-specific fields */}
-            {formData.role === 'student' && (
-              <Box sx={{ mb: 2 }}>
-                <TextField
-                  fullWidth
-                  type="number"
-                  name="yearOfStudy"
-                  label="Year of Study"
-                  value={formData.yearOfStudy}
-                  onChange={handleChange}
-                  inputProps={{ min: 1, max: 10 }}
-                  sx={{ mb: 2 }}
-                  helperText="What year are you in?"
-                />
-                <TextField
-                  fullWidth
-                  name="programme"
-                  label="Programme/Course"
-                  value={formData.programme}
-                  onChange={handleChange}
-                  sx={{ mb: 2 }}
-                  helperText="e.g., Computer Science, Engineering"
-                />
-                <TextField
-                  fullWidth
-                  name="faculty"
-                  label="Faculty"
-                  value={formData.faculty}
-                  onChange={handleChange}
-                  helperText="e.g., Faculty of Engineering"
-                />
-              </Box>
-            )}
-
-            {/* Tutor-specific fields */}
-            {formData.role === 'tutor' && (
-              <Box sx={{ mb: 2 }}>
-                <TextField
-                  fullWidth
-                  type="number"
-                  name="yearsOfExperience"
-                  label="Years of Experience"
-                  value={formData.yearsOfExperience}
-                  onChange={handleChange}
-                  inputProps={{ min: 0 }}
-                  sx={{ mb: 2 }}
-                  helperText="How many years of teaching experience do you have?"
-                />
-                <TextField
-                  fullWidth
-                  name="availability"
-                  label="Availability"
-                  value={formData.availability}
-                  onChange={handleChange}
-                  multiline
-                  rows={3}
-                  sx={{ mb: 2 }}
-                  helperText="e.g., Monday-Friday, 9am-5pm"
-                />
-              </Box>
-            )}
 
             {formData.role === 'tutor' && (
               <Box sx={{ mb: 2 }}>

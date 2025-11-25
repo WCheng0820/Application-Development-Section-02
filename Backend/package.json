@@ -6,12 +6,7 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "nodemon server.js",
-    "init-db": "node config/db.init.js",
-    "reset-db": "node scripts/reset-db.js",
-    "check-db": "node scripts/check-db.js",
-    "fix-admin": "node scripts/fix-admin-password.js",
-    "test-student": "node scripts/test-student-registration.js",
-    "test-tutor": "node scripts/test-tutor-registration.js"
+    "init-db": "node config/db.init.js"
   },
   "keywords": [],
   "author": "",
