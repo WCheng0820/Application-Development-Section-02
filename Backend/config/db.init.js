@@ -28,23 +28,68 @@ const initDatabase = async () => {
         await connection.query(`
             CREATE TABLE IF NOT EXISTS users (
                 id INT AUTO_INCREMENT PRIMARY KEY,
-                email VARCHAR(255) UNIQUE NOT NULL,
+                username VARCHAR(255) UNIQUE NOT NULL,
                 password VARCHAR(255) NOT NULL,
+                email VARCHAR(255) UNIQUE NOT NULL,
+                nophone VARCHAR(50),
                 role ENUM('student', 'tutor', 'admin') NOT NULL DEFAULT 'student',
-                is_approved BOOLEAN DEFAULT TRUE,
-                approval_status ENUM('pending', 'approved', 'rejected') DEFAULT 'approved',
-                first_name VARCHAR(100),
-                last_name VARCHAR(100),
-                bio TEXT,
-                verification_documents JSON,
+                status VARCHAR(50) DEFAULT 'active',
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                INDEX idx_username (username),
                 INDEX idx_email (email),
                 INDEX idx_role (role),
-                INDEX idx_approval_status (approval_status)
+                INDEX idx_status (status)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
         `);
         console.log('✅ Users table created');
+
+        // Create admin table
+        await connection.query(`
+            CREATE TABLE IF NOT EXISTS admin (
+                adminId VARCHAR(255) PRIMARY KEY,
+                user_id INT NOT NULL,
+                name VARCHAR(255) NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+                INDEX idx_user_id (user_id)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        `);
+        console.log('✅ Admin table created');
+
+        // Create tutor table
+        await connection.query(`
+            CREATE TABLE IF NOT EXISTS tutor (
+                tutorId VARCHAR(255) PRIMARY KEY,
+                user_id INT NOT NULL,
+                name VARCHAR(255) NOT NULL,
+                availability VARCHAR(500),
+                yearsOfExperience INT DEFAULT 0,
+                verification_documents JSON,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+                INDEX idx_user_id (user_id)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        `);
+        console.log('✅ Tutor table created');
+
+        // Create student table
+        await connection.query(`
+            CREATE TABLE IF NOT EXISTS student (
+                studentId VARCHAR(255) PRIMARY KEY,
+                user_id INT NOT NULL,
+                yearOfStudy INT DEFAULT 1,
+                programme VARCHAR(255),
+                faculty VARCHAR(255),
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+                INDEX idx_user_id (user_id)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        `);
+        console.log('✅ Student table created');
 
         // Create sessions table for session management
         await connection.query(`
@@ -64,27 +109,46 @@ const initDatabase = async () => {
 
         // Insert default admin user if not exists
         const [existingAdmin] = await connection.query(
-            'SELECT id FROM users WHERE email = ?',
-            ['admin@mltsystem.com']
+            'SELECT id FROM users WHERE email = ? OR username = ?',
+            ['admin@mltsystem.com', 'admin']
         );
 
         if (existingAdmin.length === 0) {
-            // Default password: admin123 (should be hashed in production)
-            await connection.query(
-                `INSERT INTO users (email, password, role, is_approved, approval_status, first_name, last_name, bio) 
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+            // Hash password using SHA-256 (same as auth routes)
+            const crypto = require('crypto');
+            const hashedPassword = crypto.createHash('sha256').update('admin123').digest('hex');
+            
+            // Insert user
+            const [userResult] = await connection.query(
+                `INSERT INTO users (username, email, password, role, status, nophone) 
+                 VALUES (?, ?, ?, ?, ?, ?)`,
                 [
-                    'admin@mltsystem.com',
-                    'admin123', // In production, use bcrypt hash
                     'admin',
-                    true,
-                    'approved',
-                    'Admin',
-                    'User',
-                    'System administrator'
+                    'admin@mltsystem.com',
+                    hashedPassword,
+                    'admin',
+                    'active',
+                    null
                 ]
             );
-            console.log('✅ Default admin user created (email: admin@mltsystem.com, password: admin123)');
+
+            const userId = userResult.insertId;
+            const adminId = `ADM${String(userId).padStart(6, '0')}`;
+
+            // Insert admin record
+            await connection.query(
+                `INSERT INTO admin (adminId, user_id, name) 
+                 VALUES (?, ?, ?)`,
+                [adminId, userId, 'System Administrator']
+            );
+
+            console.log('✅ Default admin user created');
+            console.log('   Username: admin');
+            console.log('   Email: admin@mltsystem.com');
+            console.log('   Password: admin123');
+            console.log(`   Admin ID: ${adminId}`);
+        } else {
+            console.log('ℹ️  Admin user already exists');
         }
 
         console.log('✅ Database initialization completed successfully');

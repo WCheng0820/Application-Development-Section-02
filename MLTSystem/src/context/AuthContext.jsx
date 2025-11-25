@@ -136,53 +136,99 @@ export const AuthProvider = ({ children }) => {
   };
 
   const register = async (userData) => {
-    // Mock registration - in a real app, this would be an API call
-    const existingUser = users.find(u => u.email === userData.email);
-    if (existingUser) {
-      return { success: false, error: 'Email already exists' };
-    }
+    try {
+      // Call backend API for registration
+      const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+      const response = await fetch(`${API_URL}/api/auth/register`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          username: userData.username,
+          email: userData.email,
+          password: userData.password,
+          role: userData.role,
+          nophone: userData.nophone || null,
+          fullName: userData.fullName,
+          verificationDocuments: userData.verificationDocuments || [],
+          // Student fields
+          yearOfStudy: userData.yearOfStudy,
+          programme: userData.programme,
+          faculty: userData.faculty,
+          // Tutor fields
+          yearsOfExperience: userData.yearsOfExperience,
+          availability: userData.availability
+        })
+      });
 
-    // Parse fullName into firstName and lastName
-    const nameParts = (userData.fullName || '').trim().split(' ');
-    const firstName = nameParts[0] || '';
-    const lastName = nameParts.slice(1).join(' ') || '';
+      const result = await response.json();
 
-    const newUser = new User(
-      users.length + 1,
-      userData.email,
-      userData.password,
-      userData.role,
-      {
-        firstName: firstName,
-        lastName: lastName,
-        bio: userData.bio || '',
-        verificationDocuments: userData.verificationDocuments || []
+      if (!response.ok || !result.success) {
+        return { 
+          success: false, 
+          error: result.error || 'Registration failed' 
+        };
       }
-    );
 
-    // Set verification documents if provided
-    if (userData.verificationDocuments && userData.verificationDocuments.length > 0) {
-      newUser.verificationDocuments = userData.verificationDocuments;
-    }
-
-    setUsers(prev => [...prev, newUser]);
-    
-    // Only set current user if not a tutor (tutors need approval)
-    if (userData.role !== 'tutor') {
-      // Create session for non-tutor users
-      const session = createSession(newUser);
-      setCurrentUser(newUser);
-      
-      return { 
-        success: true,
-        session: {
-          expiresAt: new Date(session.expiryTime),
-          timeRemaining: getSessionTimeRemaining()
+      // Convert API response to User object
+      const apiUser = result.user;
+      const newUser = new User(
+        apiUser.id,
+        apiUser.email,
+        '', // Password not stored in frontend
+        apiUser.role,
+        {
+          firstName: apiUser.profile?.firstName || apiUser.name?.split(' ')[0] || '',
+          lastName: apiUser.profile?.lastName || apiUser.name?.split(' ').slice(1).join(' ') || '',
+          bio: apiUser.bio || '',
+          verificationDocuments: apiUser.verificationDocuments || []
         }
+      );
+
+      // Set approval status from API
+      if (apiUser.isApproved !== undefined) {
+        newUser.isApproved = apiUser.isApproved;
+      }
+      if (apiUser.approvalStatus !== undefined) {
+        newUser.approvalStatus = apiUser.approvalStatus;
+      }
+      if (apiUser.status) {
+        newUser.isApproved = apiUser.status === 'active';
+        newUser.approvalStatus = apiUser.status === 'active' ? 'approved' : apiUser.status;
+      }
+
+      // Update users list (for admin dashboard)
+      setUsers(prev => [...prev, newUser]);
+
+      // Only set current user if session is provided (not pending tutors)
+      if (result.session && result.session.token) {
+        // Store session token
+        sessionStorage.setItem('mlt_session_token', result.session.token);
+        sessionStorage.setItem('mlt_session_expiry', new Date(result.session.expiresAt).getTime().toString());
+        sessionStorage.setItem('mlt_session_user', JSON.stringify(apiUser));
+        
+        // Create session
+        const session = createSession(newUser);
+        setCurrentUser(newUser);
+        
+        return { 
+          success: true,
+          session: {
+            expiresAt: new Date(result.session.expiresAt),
+            timeRemaining: getSessionTimeRemaining()
+          }
+        };
+      }
+      
+      return { success: true };
+    } catch (error) {
+      console.error('Registration error:', error);
+      return { 
+        success: false, 
+        error: error.message || 'An error occurred during registration' 
       };
     }
-    
-    return { success: true };
   };
 
   const logout = () => {
