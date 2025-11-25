@@ -22,7 +22,6 @@ export async function fetchTutors() {
         experience: tutor.experience_years,
         ratePerHour: tutor.hourly_rate,
         bio: tutor.bio,
-        rating: tutor.rating,
         schedule: tutor.availability ? Object.entries(JSON.parse(tutor.availability)).map(([day, time]) => `${day} ${time}`) : [],
         email: tutor.email,
         phone: tutor.phone,

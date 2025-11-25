@@ -30,7 +30,6 @@ function seedDatabase() {
             languages: JSON.stringify(['Mandarin', 'English']),
             experience_years: 5,
             hourly_rate: 30.00,
-            rating: 5,
             availability: JSON.stringify({ Monday: '9:00-17:00', Wednesday: '10:00-16:00', Friday: '14:00-20:00' }),
             bio: 'Expert Mandarin conversation teacher with 5 years of teaching experience. Specializes in daily communication and cultural immersion. Native speaker from Beijing.'
         },
@@ -42,7 +41,6 @@ function seedDatabase() {
             languages: JSON.stringify(['Mandarin', 'English', 'Spanish']),
             experience_years: 8,
             hourly_rate: 35.00,
-            rating: 5,
             availability: JSON.stringify({ Tuesday: '9:00-17:00', Thursday: '10:00-18:00', Saturday: '10:00-14:00' }),
             bio: 'Certified HSK exam specialist with 8 years of experience. Expert in HSK levels 1-6 preparation. Helped 200+ students achieve their target scores.'
         },
@@ -54,7 +52,6 @@ function seedDatabase() {
             languages: JSON.stringify(['Mandarin', 'English']),
             experience_years: 6,
             hourly_rate: 28.00,
-            rating: 5,
             availability: JSON.stringify({ Monday: '14:00-20:00', Wednesday: '15:00-19:00', Saturday: '14:00-18:00' }),
             bio: 'Patient teacher specializing in absolute beginner Mandarin. Uses modern teaching methods and interactive learning. 6 years of one-on-one tutoring.'
         },
@@ -66,7 +63,6 @@ function seedDatabase() {
             languages: JSON.stringify(['Mandarin', 'English', 'German', 'French']),
             experience_years: 10,
             hourly_rate: 40.00,
-            rating: 5,
             availability: JSON.stringify({ Tuesday: '14:00-20:00', Thursday: '15:00-21:00', Sunday: '10:00-16:00' }),
             bio: 'PhD-educated Mandarin specialist with 10 years of teaching experience. Expert in advanced pronunciation, business Mandarin, and classical Chinese texts.'
         },
@@ -78,7 +74,6 @@ function seedDatabase() {
             languages: JSON.stringify(['Mandarin', 'English']),
             experience_years: 3,
             hourly_rate: 22.00,
-            rating: 5,
             availability: JSON.stringify({ Monday: '10:00-14:00', Friday: '16:00-20:00', Sunday: '14:00-18:00' }),
             bio: 'Enthusiastic Mandarin teacher with 3 years of experience. Specializes in conversational practice and cultural immersion for beginners. Native Shanghai accent.'
         },
@@ -90,7 +85,6 @@ function seedDatabase() {
             languages: JSON.stringify(['Mandarin', 'English', 'Cantonese']),
             experience_years: 7,
             hourly_rate: 32.00,
-            rating: 5,
             availability: JSON.stringify({ Wednesday: '14:00-18:00', Friday: '17:00-21:00', Saturday: '11:00-15:00' }),
             bio: 'Business Mandarin specialist with 7 years of corporate training experience. Expert in business communication, negotiations, and professional writing.'
         }
