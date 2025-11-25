@@ -1,187 +1,293 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Container,
   Typography,
-  TextField,
-  Grid,
-  Card,
-  CardContent,
-  CardMedia,
-  Button,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
   Box,
+  Grid,
+  TextField,
+  Button,
+  Card,
+  Slider,
+  FormControl,
+  InputLabel,
+  Select,
   MenuItem,
-  Snackbar,
-  Alert,
-  Rating,
+  Chip,
+  Stack,
+  Paper,
+  Collapse,
+  IconButton,
 } from "@mui/material";
-
-const tutorsData = [
-  {
-    id: 1,
-    name: "Ms. Chen",
-    subject: "Mandarin Grammar",
-    rating: 4.8,
-    image:
-      "https://images.unsplash.com/photo-1529626455594-4ff0802cfb7e?auto=format&w=400&q=60",
-  },
-  {
-    id: 2,
-    name: "Mr. Lee",
-    subject: "Conversational Mandarin",
-    rating: 4.5,
-    image:
-      "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&w=400&q=60",
-  },
-  {
-    id: 3,
-    name: "Ms. Wong",
-    subject: "Mandarin for Beginners",
-    rating: 4.9,
-    image:
-      "https://images.unsplash.com/photo-1607746882042-944635dfe10e?auto=format&w=400&q=60",
-  },
-];
+import FilterListIcon from "@mui/icons-material/FilterList";
+import ClearIcon from "@mui/icons-material/Clear";
+import SearchIcon from "@mui/icons-material/Search";
+import TutorCard from "../components/TutorCard";
+import * as TutorsController from "../controllers/TutorsController";
 
 export default function FindTutors() {
-  const [searchTerm, setSearchTerm] = useState("");
-  const [selectedTutor, setSelectedTutor] = useState(null);
-  const [date, setDate] = useState("");
-  const [time, setTime] = useState("");
-  const [success, setSuccess] = useState(false);
+  const [tutors, setTutors] = useState([]);
+  const [filteredTutors, setFilteredTutors] = useState([]);
+  const [expandFilters, setExpandFilters] = useState(false);
 
-  const filteredTutors = tutorsData.filter(
-    (tutor) =>
-      tutor.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      tutor.subject.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  // Filter states
+  const [keywords, setKeywords] = useState("");
+  const [selectedSubject, setSelectedSubject] = useState("");
+  const [priceRange, setPriceRange] = useState([0, 50]);
+  const [minExperience, setMinExperience] = useState(0);
+  const [minRating, setMinRating] = useState(0);
 
-  const handleBook = (tutor) => {
-    setSelectedTutor(tutor);
+  const [subjects, setSubjects] = useState([]);
+  const [priceMax, setPriceMax] = useState(50);
+  const [experienceMax, setExperienceMax] = useState(10);
+
+  // Initialize
+  useEffect(() => {
+  const initializeTutors = async () => {
+    // Fetch tutors from backend
+    await TutorsController.fetchTutors();
+    
+    // Get cached tutors for display
+    const allTutors = TutorsController.getAllTutors();
+    setTutors(allTutors);
+    setFilteredTutors(allTutors);
+
+    // Set subjects and ranges
+    const availableSubjects = TutorsController.getUniqueSubjects();
+    setSubjects(availableSubjects);
+
+    const priceMaxValue = TutorsController.getMaxRate();
+    setPriceMax(priceMaxValue);
+    setPriceRange([0, priceMaxValue]);
+
+    const expMaxValue = TutorsController.getMaxExperience();
+    setExperienceMax(expMaxValue);
   };
 
-  const handleConfirmBooking = () => {
-    if (date && time) {
-      setSelectedTutor(null);
-      setSuccess(true);
-      setDate("");
-      setTime("");
-    }
+  initializeTutors();
+}, []);
+
+
+  // Apply filters
+  useEffect(() => {
+  const filters = {
+    keywords,
+    subject: selectedSubject,
+    minExperience,
+    maxPrice: priceRange[1],
+    minRating,
   };
+
+  const results = TutorsController.filterTutors(filters);
+  setFilteredTutors(results);
+}, [keywords, selectedSubject, priceRange, minExperience, minRating]);
+
+
+  const handleResetFilters = () => {
+    setKeywords("");
+    setSelectedSubject("");
+    setPriceRange([0, priceMax]);
+    setMinExperience(0);
+    setMinRating(0);
+  };
+
+  const handleBooking = (tutor) => {
+    alert(`Booking tutor: ${tutor.name}\nThis would open a booking form in a full implementation.`);
+    // In a full implementation, this would navigate to a booking form or open a dialog
+  };
+
+  const activeFiltersCount =
+    (keywords ? 1 : 0) +
+    (selectedSubject ? 1 : 0) +
+    (priceRange[1] < priceMax ? 1 : 0) +
+    (minExperience > 0 ? 1 : 0) +
+    (minRating > 0 ? 1 : 0);
 
   return (
-    <Container maxWidth="lg" sx={{ mt: 12, mb: 8 }}>
-      <Typography variant="h5" fontWeight="bold" gutterBottom>
-        Find a Mandarin Tutor 🧑‍🏫
-      </Typography>
-      <Typography variant="body2" color="text.secondary" mb={3}>
-        Browse through available tutors and book a session instantly.
-      </Typography>
+    <Container maxWidth="lg" sx={{ mt: 12, mb: 6 }}>
+      {/* Header Section */}
+      <Box sx={{ mb: 6 }}>
+        <Typography variant="h4" fontWeight="bold" gutterBottom>
+          Find Your Perfect Mandarin Tutor 🇨🇳
+        </Typography>
+        <Typography variant="body1" color="text.secondary" paragraph>
+          Browse our experienced Mandarin Chinese tutors and filter by learning focus, experience, price, and rating to find the perfect match for your Mandarin learning journey.
+        </Typography>
+      </Box>
 
-      {/* Search bar */}
-      <TextField
-        fullWidth
-        label="Search by tutor name or subject"
-        variant="outlined"
-        value={searchTerm}
-        onChange={(e) => setSearchTerm(e.target.value)}
-        sx={{ mb: 4 }}
-      />
-
-      {/* Tutor list */}
-      <Grid container spacing={3}>
-        {filteredTutors.map((tutor) => (
-          <Grid item xs={12} sm={6} md={4} key={tutor.id}>
-            <Card
-              sx={{
-                borderRadius: 3,
-                boxShadow: 3,
-                transition: "0.3s",
-                "&:hover": { boxShadow: 6 },
-              }}
-            >
-              <CardMedia
-                component="img"
-                height="200"
-                image={tutor.image}
-                alt={tutor.name}
-              />
-              <CardContent>
-                <Typography variant="h6" fontWeight="bold">
-                  {tutor.name}
-                </Typography>
-                <Typography color="text.secondary" mb={1}>
-                  {tutor.subject}
-                </Typography>
-                <Rating value={tutor.rating} precision={0.1} readOnly />
-                <Box textAlign="center" mt={2}>
-                  <Button
-                    variant="contained"
-                    color="primary"
-                    onClick={() => handleBook(tutor)}
-                  >
-                    Book Now
-                  </Button>
-                </Box>
-              </CardContent>
-            </Card>
-          </Grid>
-        ))}
-      </Grid>
-
-      {/* Booking dialog */}
-      <Dialog open={!!selectedTutor} onClose={() => setSelectedTutor(null)}>
-        <DialogTitle>Book a Session with {selectedTutor?.name}</DialogTitle>
-        <DialogContent>
+      {/* Search and Filter Section */}
+      <Paper elevation={1} sx={{ p: 3, mb: 4, bgcolor: "background.paper" }}>
+        {/* Search Bar */}
+        <Box sx={{ mb: 3 }}>
           <TextField
-            label="Select Date"
-            type="date"
             fullWidth
-            value={date}
-            onChange={(e) => setDate(e.target.value)}
-            sx={{ mt: 2 }}
-            InputLabelProps={{ shrink: true }}
+            placeholder="Search by tutor name, learning focus, or keywords..."
+            value={keywords}
+            onChange={(e) => setKeywords(e.target.value)}
+            InputProps={{
+              startAdornment: <SearchIcon sx={{ mr: 1, color: "text.secondary" }} />,
+            }}
+            variant="outlined"
+            size="small"
           />
-          <TextField
-            label="Select Time"
-            type="time"
-            fullWidth
-            value={time}
-            onChange={(e) => setTime(e.target.value)}
-            sx={{ mt: 2 }}
-            InputLabelProps={{ shrink: true }}
-          />
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setSelectedTutor(null)}>Cancel</Button>
+        </Box>
+
+        {/* Filter Toggle */}
+        <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 2 }}>
           <Button
-            variant="contained"
-            color="primary"
-            onClick={handleConfirmBooking}
-            disabled={!date || !time}
+            startIcon={<FilterListIcon />}
+            onClick={() => setExpandFilters(!expandFilters)}
+            size="small"
           >
-            Confirm
+            {expandFilters ? "Hide" : "Show"} Filters
+            {activeFiltersCount > 0 && (
+              <Chip
+                label={activeFiltersCount}
+                size="small"
+                color="primary"
+                sx={{ ml: 1 }}
+              />
+            )}
           </Button>
-        </DialogActions>
-      </Dialog>
+          {activeFiltersCount > 0 && (
+            <Button
+              startIcon={<ClearIcon />}
+              onClick={handleResetFilters}
+              size="small"
+              variant="text"
+              color="inherit"
+            >
+              Clear All
+            </Button>
+          )}
+        </Box>
 
-      {/* Success message */}
-      <Snackbar
-        open={success}
-        autoHideDuration={3000}
-        onClose={() => setSuccess(false)}
-      >
-        <Alert
-          onClose={() => setSuccess(false)}
-          severity="success"
-          sx={{ width: "100%" }}
-        >
-          Booking confirmed successfully!
-        </Alert>
-      </Snackbar>
+        {/* Expandable Filters */}
+        <Collapse in={expandFilters}>
+          <Box sx={{ pt: 2, borderTop: "1px solid", borderColor: "divider" }}>
+            <Grid container spacing={3}>
+              {/* Subject Filter */}
+              <Grid item xs={12} sm={6} md={3}>
+                <FormControl fullWidth size="small">
+                  <InputLabel>Learning Focus</InputLabel>
+                  <Select
+                    value={selectedSubject}
+                    label="Learning Focus"
+                    onChange={(e) => setSelectedSubject(e.target.value)}
+                  >
+                    <MenuItem value="">All Learning Focuses</MenuItem>
+                    {subjects.map((subject) => (
+                      <MenuItem key={subject} value={subject}>
+                        {subject}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              </Grid>
+
+              {/* Price Range Filter */}
+              <Grid item xs={12} sm={6} md={3}>
+                <Typography variant="subtitle2" fontWeight="bold" mb={1}>
+                  Price per Hour: RM{priceRange[1]}
+                </Typography>
+                <Slider
+                  value={priceRange}
+                  onChange={(e, newValue) => setPriceRange(newValue)}
+                  min={0}
+                  max={priceMax}
+                  step={2}
+                  marks={[
+                    { value: 0, label: "RM0" },
+                    { value: priceMax, label: `RM${priceMax}` },
+                  ]}
+                  valueLabelDisplay="auto"
+                  sx={{ mt: 2 }}
+                />
+              </Grid>
+
+              {/* Experience Filter */}
+              <Grid item xs={12} sm={6} md={3}>
+                <Typography variant="subtitle2" fontWeight="bold" mb={1}>
+                  Min. Experience: {minExperience} years
+                </Typography>
+                <Slider
+                  value={minExperience}
+                  onChange={(e, newValue) => setMinExperience(newValue)}
+                  min={0}
+                  max={experienceMax}
+                  step={1}
+                  marks={[
+                    { value: 0, label: "0" },
+                    { value: experienceMax, label: `${experienceMax}` },
+                  ]}
+                  valueLabelDisplay="auto"
+                  sx={{ mt: 2 }}
+                />
+              </Grid>
+
+              {/* Rating Filter */}
+              <Grid item xs={12} sm={6} md={3}>
+                <FormControl fullWidth size="small">
+                  <InputLabel>Minimum Rating</InputLabel>
+                  <Select
+                    value={minRating}
+                    label="Minimum Rating"
+                    onChange={(e) => setMinRating(e.target.value)}
+                  >
+                    <MenuItem value={0}>Any Rating</MenuItem>
+                    <MenuItem value={3}>3★ & Above</MenuItem>
+                    <MenuItem value={3.5}>3.5★ & Above</MenuItem>
+                    <MenuItem value={4}>4★ & Above</MenuItem>
+                    <MenuItem value={4.5}>4.5★ & Above</MenuItem>
+                  </Select>
+                </FormControl>
+              </Grid>
+            </Grid>
+          </Box>
+        </Collapse>
+      </Paper>
+
+      {/* Results Section */}
+      <Box sx={{ mb: 4 }}>
+        <Typography variant="subtitle1" fontWeight="bold" mb={3}>
+          {filteredTutors.length} tutor{filteredTutors.length !== 1 ? "s" : ""} found
+        </Typography>
+
+        {filteredTutors.length === 0 ? (
+          <Paper
+            sx={{
+              p: 6,
+              textAlign: "center",
+              bgcolor: "action.hover",
+              borderRadius: 2,
+            }}
+          >
+            <Typography variant="h6" color="text.secondary" mb={2}>
+              No tutors match your filters
+            </Typography>
+            <Typography variant="body2" color="text.secondary" mb={3}>
+              Try adjusting your search criteria to see more results.
+            </Typography>
+            <Button
+              variant="contained"
+              onClick={handleResetFilters}
+              startIcon={<ClearIcon />}
+            >
+              Reset Filters
+            </Button>
+          </Paper>
+        ) : (
+          <Grid container spacing={3}>
+            {filteredTutors.map((tutor) => (
+              <Grid item xs={12} sm={6} md={4} key={tutor.id}>
+                <TutorCard
+                  tutor={tutor}
+                  onBook={handleBooking}
+                />
+              </Grid>
+            ))}
+          </Grid>
+        )}
+      </Box>
     </Container>
   );
 }
