@@ -34,16 +34,30 @@ export default function Register() {
   const { register } = useAuth();
   const navigate = useNavigate();
 
+  // Debug: log formData on mount and updates
+  React.useEffect(() => {
+    console.log('Register component mounted. formData:', formData, 'verificationDocuments:', verificationDocuments);
+  }, []);
+
   const handleChange = (e) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value
-    });
+    if (!e || !e.target) {
+      console.error('Invalid change event:', e);
+      return;
+    }
+    const { name, value } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: value || ''
+    }));
   };
 
   const handleFileChange = (e) => {
-    const files = Array.from(e.target.files);
-    if (files.length > 0) {
+    if (!e.target || !e.target.files) {
+      console.error('File input event invalid:', e);
+      return;
+    }
+    const files = Array.from(e.target.files || []);
+    if (files && files.length > 0) {
       // Convert files to base64 for storage (in a real app, upload to server)
       const filePromises = files.map(file => {
         return new Promise((resolve, reject) => {
@@ -76,13 +90,27 @@ export default function Register() {
     setError('');
 
     // Validation
+<<<<<<< Updated upstream
     if (formData.password.length < 6) {
+=======
+    if (!formData || !formData.username || !formData.username.trim()) {
+      setError('Username is required');
+      return;
+    }
+
+    if (!formData.email || !formData.email.trim()) {
+      setError('Email is required');
+      return;
+    }
+
+    if (!formData.password || formData.password.length < 6) {
+>>>>>>> Stashed changes
       setError('Password must be at least 6 characters long');
       return;
     }
 
     // For tutors, require verification documents
-    if (formData.role === 'tutor' && verificationDocuments.length === 0) {
+    if (formData.role === 'tutor' && (!Array.isArray(verificationDocuments) || verificationDocuments.length === 0)) {
       setError('Please upload verification documents to show your experience in teaching Mandarin');
       return;
     }
@@ -91,8 +119,25 @@ export default function Register() {
 
     try {
       const registrationData = {
+<<<<<<< Updated upstream
         ...formData,
         verificationDocuments: formData.role === 'tutor' ? verificationDocuments : []
+=======
+        username: (formData?.username || '').trim(),
+        email: (formData?.email || '').trim(),
+        password: formData?.password || '',
+        role: formData?.role || 'student',
+        fullName: (formData?.fullName || '').trim(),
+        nophone: (formData?.nophone || '').trim() || null,
+        verificationDocuments: formData?.role === 'tutor' ? verificationDocuments : [],
+        // Student-specific fields
+        yearOfStudy: formData?.role === 'student' ? parseInt(formData?.yearOfStudy) || 1 : undefined,
+        programme: formData?.role === 'student' ? (formData?.programme || '').trim() || null : undefined,
+        faculty: formData?.role === 'student' ? (formData?.faculty || '').trim() || null : undefined,
+        // Tutor-specific fields
+        yearsOfExperience: formData?.role === 'tutor' ? parseInt(formData?.yearsOfExperience) || 0 : undefined,
+        availability: formData?.role === 'tutor' ? (formData?.availability || '').trim() || null : undefined
+>>>>>>> Stashed changes
       };
       const result = await register(registrationData);
       if (result.success) {
@@ -213,12 +258,12 @@ export default function Register() {
                 <FormHelperText>
                   Upload documents showing your experience in teaching Mandarin (e.g., certificates, diplomas, teaching credentials)
                 </FormHelperText>
-                {verificationDocuments.length > 0 && (
+                {verificationDocuments && verificationDocuments.length > 0 && (
                   <Box sx={{ mt: 1 }}>
                     <Typography variant="body2" color="text.secondary">
                       {verificationDocuments.length} file(s) selected:
                     </Typography>
-                    {verificationDocuments.map((doc, index) => (
+                    {verificationDocuments && verificationDocuments.map((doc, index) => (
                       <Typography key={index} variant="caption" display="block" color="success.main">
                         • {doc.name}
                       </Typography>
