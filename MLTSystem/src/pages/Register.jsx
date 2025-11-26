@@ -51,8 +51,8 @@ export default function Register() {
   };
 
   const handleFileChange = (e) => {
-    const files = Array.from(e.target.files);
-    if (files.length > 0) {
+    if (e.target.files && e.target.files.length > 0) {
+      const files = Array.from(e.target.files);
       // Convert files to base64 for storage (in a real app, upload to server)
       const filePromises = files.map(file => {
         return new Promise((resolve, reject) => {

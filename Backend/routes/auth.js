@@ -50,7 +50,7 @@ router.post('/register', async (req, res) => {
         }
 
         // Check if user already exists
-        const [existingUsers] = await query(
+        const existingUsers = await query(
             'SELECT id FROM users WHERE email = ? OR username = ?',
             [email, username]
         );
@@ -77,7 +77,7 @@ router.post('/register', async (req, res) => {
         const hashedPassword = hashPassword(password);
 
         // Insert user
-        const [result] = await query(
+        const result = await query(
             `INSERT INTO users (username, email, password, role, status, nophone) 
              VALUES (?, ?, ?, ?, ?, ?)`,
             [
@@ -189,7 +189,7 @@ router.post('/login', async (req, res) => {
         }
 
         // Find user by username or email
-        const [users] = await query(
+        const users = await query(
             'SELECT * FROM users WHERE username = ? OR email = ?',
             [username || email, email || username]
         );
@@ -254,20 +254,20 @@ router.post('/login', async (req, res) => {
 
 // Helper function to get user with role-specific data
 async function getUserWithRoleData(userId, role) {
-    const [users] = await query(
-        'SELECT id, username, email, role, status, nophone, created_at FROM users WHERE id = ?',
-        [userId]
-    );
+        const users = await query(
+            'SELECT id, username, email, role, status, nophone, created_at FROM users WHERE id = ?',
+            [userId]
+        );
 
-    if (users.length === 0) {
-        return null;
-    }
+        if (users.length === 0) {
+            return null;
+        }
 
-    const user = users[0];
+        const user = users[0];
     let roleData = {};
 
     if (role === 'admin') {
-        const [admins] = await query(
+        const admins = await query(
             'SELECT adminId, name FROM admin WHERE user_id = ?',
             [userId]
         );
@@ -278,7 +278,7 @@ async function getUserWithRoleData(userId, role) {
             };
         }
     } else if (role === 'tutor') {
-        const [tutors] = await query(
+        const tutors = await query(
             'SELECT tutorId, name, availability, yearsOfExperience, verification_documents FROM tutor WHERE user_id = ?',
             [userId]
         );
@@ -292,7 +292,7 @@ async function getUserWithRoleData(userId, role) {
             };
         }
     } else if (role === 'student') {
-        const [students] = await query(
+        const students = await query(
             'SELECT studentId, yearOfStudy, programme, faculty FROM student WHERE user_id = ?',
             [userId]
         );
@@ -331,7 +331,7 @@ router.get('/verify', async (req, res) => {
         }
 
         // Check session
-        const [sessions] = await query(
+        const sessions = await query(
             'SELECT * FROM sessions WHERE token = ? AND expires_at > NOW()',
             [token]
         );
@@ -346,7 +346,7 @@ router.get('/verify', async (req, res) => {
         const session = sessions[0];
 
         // Get user
-        const [users] = await query(
+        const users = await query(
             'SELECT id, username, email, role, status FROM users WHERE id = ?',
             [session.user_id]
         );

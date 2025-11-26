@@ -109,30 +109,87 @@ export const AuthProvider = ({ children }) => {
   }, [currentUser]);
 
   const login = async (email, password) => {
-    // Mock authentication - in a real app, this would be an API call
-    const user = users.find(u => u.email === email && u.password === password);
-    if (user) {
-      // Check if tutor is approved
-      if (user.role === 'tutor' && !user.isApproved) {
+    try {
+      // Call backend API for login
+      const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+      const response = await fetch(`${API_URL}/api/auth/login`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email,
+          password
+        })
+      });
+
+      const result = await response.json();
+
+      if (!response.ok || !result.success) {
         return { 
           success: false, 
-          error: 'Your account is pending admin approval. Please wait for approval before logging in.' 
+          error: result.error || 'Login failed' 
         };
       }
+
+      // Convert API response to User object
+      const apiUser = result.user;
       
-      // Create session with token
-      const session = createSession(user);
-      setCurrentUser(user);
+      // Parse name into first and last name safely
+      const nameParts = apiUser.name ? apiUser.name.split(' ') : [];
+      const firstName = apiUser.profile?.firstName || nameParts[0] || '';
+      const lastName = apiUser.profile?.lastName || (nameParts.length > 1 ? nameParts.slice(1).join(' ') : '');
       
+      const newUser = new User(
+        apiUser.id,
+        apiUser.email,
+        '', // Password not stored in frontend
+        apiUser.role,
+        {
+          firstName: firstName,
+          lastName: lastName,
+          bio: apiUser.bio || '',
+          verificationDocuments: apiUser.verificationDocuments || []
+        }
+      );
+
+      // Set approval status from API
+      if (apiUser.isApproved !== undefined) {
+        newUser.isApproved = apiUser.isApproved;
+      }
+      if (apiUser.approvalStatus !== undefined) {
+        newUser.approvalStatus = apiUser.approvalStatus;
+      }
+      if (apiUser.status) {
+        newUser.isApproved = apiUser.status === 'active';
+        newUser.approvalStatus = apiUser.status === 'active' ? 'approved' : apiUser.status;
+      }
+
+      // Store session token
+      if (result.session && result.session.token) {
+        sessionStorage.setItem('mlt_session_token', result.session.token);
+        sessionStorage.setItem('mlt_session_expiry', new Date(result.session.expiresAt).getTime().toString());
+        sessionStorage.setItem('mlt_session_user', JSON.stringify(apiUser));
+        
+        // Create session
+        const session = createSession(newUser);
+        setCurrentUser(newUser);
+      }
+
       return { 
         success: true,
-        session: {
-          expiresAt: new Date(session.expiryTime),
+        session: result.session ? {
+          expiresAt: new Date(result.session.expiresAt),
           timeRemaining: getSessionTimeRemaining()
-        }
+        } : undefined
+      };
+    } catch (error) {
+      console.error('Login error:', error);
+      return { 
+        success: false, 
+        error: error.message || 'An error occurred during login' 
       };
     }
-    return { success: false, error: 'Invalid email or password' };
   };
 
   const register = async (userData) => {
