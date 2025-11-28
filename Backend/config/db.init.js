@@ -24,14 +24,6 @@ const initDatabase = async () => {
         // Use the database
         await connection.query(`USE \`${dbName}\``);
 
-        // Drop legacy booking/tutor/student tables if they exist to ensure schema matches the latest definition
-        // (development convenience - change if you want to preserve data)
-        await connection.query(`DROP TABLE IF EXISTS booking`);
-        await connection.query(`DROP TRIGGER IF EXISTS tutor_after_insert`);
-        await connection.query(`DROP TRIGGER IF EXISTS student_after_insert`);
-        await connection.query(`DROP TABLE IF EXISTS tutor`);
-        await connection.query(`DROP TABLE IF EXISTS student`);
-
         // Create users table
         await connection.query(`
             CREATE TABLE IF NOT EXISTS users (
