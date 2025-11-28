@@ -1,4 +1,4 @@
-// src/Dashboard.jsx
+// src/pages/TutorDashboard.jsx
 import React from "react";
 import {
   Box,
@@ -11,6 +11,7 @@ import {
   ListItemText,
   Typography,
   Chip,
+  Button,
 } from "@mui/material";
 import CalendarMonthIcon from "@mui/icons-material/CalendarMonth";
 import AccessTimeIcon from "@mui/icons-material/AccessTime";
@@ -20,9 +21,10 @@ import SearchIcon from "@mui/icons-material/Search";
 import FolderIcon from "@mui/icons-material/Folder";
 import MessageIcon from "@mui/icons-material/Message";
 import ScheduleIcon from "@mui/icons-material/Schedule";
+import UploadIcon from "@mui/icons-material/Upload";
 import { useAuth } from "../context/AuthContext";
 
-export default function Dashboard() {
+export default function TutorDashboard() {
   const { currentUser } = useAuth();
 
   return (
@@ -34,8 +36,8 @@ export default function Dashboard() {
             Welcome back, {currentUser?.profile.firstName} {currentUser?.profile.lastName}!
           </Typography>
           <Chip
-            label={currentUser?.role.charAt(0).toUpperCase() + currentUser?.role.slice(1)}
-            color={currentUser?.role === 'admin' ? 'secondary' : currentUser?.role === 'tutor' ? 'primary' : 'default'}
+            label="Tutor"
+            color="primary"
             size="small"
           />
         </Box>
@@ -45,7 +47,7 @@ export default function Dashboard() {
           </Typography>
         )}
         <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-          Here's what's happening with your Mandarin learning journey
+          Manage your tutoring sessions and materials
         </Typography>
 
         {/* Summary Cards */}
@@ -54,10 +56,10 @@ export default function Dashboard() {
             <Card>
               <CardContent>
                 <Typography variant="subtitle2" color="text.secondary">
-                  Upcoming Sessions
+                  Today's Sessions
                 </Typography>
                 <Box display="flex" alignItems="center" justifyContent="space-between">
-                  <Typography variant="h5" fontWeight="bold">3</Typography>
+                  <Typography variant="h5" fontWeight="bold">4</Typography>
                   <CalendarMonthIcon color="primary" />
                 </Box>
               </CardContent>
@@ -68,10 +70,10 @@ export default function Dashboard() {
             <Card>
               <CardContent>
                 <Typography variant="subtitle2" color="text.secondary">
-                  Learning Hours
+                  Teaching Hours
                 </Typography>
                 <Box display="flex" alignItems="center" justifyContent="space-between">
-                  <Typography variant="h5" fontWeight="bold">24</Typography>
+                  <Typography variant="h5" fontWeight="bold">32</Typography>
                   <AccessTimeIcon color="success" />
                 </Box>
               </CardContent>
@@ -82,10 +84,10 @@ export default function Dashboard() {
             <Card>
               <CardContent>
                 <Typography variant="subtitle2" color="text.secondary">
-                  Completed Lessons
+                  Active Students
                 </Typography>
                 <Box display="flex" alignItems="center" justifyContent="space-between">
-                  <Typography variant="h5" fontWeight="bold">12</Typography>
+                  <Typography variant="h5" fontWeight="bold">8</Typography>
                   <CheckCircleIcon color="secondary" />
                 </Box>
               </CardContent>
@@ -99,7 +101,7 @@ export default function Dashboard() {
                   Unread Messages
                 </Typography>
                 <Box display="flex" alignItems="center" justifyContent="space-between">
-                  <Typography variant="h5" fontWeight="bold">2</Typography>
+                  <Typography variant="h5" fontWeight="bold">5</Typography>
                   <ChatBubbleOutlineIcon color="warning" />
                 </Box>
               </CardContent>
@@ -109,17 +111,17 @@ export default function Dashboard() {
 
         {/* Bottom Sections */}
         <Grid container spacing={3}>
-          {/* Upcoming Sessions */}
+          {/* Today's Schedule */}
           <Grid item xs={12} md={6}>
             <Card sx={{ height: "100%" }}>
               <CardContent>
                 <Typography variant="h6" sx={{ mb: 2 }}>
-                  Upcoming Sessions
+                  Today's Schedule
                 </Typography>
                 {[
-                  { title: "Conversational Practice", tutor: "Li Ming", time: "Today, 2:00 PM" },
-                  { title: "Grammar Fundamentals", tutor: "Zhang Wei", time: "Tomorrow, 10:00 AM" },
-                  { title: "Business Mandarin", tutor: "Li Ming", time: "Nov 7, 3:00 PM" },
+                  { title: "Conversational Practice", student: "Alice Wang", time: "2:00 PM - 3:00 PM" },
+                  { title: "Grammar Fundamentals", student: "Bob Chen", time: "4:00 PM - 5:00 PM" },
+                  { title: "Business Mandarin", student: "Carol Liu", time: "6:00 PM - 7:00 PM" },
                 ].map((s, i) => (
                   <Box
                     key={i}
@@ -136,20 +138,20 @@ export default function Dashboard() {
                     <Box>
                       <Typography fontWeight="bold">{s.title}</Typography>
                       <Typography variant="body2" color="text.secondary">
-                        with {s.tutor}
+                        with {s.student}
                       </Typography>
                       <Typography variant="body2" color="text.secondary">
                         {s.time}
                       </Typography>
                     </Box>
                     <Button variant="outlined" size="small">
-                      View
+                      Start Session
                     </Button>
                   </Box>
                 ))}
 
                 <Button variant="text" fullWidth sx={{ mt: 2 }}>
-                  View All Bookings
+                  View Full Schedule
                 </Button>
               </CardContent>
             </Card>
@@ -164,12 +166,12 @@ export default function Dashboard() {
                 </Typography>
                 <List>
                   {[
-                    { text: "Find a Tutor", icon: <SearchIcon /> },
-                    { text: "Browse Learning Materials", icon: <FolderIcon /> },
-                    { text: "Messages", icon: <MessageIcon /> },
-                    { text: "Manage Schedule", icon: <ScheduleIcon /> },
+                    { text: "Upload Materials", icon: <UploadIcon />, path: "/materials" },
+                    { text: "Manage Sessions", icon: <ScheduleIcon />, path: "/bookings" },
+                    { text: "Messages", icon: <MessageIcon />, path: "/messages" },
+                    { text: "View Students", icon: <SearchIcon />, path: "/find-tutors" },
                   ].map((item, i) => (
-                    <ListItem key={i} button>
+                    <ListItem key={i} button component="a" href={item.path}>
                       <ListItemIcon>{item.icon}</ListItemIcon>
                       <ListItemText primary={item.text} />
                     </ListItem>
