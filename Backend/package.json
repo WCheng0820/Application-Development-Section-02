@@ -11,7 +11,8 @@
     "check-db": "node scripts/check-db.js",
     "fix-admin": "node scripts/fix-admin-password.js",
     "test-student": "node scripts/test-student-registration.js",
-    "test-tutor": "node scripts/test-tutor-registration.js"
+    "test-tutor": "node scripts/test-tutor-registration.js",
+    "activate-users": "node scripts/activate-pending-users.js"
   },
   "keywords": [],
   "author": "",

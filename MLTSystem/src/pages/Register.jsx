@@ -23,7 +23,6 @@ import UploadFileIcon from '@mui/icons-material/UploadFile';
 export default function Register() {
   const [formData, setFormData] = useState({
     username: '',
-    fullName: '',
     email: '',
     password: '',
     nophone: '',
@@ -34,7 +33,9 @@ export default function Register() {
     faculty: '',
     // Tutor fields
     yearsOfExperience: 0,
-    availability: ''
+    availability: '',
+    bio: '',
+    specialization: ''
   });
   const [verificationDocuments, setVerificationDocuments] = useState([]);
   const [error, setError] = useState('');
@@ -115,7 +116,6 @@ export default function Register() {
         email: formData.email.trim(),
         password: formData.password,
         role: formData.role,
-        fullName: formData.fullName.trim(),
         nophone: formData.nophone.trim() || null,
         verificationDocuments: formData.role === 'tutor' ? verificationDocuments : [],
         // Student-specific fields
@@ -124,7 +124,9 @@ export default function Register() {
         faculty: formData.role === 'student' ? formData.faculty.trim() || null : undefined,
         // Tutor-specific fields
         yearsOfExperience: formData.role === 'tutor' ? parseInt(formData.yearsOfExperience) || 0 : undefined,
-        availability: formData.role === 'tutor' ? formData.availability.trim() || null : undefined
+        availability: formData.role === 'tutor' ? formData.availability.trim() || null : undefined,
+        bio: formData.role === 'tutor' ? formData.bio.trim() || null : undefined,
+        specialization: formData.role === 'tutor' ? formData.specialization || null : undefined
       };
 
       const result = await register(registrationData);
@@ -183,17 +185,6 @@ export default function Register() {
               autoFocus
               sx={{ mb: 2 }}
               helperText="Choose a unique username for login"
-            />
-            <TextField
-              autoComplete="name"
-              name="fullName"
-              required
-              fullWidth
-              id="fullName"
-              label="Full Name"
-              value={formData.fullName}
-              onChange={handleChange}
-              sx={{ mb: 2 }}
             />
             <TextField
               required
@@ -305,6 +296,35 @@ export default function Register() {
                   sx={{ mb: 2 }}
                   helperText="e.g., Monday-Friday, 9am-5pm"
                 />
+                <TextField
+                  fullWidth
+                  name="bio"
+                  label="Bio"
+                  value={formData.bio}
+                  onChange={handleChange}
+                  multiline
+                  rows={4}
+                  sx={{ mb: 2 }}
+                  helperText="Tell students about your teaching style and what makes you a great tutor"
+                />
+                <FormControl fullWidth sx={{ mb: 2 }}>
+                  <InputLabel>Specialization</InputLabel>
+                  <Select
+                    name="specialization"
+                    value={formData.specialization}
+                    label="Specialization"
+                    onChange={handleChange}
+                  >
+                    <MenuItem value="">Select a specialization</MenuItem>
+                    <MenuItem value="HSK Test Prep">HSK Test Preparation</MenuItem>
+                    <MenuItem value="Conversational">Conversational Mandarin</MenuItem>
+                    <MenuItem value="Business">Business Mandarin</MenuItem>
+                    <MenuItem value="Children">Children & Beginners</MenuItem>
+                    <MenuItem value="Advanced">Advanced Mandarin</MenuItem>
+                    <MenuItem value="General">General Chinese</MenuItem>
+                  </Select>
+                  <FormHelperText>Choose your primary teaching specialization</FormHelperText>
+                </FormControl>
               </Box>
             )}
 

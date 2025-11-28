@@ -24,10 +24,19 @@ const initDatabase = async () => {
         // Use the database
         await connection.query(`USE \`${dbName}\``);
 
+        // Drop legacy booking/tutor/student tables if they exist to ensure schema matches the latest definition
+        // (development convenience - change if you want to preserve data)
+        await connection.query(`DROP TABLE IF EXISTS booking`);
+        await connection.query(`DROP TRIGGER IF EXISTS tutor_after_insert`);
+        await connection.query(`DROP TRIGGER IF EXISTS student_after_insert`);
+        await connection.query(`DROP TABLE IF EXISTS tutor`);
+        await connection.query(`DROP TABLE IF EXISTS student`);
+
         // Create users table
         await connection.query(`
             CREATE TABLE IF NOT EXISTS users (
                 id INT AUTO_INCREMENT PRIMARY KEY,
+                userId VARCHAR(255) UNIQUE,
                 username VARCHAR(255) UNIQUE NOT NULL,
                 password VARCHAR(255) NOT NULL,
                 email VARCHAR(255) UNIQUE NOT NULL,
@@ -36,6 +45,7 @@ const initDatabase = async () => {
                 status VARCHAR(50) DEFAULT 'active',
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                INDEX idx_userId (userId),
                 INDEX idx_username (username),
                 INDEX idx_email (email),
                 INDEX idx_role (role),
@@ -58,15 +68,20 @@ const initDatabase = async () => {
         `);
         console.log('✅ Admin table created');
 
-        // Create tutor table
+        // Create tutor table with surrogate auto-increment and explicit tutorId (will be populated by application or seed script)
         await connection.query(`
             CREATE TABLE IF NOT EXISTS tutor (
-                tutorId VARCHAR(255) PRIMARY KEY,
+                tutor_pk INT AUTO_INCREMENT PRIMARY KEY,
+                tutorId VARCHAR(255) UNIQUE,
                 user_id INT NOT NULL,
                 name VARCHAR(255) NOT NULL,
                 availability VARCHAR(500),
                 yearsOfExperience INT DEFAULT 0,
                 verification_documents JSON,
+                rating DECIMAL(3,2) DEFAULT 0,
+                price DECIMAL(10,2) DEFAULT 0,
+                bio TEXT,
+                specialization VARCHAR(255),
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
                 FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
@@ -75,10 +90,11 @@ const initDatabase = async () => {
         `);
         console.log('✅ Tutor table created');
 
-        // Create student table
+        // Create student table with surrogate auto-increment and generated studentId
         await connection.query(`
             CREATE TABLE IF NOT EXISTS student (
-                studentId VARCHAR(255) PRIMARY KEY,
+                student_pk INT AUTO_INCREMENT PRIMARY KEY,
+                studentId VARCHAR(255) UNIQUE,
                 user_id INT NOT NULL,
                 yearOfStudy INT DEFAULT 1,
                 programme VARCHAR(255),
@@ -90,6 +106,9 @@ const initDatabase = async () => {
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
         `);
         console.log('✅ Student table created');
+
+        // Create student table with surrogate auto-increment and explicit studentId
+        // studentId will be populated by application or seed script
 
         // Create sessions table for session management
         await connection.query(`
@@ -106,6 +125,28 @@ const initDatabase = async () => {
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
         `);
         console.log('✅ Sessions table created');
+
+        // Create booking table
+        await connection.query(`
+            CREATE TABLE IF NOT EXISTS booking (
+                bookingId INT AUTO_INCREMENT PRIMARY KEY,
+                tutorId VARCHAR(255) NOT NULL,
+                studentId VARCHAR(255) NOT NULL,
+                booking_date DATE NOT NULL,
+                start_time TIME NOT NULL,
+                end_time TIME NOT NULL,
+                subject VARCHAR(255),
+                status ENUM('confirmed','pending','cancelled') DEFAULT 'pending',
+                notes TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                FOREIGN KEY (tutorId) REFERENCES tutor(tutorId) ON DELETE CASCADE,
+                INDEX idx_tutorId (tutorId),
+                INDEX idx_studentId (studentId),
+                INDEX idx_status (status)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        `);
+        console.log('✅ Booking table created');
 
         // Insert default admin user if not exists
         const [existingAdmin] = await connection.query(

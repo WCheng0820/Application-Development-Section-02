@@ -14,16 +14,17 @@ const generateToken = () => {
     return crypto.randomBytes(32).toString('hex');
 };
 
-// Helper function to generate ID based on role and user ID
+// Helper function to generate ID based on role and user numeric PK
 const generateRoleId = (role, userId) => {
     const paddedId = String(userId).padStart(6, '0');
     switch (role) {
         case 'admin':
-            return `ADM${paddedId}`;
+            // admin id starts with 'a'
+            return `a${paddedId}`;
         case 'tutor':
-            return `TUT${paddedId}`;
+            return `t${paddedId}`;
         case 'student':
-            return `STU${paddedId}`;
+            return `s${paddedId}`;
         default:
             return `${role.toUpperCase().substring(0, 3)}${paddedId}`;
     }
@@ -32,7 +33,7 @@ const generateRoleId = (role, userId) => {
 // Register new user
 router.post('/register', async (req, res) => {
     try {
-        const { username, email, password, role, nophone, fullName, verificationDocuments, yearOfStudy, programme, faculty, yearsOfExperience, availability } = req.body;
+        const { username, email, password, role, nophone, verificationDocuments, yearOfStudy, programme, faculty, yearsOfExperience, availability, bio, specialization } = req.body;
 
         // Validation
         if (!username || !email || !password || !role) {
@@ -91,6 +92,15 @@ router.post('/register', async (req, res) => {
         );
 
         const userId = result.insertId;
+
+        // Generate string userId (prefixed) and persist into users.userId column
+        const stringUserId = generateRoleId(role, userId);
+        try {
+            await query('UPDATE users SET userId = ? WHERE id = ?', [stringUserId, userId]);
+        } catch (e) {
+            console.warn('Warning: failed to update users.userId', e.message);
+        }
+
         const roleId = generateRoleId(role, userId);
 
         // Create role-specific record
@@ -98,20 +108,22 @@ router.post('/register', async (req, res) => {
             if (role === 'admin') {
                 await query(
                     'INSERT INTO admin (adminId, user_id, name) VALUES (?, ?, ?)',
-                    [roleId, userId, fullName || username]
+                    [roleId, userId, username]
                 );
                 console.log(`✅ Admin record created: ${roleId}`);
             } else if (role === 'tutor') {
                 await query(
-                    `INSERT INTO tutor (tutorId, user_id, name, availability, yearsOfExperience, verification_documents) 
-                     VALUES (?, ?, ?, ?, ?, ?)`,
+                    `INSERT INTO tutor (tutorId, user_id, name, availability, yearsOfExperience, verification_documents, bio, specialization) 
+                     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
                     [
                         roleId,
                         userId,
-                        fullName || username,
+                        username,
                         availability || null,
                         yearsOfExperience || 0,
-                        JSON.stringify(verificationDocuments || [])
+                        JSON.stringify(verificationDocuments || []),
+                        bio || null,
+                        specialization || null
                     ]
                 );
                 console.log(`✅ Tutor record created: ${roleId}`);
@@ -255,9 +267,9 @@ router.post('/login', async (req, res) => {
 // Helper function to get user with role-specific data
 async function getUserWithRoleData(userId, role) {
         const users = await query(
-            'SELECT id, username, email, role, status, nophone, created_at FROM users WHERE id = ?',
-            [userId]
-        );
+                'SELECT id, userId, username, email, role, status, nophone, created_at FROM users WHERE id = ?',
+                [userId]
+            );
 
         if (users.length === 0) {
             return null;
@@ -279,7 +291,7 @@ async function getUserWithRoleData(userId, role) {
         }
     } else if (role === 'tutor') {
         const tutors = await query(
-            'SELECT tutorId, name, availability, yearsOfExperience, verification_documents FROM tutor WHERE user_id = ?',
+            'SELECT tutorId, name, availability, yearsOfExperience, verification_documents, rating, price, bio, specialization FROM tutor WHERE user_id = ?',
             [userId]
         );
         if (tutors.length > 0) {
@@ -288,7 +300,11 @@ async function getUserWithRoleData(userId, role) {
                 name: tutors[0].name,
                 availability: tutors[0].availability,
                 yearsOfExperience: tutors[0].yearsOfExperience,
-                verificationDocuments: JSON.parse(tutors[0].verification_documents || '[]')
+                verificationDocuments: JSON.parse(tutors[0].verification_documents || '[]'),
+                rating: tutors[0].rating,
+                price: tutors[0].price,
+                bio: tutors[0].bio,
+                specialization: tutors[0].specialization
             };
         }
     } else if (role === 'student') {
@@ -307,7 +323,7 @@ async function getUserWithRoleData(userId, role) {
     }
 
     return {
-        id: user.id,
+        id: user.userId || `u${String(user.id).padStart(6,'0')}`,
         username: user.username,
         email: user.email,
         role: user.role,

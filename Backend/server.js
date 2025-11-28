@@ -42,6 +42,29 @@ app.get('/api/health', async (req, res) => {
 const authRoutes = require('./routes/auth');
 app.use('/api/auth', authRoutes);
 
+// Add admin routes
+try {
+    const adminRoutes = require('./routes/admin');
+    app.use('/api/admin', adminRoutes);
+} catch (err) {
+    console.warn('Could not load admin routes:', err.message);
+}
+
+// Add tutors and bookings routes
+try {
+    const tutorsRoutes = require('./routes/tutors');
+    app.use('/api/tutors', tutorsRoutes);
+} catch (err) {
+    console.warn('Could not load tutors routes:', err.message);
+}
+
+try {
+    const bookingsRoutes = require('./routes/bookings');
+    app.use('/api/bookings', bookingsRoutes);
+} catch (err) {
+    console.warn('Could not load bookings routes:', err.message);
+}
+
 // Error handling middleware
 app.use((err, req, res, next) => {
     console.error('Error:', err);

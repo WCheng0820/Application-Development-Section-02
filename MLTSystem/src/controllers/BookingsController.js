@@ -1,25 +1,45 @@
-// Controller layer: orchestrates model operations and provides a clean API for views
-import * as BookingModel from "../models/BookingModel";
+// Controller layer: orchestrates API calls to backend bookings endpoints
+import axios from 'axios';
 
-export function fetchBookings() {
-  // In a real app this might be async and fetch from an API
-  return BookingModel.getBookings();
+const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+const BOOKINGS_URL = `${API_BASE}/api/bookings`;
+
+export async function fetchBookings() {
+  try {
+    const res = await axios.get(BOOKINGS_URL);
+    return res.data.success ? res.data.data : [];
+  } catch (err) {
+    console.error('Error fetching bookings:', err);
+    return [];
+  }
 }
 
-export function cancelBooking(id) {
-  return BookingModel.removeBooking(id);
+export async function cancelBooking(id) {
+  try {
+    const res = await axios.delete(`${BOOKINGS_URL}/${id}`);
+    return res.data;
+  } catch (err) {
+    console.error('Error deleting booking:', err);
+    throw err;
+  }
 }
 
-export function moveBookingByIndex(fromIndex, toIndex) {
-  return BookingModel.reorderBookings(fromIndex, toIndex);
+export async function addBooking(booking) {
+  try {
+    const res = await axios.post(BOOKINGS_URL, booking);
+    return res.data;
+  } catch (err) {
+    console.error('Error adding booking:', err);
+    throw err;
+  }
 }
 
-export function moveBookingById(id, toIndex) {
-  const idx = BookingModel.findIndexById(id);
-  if (idx === -1) return BookingModel.getBookings();
-  return BookingModel.reorderBookings(idx, toIndex);
-}
-
-export function addBooking(booking) {
-  return BookingModel.addBooking(booking);
+export async function updateBooking(id, booking) {
+  try {
+    const res = await axios.put(`${BOOKINGS_URL}/${id}`, booking);
+    return res.data;
+  } catch (err) {
+    console.error('Error updating booking:', err);
+    throw err;
+  }
 }

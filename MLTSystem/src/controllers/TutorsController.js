@@ -1,8 +1,9 @@
 // TutorsController.js
 import axios from "axios";
 
-// URL of your backend API
-const API_URL = "http://localhost:8081/api/tutors";
+// Backend base URL - use Vite env or default to backend server
+const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:5000";
+const API_URL = `${API_BASE}/api/tutors`;
 
 // In-memory cache for tutors
 let tutorsCache = [];
@@ -18,10 +19,10 @@ export async function fetchTutors() {
       tutorsCache = response.data.data.map((tutor) => ({
         id: tutor.tutor_id,
         name: tutor.name,
-        subject: tutor.languages ? JSON.parse(tutor.languages).join(", ") : "",
-        experience: tutor.experience_years,
-        ratePerHour: tutor.hourly_rate,
-        bio: tutor.bio,
+        experience: tutor.yearsOfExperience,
+        ratePerHour: tutor.price,
+        bio: tutor.bio || "",
+        subject: tutor.specialization || "",
         rating: tutor.rating,
         schedule: tutor.availability ? Object.entries(JSON.parse(tutor.availability)).map(([day, time]) => `${day} ${time}`) : [],
         email: tutor.email,
