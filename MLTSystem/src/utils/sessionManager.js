@@ -35,6 +35,14 @@ export const validateSessionToken = (token) => {
   }
 
   try {
+    // If token is from backend (hex format, ~64 chars), it's already validated by backend
+    // Just return a placeholder indicating it's valid
+    if (token.length > 32 && !token.includes('.')) {
+      // Backend token format - trust it's valid since it came from our backend
+      return { validated: true };
+    }
+
+    // For local tokens, validate the format
     const parts = token.split('.');
     if (parts.length !== 3) {
       return null;
@@ -98,11 +106,13 @@ export const getSession = () => {
   const userData = sessionStorage.getItem(SESSION_USER_KEY);
 
   if (!token || !expiryTime || !userData) {
+    console.debug('🔍 Session check: No token/expiry/userData found', { hasToken: !!token, hasExpiry: !!expiryTime, hasUserData: !!userData });
     return null;
   }
 
   // Check if session is expired
   if (isSessionExpired(parseInt(expiryTime, 10))) {
+    console.debug('🔍 Session check: Token expired', { expiryTime: new Date(parseInt(expiryTime, 10)) });
     clearSession();
     return null;
   }
@@ -110,12 +120,14 @@ export const getSession = () => {
   // Validate token
   const decoded = validateSessionToken(token);
   if (!decoded) {
+    console.debug('🔍 Session check: Token validation failed');
     clearSession();
     return null;
   }
 
   try {
     const user = JSON.parse(userData);
+    console.debug('✅ Session check: Valid session found for', { userId: user.id, email: user.email });
     return {
       token,
       expiryTime: parseInt(expiryTime, 10),

@@ -58,15 +58,19 @@ export const AuthProvider = ({ children }) => {
   // Initialize session on app load
   useEffect(() => {
     const initializeSession = () => {
+      console.log('🔄 Initializing session on app load...');
       const session = getSession();
       if (session && session.user) {
         try {
+          console.log('✅ Session found, restoring user:', { id: session.user.id, email: session.user.email });
           const user = User.fromData(session.user);
           setCurrentUser(user);
         } catch (error) {
           console.error('Error initializing session:', error);
           clearSession();
         }
+      } else {
+        console.log('ℹ️  No active session found on app load');
       }
       setIsLoading(false);
     };
@@ -90,10 +94,12 @@ export const AuthProvider = ({ children }) => {
       const session = getSession();
       if (!session) {
         // Session expired or invalid
+        console.warn('⚠️  Session validation failed - logging out user');
         setCurrentUser(null);
         clearSession();
       } else if (shouldRefreshSession()) {
         // Refresh session if needed
+        console.log('🔄 Refreshing session...');
         const user = User.fromData(session.user);
         refreshSession(user);
       }
@@ -166,14 +172,32 @@ export const AuthProvider = ({ children }) => {
         newUser.approvalStatus = apiUser.status === 'active' ? 'approved' : apiUser.status;
       }
 
-      // Store session token
+      // Store session token from backend
       if (result.session && result.session.token) {
+        console.log('💾 Storing backend session token and user data', {
+          token: result.session.token.substring(0, 20) + '...',
+          expiresAt: new Date(result.session.expiresAt),
+          userId: apiUser.id,
+          email: apiUser.email
+        });
         sessionStorage.setItem('mlt_session_token', result.session.token);
         sessionStorage.setItem('mlt_session_expiry', new Date(result.session.expiresAt).getTime().toString());
-        sessionStorage.setItem('mlt_session_user', JSON.stringify(apiUser));
         
-        // Create session
-        const session = createSession(newUser);
+        // Store the frontend User object structure, not the raw API response
+        // This ensures User.fromData() can properly reconstruct it
+        const sessionUserData = {
+          id: newUser.id,
+          email: newUser.email,
+          password: newUser.password,
+          role: newUser.role,
+          username: newUser.username,
+          profile: newUser.profile,
+          isApproved: newUser.isApproved,
+          approvalStatus: newUser.approvalStatus,
+          verificationDocuments: newUser.verificationDocuments
+        };
+        sessionStorage.setItem('mlt_session_user', JSON.stringify(sessionUserData));
+
         setCurrentUser(newUser);
       }
 
@@ -262,10 +286,21 @@ export const AuthProvider = ({ children }) => {
 
       // Only set current user if session is provided (not pending tutors)
       if (result.session && result.session.token) {
-        // Store session token
+        // Store session token with consistent User object structure
         sessionStorage.setItem('mlt_session_token', result.session.token);
         sessionStorage.setItem('mlt_session_expiry', new Date(result.session.expiresAt).getTime().toString());
-        sessionStorage.setItem('mlt_session_user', JSON.stringify(apiUser));
+        const sessionUserData = {
+          id: newUser.id,
+          email: newUser.email,
+          password: newUser.password,
+          role: newUser.role,
+          username: newUser.username,
+          profile: newUser.profile,
+          isApproved: newUser.isApproved,
+          approvalStatus: newUser.approvalStatus,
+          verificationDocuments: newUser.verificationDocuments
+        };
+        sessionStorage.setItem('mlt_session_user', JSON.stringify(sessionUserData));
         
         // Create session
         const session = createSession(newUser);
@@ -325,17 +360,16 @@ export const AuthProvider = ({ children }) => {
       if (!response.ok || !result.success) {
         // Handle specific error cases
         if (response.status === 401) {
-          // Token expired or invalid - only log out if it's clearly a session issue
-          // For profile updates, this might be due to other auth issues
+          // Only log out for clear session/token expiry issues
           const errorMessage = result.error || 'Authentication failed';
-          if (errorMessage.toLowerCase().includes('token') ||
-              errorMessage.toLowerCase().includes('session') ||
-              errorMessage.toLowerCase().includes('expired')) {
+          if (errorMessage.toLowerCase().includes('invalid or expired token') ||
+              errorMessage.toLowerCase().includes('session expired') ||
+              errorMessage.toLowerCase().includes('token expired')) {
             setCurrentUser(null);
             clearSession();
             return { success: false, error: 'Session expired. Please log in again.' };
           }
-          // Otherwise, just return the error without logging out
+          // For other 401 errors (like validation issues), don't log out
           return { success: false, error: errorMessage };
         }
         return {
@@ -375,7 +409,23 @@ export const AuthProvider = ({ children }) => {
       setUsers(prev => prev.map(u => u.id === currentUser.id ? updatedUser : u));
       setCurrentUser(updatedUser);
 
-      // Refresh session with updated user data
+      // Refresh session with updated user data - store consistent User object structure
+      const storedToken = sessionStorage.getItem('mlt_session_token');
+      const storedExpiry = sessionStorage.getItem('mlt_session_expiry');
+      if (storedToken && storedExpiry) {
+        const sessionUserData = {
+          id: updatedUser.id,
+          email: updatedUser.email,
+          password: updatedUser.password,
+          role: updatedUser.role,
+          username: updatedUser.username,
+          profile: updatedUser.profile,
+          isApproved: updatedUser.isApproved,
+          approvalStatus: updatedUser.approvalStatus,
+          verificationDocuments: updatedUser.verificationDocuments
+        };
+        sessionStorage.setItem('mlt_session_user', JSON.stringify(sessionUserData));
+      }
       refreshSession(updatedUser);
 
       return { success: true };

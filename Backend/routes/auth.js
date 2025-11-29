@@ -307,8 +307,9 @@ async function getUserWithRoleData(userId, role) {
             };
         }
     } else if (role === 'tutor') {
+        // Include bio and specialization so frontend receives updated tutor profile fields
         const tutors = await query(
-            'SELECT tutorId, name, availability, yearsOfExperience, verification_documents FROM tutor WHERE user_id = ?',
+            'SELECT tutorId, name, availability, yearsOfExperience, verification_documents, bio, specialization FROM tutor WHERE user_id = ?',
             [userId]
         );
         if (tutors.length > 0) {
@@ -317,7 +318,9 @@ async function getUserWithRoleData(userId, role) {
                 name: tutors[0].name,
                 availability: tutors[0].availability || null,
                 yearsOfExperience: tutors[0].yearsOfExperience || 0,
-                verificationDocuments: tutors[0].verification_documents ? JSON.parse(tutors[0].verification_documents) : []
+                verificationDocuments: tutors[0].verification_documents ? JSON.parse(tutors[0].verification_documents) : [],
+                bio: tutors[0].bio || null,
+                specialization: tutors[0].specialization || null
             };
         }
     } else if (role === 'student') {
@@ -453,18 +456,28 @@ router.put('/profile', async (req, res) => {
         const session = sessions[0];
         const { username, email, password, bio, specialization } = req.body;
 
-        // Validation
-        if (!username || !email) {
+        // Fetch current user so we can allow partial updates
+        const users = await query('SELECT * FROM users WHERE id = ?', [session.user_id]);
+        if (users.length === 0) {
+            return res.status(404).json({ success: false, error: 'User not found' });
+        }
+
+        const currentUser = users[0];
+        const newUsername = username !== undefined ? username : currentUser.username;
+        const newEmail = email !== undefined ? email : currentUser.email;
+
+        // Basic validation: ensure username/email are not empty strings
+        if (!newUsername || !newEmail) {
             return res.status(400).json({
                 success: false,
-                error: 'Username and email are required'
+                error: 'Username and email must be provided (or left unchanged)'
             });
         }
 
         // Check if username or email already exists for another user
         const existingUsers = await query(
             'SELECT id FROM users WHERE (email = ? OR username = ?) AND id != ?',
-            [email, username, session.user_id]
+            [newEmail, newUsername, session.user_id]
         );
 
         if (existingUsers.length > 0) {
@@ -474,11 +487,19 @@ router.put('/profile', async (req, res) => {
             });
         }
 
-        // Update user data
-        let updateQuery = 'UPDATE users SET username = ?, email = ?';
-        let updateParams = [username, email];
+        // Validate password if provided
+        if (password !== undefined && password.length < 6) {
+            return res.status(400).json({
+                success: false,
+                error: 'Password must be at least 6 characters long'
+            });
+        }
 
-        if (password && password.length >= 6) {
+        // Build update query synchronously and apply
+        let updateQuery = 'UPDATE users SET username = ?, email = ?';
+        const updateParams = [newUsername, newEmail];
+
+        if (password !== undefined && password.length >= 6) {
             updateQuery += ', password = ?';
             updateParams.push(hashPassword(password));
         }
@@ -486,40 +507,51 @@ router.put('/profile', async (req, res) => {
         updateQuery += ' WHERE id = ?';
         updateParams.push(session.user_id);
 
+        // Synchronously apply the update (await)
         await query(updateQuery, updateParams);
 
-        // Update role-specific data if provided
-        const user = await query('SELECT role FROM users WHERE id = ?', [session.user_id]);
-        if (user.length > 0) {
-            const role = user[0].role;
-
-            if (role === 'tutor' && (bio || specialization)) {
-                let tutorUpdateQuery = 'UPDATE tutor SET';
-                let tutorUpdateParams = [];
-                let updates = [];
-
-                if (bio !== undefined) {
-                    updates.push(' bio = ?');
-                    tutorUpdateParams.push(bio);
+        // If username changed, propagate to role-specific name fields
+        if (newUsername !== currentUser.username) {
+            const role = currentUser.role;
+            try {
+                if (role === 'admin') {
+                    await query('UPDATE admin SET name = ? WHERE user_id = ?', [newUsername, session.user_id]);
+                } else if (role === 'tutor') {
+                    await query('UPDATE tutor SET name = ? WHERE user_id = ?', [newUsername, session.user_id]);
+                } else if (role === 'student') {
+                    await query('UPDATE student SET name = ? WHERE user_id = ?', [newUsername, session.user_id]);
                 }
+            } catch (roleUpdateErr) {
+                console.warn('Could not update role-specific name field:', roleUpdateErr.message);
+            }
+        }
 
-                if (specialization !== undefined) {
-                    updates.push(' specialization = ?');
-                    tutorUpdateParams.push(specialization);
-                }
+        // Update tutor-specific fields if provided
+        if (currentUser.role === 'tutor' && (bio !== undefined || specialization !== undefined)) {
+            let tutorUpdateQuery = 'UPDATE tutor SET';
+            const tutorUpdateParams = [];
+            const updates = [];
 
-                if (updates.length > 0) {
-                    tutorUpdateQuery += updates.join(',');
-                    tutorUpdateQuery += ' WHERE user_id = ?';
-                    tutorUpdateParams.push(session.user_id);
+            if (bio !== undefined) {
+                updates.push(' bio = ?');
+                tutorUpdateParams.push(bio);
+            }
 
-                    await query(tutorUpdateQuery, tutorUpdateParams);
-                }
+            if (specialization !== undefined) {
+                updates.push(' specialization = ?');
+                tutorUpdateParams.push(specialization);
+            }
+
+            if (updates.length > 0) {
+                tutorUpdateQuery += updates.join(',');
+                tutorUpdateQuery += ' WHERE user_id = ?';
+                tutorUpdateParams.push(session.user_id);
+                await query(tutorUpdateQuery, tutorUpdateParams);
             }
         }
 
         // Get updated user data
-        const userData = await getUserWithRoleData(session.user_id, user[0].role);
+        const userData = await getUserWithRoleData(session.user_id, currentUser.role);
 
         res.json({
             success: true,
