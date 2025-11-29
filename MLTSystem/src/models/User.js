@@ -1,10 +1,11 @@
 // src/models/User.js
 export class User {
-  constructor(id, email, password, role, profile = {}) {
+  constructor(id, email, password, role, profile = {}, username = null) {
     this.id = id;
     this.email = email;
     this.password = password; // In a real app, this would be hashed
     this.role = role; // 'student', 'tutor', 'admin'
+    this.username = username || email; // Use email as fallback if no username
     this.profile = profile; // { fullName, bio, etc. }
     // For tutors: approval status and verification documents
     this.isApproved = role === 'tutor' ? false : true; // Tutors need approval, others are auto-approved
@@ -21,7 +22,8 @@ export class User {
       data.email,
       data.password,
       data.role,
-      data.profile
+      data.profile,
+      data.username
     );
     // Restore approval status if it exists
     if (data.isApproved !== undefined) {

@@ -8,7 +8,12 @@ import {
   Typography,
   Box,
   Alert,
-  Avatar
+  Avatar,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
+  FormHelperText
 } from '@mui/material';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
@@ -147,7 +152,6 @@ export default function EditProfile() {
               type="email"
               value={formData.email}
               onChange={handleChange}
-              disabled // Email changes might require verification in real app
               sx={{ mb: 2 }}
             />
             {currentUser?.role === 'tutor' && (

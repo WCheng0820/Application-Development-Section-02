@@ -98,12 +98,15 @@ router.post('/register', async (req, res) => {
         try {
             await query('UPDATE users SET userId = ? WHERE id = ?', [stringUserId, userId]);
         } catch (e) {
-            console.warn('Warning: failed to update users.userId', e.message);
+            console.error('Failed to update users.userId:', e.message);
+            // Rollback user creation if userId update fails
+            await query('DELETE FROM users WHERE id = ?', [userId]);
+            throw new Error('Failed to generate user ID. Please try again.');
         }
 
         const roleId = generateRoleId(role, userId);
 
-        // Create role-specific record
+        // Create role-specific record (only for active users, pending tutors get created during admin approval)
         try {
             if (role === 'admin') {
                 await query(
@@ -112,8 +115,9 @@ router.post('/register', async (req, res) => {
                 );
                 console.log(`✅ Admin record created: ${roleId}`);
             } else if (role === 'tutor') {
+                // Create tutor record for both pending and active tutors
                 await query(
-                    `INSERT INTO tutor (tutorId, user_id, name, availability, yearsOfExperience, verification_documents, bio, specialization) 
+                    `INSERT INTO tutor (tutorId, user_id, name, availability, yearsOfExperience, verification_documents, bio, specialization)
                      VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
                     [
                         roleId,
@@ -126,10 +130,10 @@ router.post('/register', async (req, res) => {
                         specialization || null
                     ]
                 );
-                console.log(`✅ Tutor record created: ${roleId}`);
+                console.log(`✅ Tutor record created: ${roleId} (status: ${status})`);
             } else if (role === 'student') {
                 await query(
-                    `INSERT INTO student (studentId, user_id, yearOfStudy, programme, faculty) 
+                    `INSERT INTO student (studentId, user_id, yearOfStudy, programme, faculty)
                      VALUES (?, ?, ?, ?, ?)`,
                     [
                         roleId,
@@ -192,6 +196,8 @@ router.post('/login', async (req, res) => {
     try {
         const { username, email, password } = req.body;
 
+        console.log('🔐 Login attempt:', { username, email, password: '***' });
+
         // Validation
         if (!password || (!username && !email)) {
             return res.status(400).json({
@@ -206,6 +212,11 @@ router.post('/login', async (req, res) => {
             [username || email, email || username]
         );
 
+        console.log('👤 Users found:', users.length > 0 ? `${users.length} user(s)` : 'None');
+        if (users.length > 0) {
+            console.log('   User details:', { id: users[0].id, username: users[0].username, email: users[0].email, role: users[0].role });
+        }
+
         if (users.length === 0) {
             return res.status(401).json({
                 success: false,
@@ -217,6 +228,12 @@ router.post('/login', async (req, res) => {
 
         // Verify password
         const hashedPassword = hashPassword(password);
+        console.log('🔑 Password check:', {
+            provided: hashedPassword.substring(0, 8) + '...',
+            stored: user.password.substring(0, 8) + '...',
+            match: user.password === hashedPassword
+        });
+        
         if (user.password !== hashedPassword) {
             return res.status(401).json({
                 success: false,
@@ -291,20 +308,16 @@ async function getUserWithRoleData(userId, role) {
         }
     } else if (role === 'tutor') {
         const tutors = await query(
-            'SELECT tutorId, name, availability, yearsOfExperience, verification_documents, rating, price, bio, specialization FROM tutor WHERE user_id = ?',
+            'SELECT tutorId, name, availability, yearsOfExperience, verification_documents FROM tutor WHERE user_id = ?',
             [userId]
         );
         if (tutors.length > 0) {
             roleData = {
                 tutorId: tutors[0].tutorId,
                 name: tutors[0].name,
-                availability: tutors[0].availability,
-                yearsOfExperience: tutors[0].yearsOfExperience,
-                verificationDocuments: JSON.parse(tutors[0].verification_documents || '[]'),
-                rating: tutors[0].rating,
-                price: tutors[0].price,
-                bio: tutors[0].bio,
-                specialization: tutors[0].specialization
+                availability: tutors[0].availability || null,
+                yearsOfExperience: tutors[0].yearsOfExperience || 0,
+                verificationDocuments: tutors[0].verification_documents ? JSON.parse(tutors[0].verification_documents) : []
             };
         }
     } else if (role === 'student') {
@@ -323,7 +336,7 @@ async function getUserWithRoleData(userId, role) {
     }
 
     return {
-        id: user.userId || `u${String(user.id).padStart(6,'0')}`,
+        id: user.id,
         username: user.username,
         email: user.email,
         role: user.role,
@@ -408,6 +421,236 @@ router.post('/logout', async (req, res) => {
         res.status(500).json({
             success: false,
             error: 'An error occurred during logout'
+        });
+    }
+});
+
+// Update user profile
+router.put('/profile', async (req, res) => {
+    try {
+        const token = req.headers.authorization?.replace('Bearer ', '');
+
+        if (!token) {
+            return res.status(401).json({
+                success: false,
+                error: 'No token provided'
+            });
+        }
+
+        // Verify session
+        const sessions = await query(
+            'SELECT * FROM sessions WHERE token = ? AND expires_at > NOW()',
+            [token]
+        );
+
+        if (sessions.length === 0) {
+            return res.status(401).json({
+                success: false,
+                error: 'Invalid or expired token'
+            });
+        }
+
+        const session = sessions[0];
+        const { username, email, password, bio, specialization } = req.body;
+
+        // Validation
+        if (!username || !email) {
+            return res.status(400).json({
+                success: false,
+                error: 'Username and email are required'
+            });
+        }
+
+        // Check if username or email already exists for another user
+        const existingUsers = await query(
+            'SELECT id FROM users WHERE (email = ? OR username = ?) AND id != ?',
+            [email, username, session.user_id]
+        );
+
+        if (existingUsers.length > 0) {
+            return res.status(400).json({
+                success: false,
+                error: 'Email or username already exists'
+            });
+        }
+
+        // Update user data
+        let updateQuery = 'UPDATE users SET username = ?, email = ?';
+        let updateParams = [username, email];
+
+        if (password && password.length >= 6) {
+            updateQuery += ', password = ?';
+            updateParams.push(hashPassword(password));
+        }
+
+        updateQuery += ' WHERE id = ?';
+        updateParams.push(session.user_id);
+
+        await query(updateQuery, updateParams);
+
+        // Update role-specific data if provided
+        const user = await query('SELECT role FROM users WHERE id = ?', [session.user_id]);
+        if (user.length > 0) {
+            const role = user[0].role;
+
+            if (role === 'tutor' && (bio || specialization)) {
+                let tutorUpdateQuery = 'UPDATE tutor SET';
+                let tutorUpdateParams = [];
+                let updates = [];
+
+                if (bio !== undefined) {
+                    updates.push(' bio = ?');
+                    tutorUpdateParams.push(bio);
+                }
+
+                if (specialization !== undefined) {
+                    updates.push(' specialization = ?');
+                    tutorUpdateParams.push(specialization);
+                }
+
+                if (updates.length > 0) {
+                    tutorUpdateQuery += updates.join(',');
+                    tutorUpdateQuery += ' WHERE user_id = ?';
+                    tutorUpdateParams.push(session.user_id);
+
+                    await query(tutorUpdateQuery, tutorUpdateParams);
+                }
+            }
+        }
+
+        // Get updated user data
+        const userData = await getUserWithRoleData(session.user_id, user[0].role);
+
+        res.json({
+            success: true,
+            message: 'Profile updated successfully',
+            user: userData
+        });
+    } catch (error) {
+        console.error('Profile update error:', error);
+        res.status(500).json({
+            success: false,
+            error: 'An error occurred during profile update'
+        });
+    }
+});
+
+// Get pending tutors (admin only)
+router.get('/pending-tutors', async (req, res) => {
+    try {
+        const users = await query(
+            'SELECT * FROM users WHERE role = ? AND status = ?',
+            ['tutor', 'pending']
+        );
+
+        // Get full data for each pending tutor
+        const tutors = await Promise.all(
+            users.map(user => getUserWithRoleData(user.id, 'tutor'))
+        );
+
+        res.json({
+            success: true,
+            tutors: tutors.filter(t => t !== null)
+        });
+    } catch (error) {
+        console.error('Get pending tutors error:', error);
+        res.status(500).json({
+            success: false,
+            error: error.message || 'An error occurred'
+        });
+    }
+});
+
+// Approve tutor (admin only)
+router.post('/approve-tutor', async (req, res) => {
+    try {
+        const { tutorId } = req.body;
+
+        if (!tutorId) {
+            return res.status(400).json({
+                success: false,
+                error: 'Tutor ID is required'
+            });
+        }
+
+        // Find the tutor user by tutorId
+        const tutors = await query(
+            'SELECT user_id FROM tutor WHERE tutorId = ?',
+            [tutorId]
+        );
+
+        if (tutors.length === 0) {
+            return res.status(404).json({
+                success: false,
+                error: 'Tutor not found'
+            });
+        }
+
+        const userId = tutors[0].user_id;
+
+        // Update user status to 'active'
+        await query(
+            'UPDATE users SET status = ? WHERE id = ?',
+            ['active', userId]
+        );
+
+        // Get updated user with role data
+        const userData = await getUserWithRoleData(userId, 'tutor');
+
+        res.json({
+            success: true,
+            message: 'Tutor approved successfully',
+            user: userData
+        });
+    } catch (error) {
+        console.error('Approve tutor error:', error);
+        res.status(500).json({
+            success: false,
+            error: error.message || 'An error occurred during approval'
+        });
+    }
+});
+
+// Reject tutor (admin only)
+router.post('/reject-tutor', async (req, res) => {
+    try {
+        const { tutorId } = req.body;
+
+        if (!tutorId) {
+            return res.status(400).json({
+                success: false,
+                error: 'Tutor ID is required'
+            });
+        }
+
+        // Find the tutor user by tutorId
+        const tutors = await query(
+            'SELECT user_id FROM tutor WHERE tutorId = ?',
+            [tutorId]
+        );
+
+        if (tutors.length === 0) {
+            return res.status(404).json({
+                success: false,
+                error: 'Tutor not found'
+            });
+        }
+
+        const userId = tutors[0].user_id;
+
+        // Delete the user account (rejection)
+        await query('DELETE FROM tutor WHERE user_id = ?', [userId]);
+        await query('DELETE FROM users WHERE id = ?', [userId]);
+
+        res.json({
+            success: true,
+            message: 'Tutor registration rejected'
+        });
+    } catch (error) {
+        console.error('Reject tutor error:', error);
+        res.status(500).json({
+            success: false,
+            error: error.message || 'An error occurred during rejection'
         });
     }
 });

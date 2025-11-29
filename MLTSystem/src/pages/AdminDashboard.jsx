@@ -37,50 +37,102 @@ import DescriptionIcon from "@mui/icons-material/Description";
 import { useAuth } from "../context/AuthContext";
 
 export default function AdminDashboard() {
-  const { currentUser, getPendingTutors, approveTutor, rejectTutor } = useAuth();
+  const { currentUser } = useAuth();
   const [pendingTutors, setPendingTutors] = useState([]);
   const [selectedTutor, setSelectedTutor] = useState(null);
   const [viewDocumentsDialog, setViewDocumentsDialog] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    // Refresh pending tutors list
-    const fetchTutors = async () => {
-      try {
-        const tutors = await getPendingTutors();
-        setPendingTutors(tutors || []);
-      } catch (error) {
-        console.error('Error fetching pending tutors:', error);
-        setPendingTutors([]);
-      }
-    };
-    fetchTutors();
+    fetchPendingUsers();
   }, []);
 
-  const handleApprove = async (tutorId) => {
+  const fetchPendingUsers = async () => {
     try {
-      const result = await approveTutor(tutorId);
-      if (result && result.success) {
+      const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+
+      const response = await fetch(`${API_URL}/api/auth/pending-tutors`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+
+      const result = await response.json();
+
+      if (response.ok && result.success) {
+        setPendingTutors(result.tutors || []);
+      } else {
+        console.error('Error fetching pending users:', result.error);
+        setPendingTutors([]);
+      }
+    } catch (error) {
+      console.error('Error fetching pending users:', error);
+      setPendingTutors([]);
+    }
+  };
+
+  const handleApprove = async (tutorId) => {
+    setLoading(true);
+    try {
+      const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+
+      const response = await fetch(`${API_URL}/api/auth/approve-tutor`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ tutorId })
+      });
+
+      const result = await response.json();
+
+      if (response.ok && result.success) {
         // Refresh the list
-        const tutors = await getPendingTutors();
-        setPendingTutors(tutors || []);
+        await fetchPendingUsers();
+        alert('Tutor approved successfully!');
+      } else {
+        alert(`Error approving tutor: ${result.error || 'Unknown error'}`);
       }
     } catch (error) {
       console.error('Error approving tutor:', error);
+      alert('Error approving tutor. Please try again.');
+    } finally {
+      setLoading(false);
     }
   };
 
   const handleReject = async (tutorId) => {
-    if (window.confirm('Are you sure you want to reject this tutor registration?')) {
-      try {
-        const result = await rejectTutor(tutorId);
-        if (result && result.success) {
-          // Refresh the list
-          const tutors = await getPendingTutors();
-          setPendingTutors(tutors || []);
-        }
-      } catch (error) {
-        console.error('Error rejecting tutor:', error);
+    if (!window.confirm('Are you sure you want to reject this tutor registration?')) {
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+
+      const response = await fetch(`${API_URL}/api/auth/reject-tutor`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ tutorId })
+      });
+
+      const result = await response.json();
+
+      if (response.ok && result.success) {
+        // Refresh the list
+        await fetchPendingUsers();
+        alert('Tutor rejected successfully!');
+      } else {
+        alert(`Error rejecting tutor: ${result.error || 'Unknown error'}`);
       }
+    } catch (error) {
+      console.error('Error rejecting tutor:', error);
+      alert('Error rejecting tutor. Please try again.');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -100,7 +152,7 @@ export default function AdminDashboard() {
       <Box sx={{ p: 4 }}>
         <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
           <Typography variant="h5" sx={{ fontWeight: "bold", mr: 2 }}>
-            Welcome back, {currentUser?.profile.firstName} {currentUser?.profile.lastName}!
+            Welcome back, {currentUser?.username}!
           </Typography>
           <Chip
             label="Admin"
@@ -191,21 +243,26 @@ export default function AdminDashboard() {
               </Alert>
               {pendingTutors.map((tutor) => (
                 <Paper
-                  key={tutor.id}
+                  key={tutor.tutorId}
                   elevation={1}
                   sx={{ p: 2, mb: 2, bgcolor: '#f9fafb' }}
                 >
                   <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                     <Box sx={{ flex: 1 }}>
                       <Typography variant="subtitle1" fontWeight="bold">
-                        {tutor.profile.firstName} {tutor.profile.lastName}
+                        {tutor.name || 'Unknown Tutor'}
                       </Typography>
                       <Typography variant="body2" color="text.secondary">
-                        {tutor.email}
+                        ID: {tutor.tutorId}
                       </Typography>
-                      {tutor.profile.bio && (
+                      {tutor.availability && (
                         <Typography variant="body2" sx={{ mt: 1 }}>
-                          {tutor.profile.bio}
+                          Availability: {tutor.availability}
+                        </Typography>
+                      )}
+                      {tutor.yearsOfExperience && (
+                        <Typography variant="body2" sx={{ mt: 0.5 }}>
+                          Experience: {tutor.yearsOfExperience} year{tutor.yearsOfExperience > 1 ? 's' : ''}
                         </Typography>
                       )}
                       <Box sx={{ mt: 1, display: 'flex', alignItems: 'center', gap: 1 }}>
@@ -230,7 +287,8 @@ export default function AdminDashboard() {
                         variant="contained"
                         color="success"
                         startIcon={<CheckCircleOutlineIcon />}
-                        onClick={() => handleApprove(tutor.id)}
+                        onClick={() => handleApprove(tutor.tutorId)}
+                        disabled={loading}
                       >
                         Approve
                       </Button>
@@ -238,7 +296,8 @@ export default function AdminDashboard() {
                         variant="outlined"
                         color="error"
                         startIcon={<CancelIcon />}
-                        onClick={() => handleReject(tutor.id)}
+                        onClick={() => handleReject(tutor.tutorId)}
+                        disabled={loading}
                       >
                         Reject
                       </Button>
@@ -258,7 +317,7 @@ export default function AdminDashboard() {
           fullWidth
         >
           <DialogTitle>
-            Verification Documents - {selectedTutor?.profile.firstName} {selectedTutor?.profile.lastName}
+            Verification Documents - {selectedTutor?.name || 'Unknown Tutor'}
           </DialogTitle>
           <DialogContent>
             {selectedTutor?.verificationDocuments && selectedTutor.verificationDocuments.length > 0 ? (

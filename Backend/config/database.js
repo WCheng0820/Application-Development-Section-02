@@ -35,6 +35,7 @@ pool.getConnection()
 const query = async (sql, params) => {
     try {
         const [results] = await pool.execute(sql, params);
+        // Return results directly
         return results;
     } catch (error) {
         console.error('Database query error:', error);

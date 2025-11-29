@@ -31,18 +31,18 @@ export const AuthProvider = ({ children }) => {
       firstName: 'Alice',
       lastName: 'Wang',
       bio: 'Mandarin learner'
-    }),
+    }, 'alice'),
     new User(2, 'li.ming@example.com', 'password123', 'tutor', {
       firstName: 'Li',
       lastName: 'Ming',
       bio: 'Experienced Mandarin tutor',
       verificationDocuments: []
-    }),
+    }, 'li.ming'),
     new User(3, 'admin@mltsystem.com', 'admin123', 'admin', {
       firstName: 'Admin',
       lastName: 'User',
       bio: 'System administrator'
-    })
+    }, 'admin')
   ]);
 
   // Initialize: Approve existing tutor for demo purposes
@@ -134,12 +134,12 @@ export const AuthProvider = ({ children }) => {
 
       // Convert API response to User object
       const apiUser = result.user;
-      
+
       // Parse name into first and last name safely
       const nameParts = apiUser.name ? apiUser.name.split(' ') : [];
       const firstName = apiUser.profile?.firstName || nameParts[0] || '';
       const lastName = apiUser.profile?.lastName || (nameParts.length > 1 ? nameParts.slice(1).join(' ') : '');
-      
+
       const newUser = new User(
         apiUser.id,
         apiUser.email,
@@ -150,7 +150,8 @@ export const AuthProvider = ({ children }) => {
           lastName: lastName,
           bio: apiUser.bio || '',
           verificationDocuments: apiUser.verificationDocuments || []
-        }
+        },
+        apiUser.username // Include username from API response
       );
 
       // Set approval status from API
@@ -240,7 +241,8 @@ export const AuthProvider = ({ children }) => {
           lastName: apiUser.profile?.lastName || apiUser.name?.split(' ').slice(1).join(' ') || '',
           bio: apiUser.bio || '',
           verificationDocuments: apiUser.verificationDocuments || []
-        }
+        },
+        apiUser.username // Include username from API response
       );
 
       // Set approval status from API
@@ -294,48 +296,96 @@ export const AuthProvider = ({ children }) => {
   };
 
   const updateProfile = async (profileData) => {
-    if (!currentUser) return { success: false, error: 'No user logged in' };
+    try {
+      // Check if user is logged in
+      if (!currentUser) {
+        return { success: false, error: 'No user logged in' };
+      }
 
-    console.log('updateProfile called with:', profileData);
-    console.log('Current user before update:', currentUser);
+      // Get and validate token
+      const token = sessionStorage.getItem('mlt_session_token');
+      if (!token) {
+        return { success: false, error: 'Session expired. Please log in again.' };
+      }
 
-    // Separate profile fields from user-level fields
-    const { email, password, ...profileFields } = profileData;
+      // Call backend API for profile update
+      const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
-    console.log('Profile fields:', profileFields);
-    console.log('Password provided:', !!password);
+      const response = await fetch(`${API_URL}/api/auth/profile`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(profileData)
+      });
 
-    // Create a new User instance to maintain prototype methods
-    const updatedUser = new User(
-      currentUser.id,
-      currentUser.email,
-      currentUser.password,
-      currentUser.role,
-      currentUser.profile
-    );
+      const result = await response.json();
 
-    console.log('User instance created:', updatedUser);
+      if (!response.ok || !result.success) {
+        // Handle specific error cases
+        if (response.status === 401) {
+          // Token expired or invalid - only log out if it's clearly a session issue
+          // For profile updates, this might be due to other auth issues
+          const errorMessage = result.error || 'Authentication failed';
+          if (errorMessage.toLowerCase().includes('token') ||
+              errorMessage.toLowerCase().includes('session') ||
+              errorMessage.toLowerCase().includes('expired')) {
+            setCurrentUser(null);
+            clearSession();
+            return { success: false, error: 'Session expired. Please log in again.' };
+          }
+          // Otherwise, just return the error without logging out
+          return { success: false, error: errorMessage };
+        }
+        return {
+          success: false,
+          error: result.error || 'Profile update failed'
+        };
+      }
 
-    // Update profile using the method
-    updatedUser.updateProfile(profileFields);
+      // Update current user with new data
+      const updatedUser = new User(
+        result.user.id,
+        result.user.email,
+        '', // Password not stored in frontend
+        result.user.role,
+        {
+          firstName: result.user.name?.split(' ')[0] || '',
+          lastName: result.user.name?.split(' ').slice(1).join(' ') || '',
+          bio: result.user.bio || '',
+          verificationDocuments: result.user.verificationDocuments || []
+        },
+        result.user.username
+      );
 
-    console.log('After updateProfile call:', updatedUser);
+      // Set approval status from API
+      if (result.user.isApproved !== undefined) {
+        updatedUser.isApproved = result.user.isApproved;
+      }
+      if (result.user.approvalStatus !== undefined) {
+        updatedUser.approvalStatus = result.user.approvalStatus;
+      }
+      if (result.user.status) {
+        updatedUser.isApproved = result.user.status === 'active';
+        updatedUser.approvalStatus = result.user.status === 'active' ? 'approved' : result.user.status;
+      }
 
-    // If password is provided, update it
-    if (password) {
-      updatedUser.password = password;
+      // Update users list (for admin dashboard)
+      setUsers(prev => prev.map(u => u.id === currentUser.id ? updatedUser : u));
+      setCurrentUser(updatedUser);
+
+      // Refresh session with updated user data
+      refreshSession(updatedUser);
+
+      return { success: true };
+    } catch (error) {
+      console.error('Profile update error:', error);
+      return {
+        success: false,
+        error: error.message || 'An error occurred during profile update'
+      };
     }
-
-    // Update in users array
-    setUsers(prev => prev.map(u => u.id === currentUser.id ? updatedUser : u));
-    setCurrentUser(updatedUser);
-    
-    // Refresh session with updated user data
-    refreshSession(updatedUser);
-
-    console.log('Final updated user:', updatedUser);
-
-    return { success: true };
   };
 
   // Get all users (for admin dashboard)
