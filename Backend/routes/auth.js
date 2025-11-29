@@ -33,7 +33,7 @@ const generateRoleId = (role, userId) => {
 // Register new user
 router.post('/register', async (req, res) => {
     try {
-        const { username, email, password, role, nophone, verificationDocuments, yearOfStudy, programme, faculty, yearsOfExperience, availability, bio, specialization } = req.body;
+        const { username, email, password, role, nophone, verificationDocuments, yearOfStudy, programme, faculty, yearsOfExperience, availability } = req.body;
 
         // Validation
         if (!username || !email || !password || !role) {
