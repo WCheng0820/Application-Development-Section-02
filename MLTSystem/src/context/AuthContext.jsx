@@ -346,13 +346,25 @@ export const AuthProvider = ({ children }) => {
       // Call backend API for profile update
       const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
+      // Prepare payload: trim strings and omit password if blank
+      const payload = { ...profileData };
+      if (typeof payload.username === 'string') payload.username = payload.username.trim();
+      if (typeof payload.email === 'string') payload.email = payload.email.trim();
+      if (typeof payload.bio === 'string') payload.bio = payload.bio.trim();
+      if (typeof payload.specialization === 'string') payload.specialization = payload.specialization.trim();
+
+      // Remove password field when empty or only whitespace so backend treats it as "not provided"
+      if (!payload.password || (typeof payload.password === 'string' && payload.password.trim() === '')) {
+        delete payload.password;
+      }
+
       const response = await fetch(`${API_URL}/api/auth/profile`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify(profileData)
+        body: JSON.stringify(payload)
       });
 
       const result = await response.json();
