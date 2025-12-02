@@ -1,5 +1,6 @@
 // Controller layer: orchestrates API calls to backend bookings endpoints
 import axios from 'axios';
+import { formatMalaysiaDate, formatMalaysiaTime } from '../utils/dateUtils';
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 const BOOKINGS_URL = `${API_BASE}/api/bookings`;
@@ -21,18 +22,43 @@ export async function fetchBookings(filters = {}) {
     const res = await axios.get(BOOKINGS_URL, { params: filters, ...config });
     const rows = res.data.success ? res.data.data : [];
 
-    // Map backend rows to UI-friendly booking objects
-    return rows.map((r) => ({
-      id: r.bookingId,
-      tutorId: r.tutorId,
-      studentId: r.studentId,
-      tutor: r.tutor_name || r.tutorId,
-      date: r.booking_date,
-      time: r.start_time && r.end_time ? `${r.start_time} - ${r.end_time}` : '',
-      subject: r.subject,
-      status: r.status ? (r.status.charAt(0).toUpperCase() + r.status.slice(1)) : 'Pending',
-      raw: r
-    }));
+    // Map backend rows to UI-friendly booking objects and format date/time for Malaysia timezone
+    return rows.map((r) => {
+      const date = r.booking_date ? formatMalaysiaDate(r.booking_date, { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' }) : '';
+      const time = (r.start_time && r.end_time)
+        ? `${formatMalaysiaTime(r.start_time, { dateContext: r.booking_date })} - ${formatMalaysiaTime(r.end_time, { dateContext: r.booking_date })}`
+        : '';
+
+      // Build a robust student name from several possible backend fields
+      const studentName = r.student_name || r.studentName || r.student_full_name ||
+        (r.student_first_name || r.studentFirstName || r.first_name) ?
+          `${r.student_first_name || r.studentFirstName || r.first_name} ${r.student_last_name || r.studentLastName || r.last_name || ''}`.trim() :
+        r.studentId || r.student || '';
+
+      const tutorName = r.tutor_name || r.tutorName || r.tutor || r.tutorId || '';
+
+      // Build contact objects (email/phone) with fallback field names
+      const studentEmail = r.student_email || r.studentEmail || r.student_contact_email || r.email || r.student_contact || null;
+      const studentPhone = r.student_phone || r.studentPhone || r.student_contact_phone || r.phone || null;
+
+      const tutorEmail = r.tutor_email || r.tutorEmail || r.tutor_contact_email || r.tutor_contact || null;
+      const tutorPhone = r.tutor_phone || r.tutorPhone || r.tutor_contact_phone || null;
+
+      return {
+        id: r.bookingId,
+        tutorId: r.tutorId,
+        studentId: r.studentId,
+        tutor: tutorName,
+        student: studentName,
+        date,
+        time,
+        subject: r.subject,
+        status: r.status ? (r.status.charAt(0).toUpperCase() + r.status.slice(1)) : 'Pending',
+        studentContact: { email: studentEmail, phone: studentPhone },
+        tutorContact: { email: tutorEmail, phone: tutorPhone },
+        raw: r
+      };
+    });
   } catch (err) {
     console.error('Error fetching bookings:', err);
     return [];

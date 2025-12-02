@@ -13,6 +13,10 @@ export class User {
     this.verificationDocuments = role === 'tutor' ? (profile.verificationDocuments || []) : [];
     this.createdAt = new Date();
     this.updatedAt = new Date();
+    // Role-specific IDs (prefixed with s, t, a)
+    this.studentId = null;
+    this.tutorId = null;
+    this.adminId = null;
   }
 
   // Static method to create user from data
@@ -34,6 +38,16 @@ export class User {
     }
     if (data.verificationDocuments !== undefined) {
       user.verificationDocuments = data.verificationDocuments;
+    }
+    // Restore role-specific IDs
+    if (data.studentId !== undefined) {
+      user.studentId = data.studentId;
+    }
+    if (data.tutorId !== undefined) {
+      user.tutorId = data.tutorId;
+    }
+    if (data.adminId !== undefined) {
+      user.adminId = data.adminId;
     }
     return user;
   }

@@ -26,6 +26,7 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import EditIcon from '@mui/icons-material/Edit';
 import AddIcon from '@mui/icons-material/Add';
 import axios from 'axios';
+import { formatMalaysiaDate, formatMalaysiaTime } from '../utils/dateUtils';
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
@@ -185,16 +186,15 @@ export default function ScheduleManager({ tutorId }) {
   };
 
   const formatDate = (dateString) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
+    return formatMalaysiaDate(dateString, {
       year: 'numeric',
       month: 'short',
       day: 'numeric'
     });
   };
 
-  const formatTime = (timeString) => {
-    const [hours, minutes] = timeString.split(':');
-    return `${hours}:${minutes}`;
+  const formatTime = (timeString, dateContext) => {
+    return formatMalaysiaTime(timeString, { dateContext });
   };
 
   return (

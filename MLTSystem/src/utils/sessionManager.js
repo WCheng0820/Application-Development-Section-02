@@ -81,7 +81,7 @@ export const createSession = (user) => {
   sessionStorage.setItem(SESSION_TOKEN_KEY, token);
   sessionStorage.setItem(SESSION_EXPIRY_KEY, expiryTime.toString());
   sessionStorage.setItem(SESSION_USER_KEY, JSON.stringify({
-    id: user.id,
+    id: user.userId,
     email: user.email,
     role: user.role,
     profile: user.profile,
@@ -165,7 +165,7 @@ export const refreshSession = (user) => {
   
   // Update user data in case it changed
   sessionStorage.setItem(SESSION_USER_KEY, JSON.stringify({
-    id: user.id,
+    id: user.userId,
     email: user.email,
     role: user.role,
     profile: user.profile,

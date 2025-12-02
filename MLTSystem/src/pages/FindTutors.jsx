@@ -23,6 +23,7 @@ import TutorCard from "../components/TutorCard";
 import * as TutorsController from "../controllers/TutorsController";
 import * as ScheduleController from "../controllers/ScheduleController";
 import { useAuth } from "../context/AuthContext";
+import { formatMalaysiaDate } from "../utils/dateUtils";
 
 export default function FindTutors() {
   const navigate = useNavigate();
@@ -118,13 +119,13 @@ export default function FindTutors() {
         tutorId: tutor.id,
         tutorName: tutor.name,
         scheduleId: selectedSlot.schedule_id,
-        date: new Date(selectedSlot.schedule_date).toLocaleDateString("en-MY", {
+        date: formatMalaysiaDate(selectedSlot.schedule_date, {
           weekday: "short",
           year: "numeric",
           month: "short",
           day: "numeric",
         }),
-        time: `${selectedSlot.start_time} - ${selectedSlot.end_time}`,
+        time: `${formatMalaysiaTime(selectedSlot.start_time, { dateContext: selectedSlot.schedule_date })} - ${formatMalaysiaTime(selectedSlot.end_time, { dateContext: selectedSlot.schedule_date })}`,
         rate: tutor.ratePerHour,
         subject: tutor.subject,
       };

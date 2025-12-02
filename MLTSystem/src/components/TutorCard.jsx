@@ -28,6 +28,8 @@ import CalendarTodayIcon from "@mui/icons-material/CalendarToday";
 import ReviewsIcon from "@mui/icons-material/Reviews";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 
+import { formatMalaysiaDate, formatMalaysiaTime } from "../utils/dateUtils";
+
 export default function TutorCard({ tutor, onBook }) {
   const [openProfile, setOpenProfile] = useState(false);
   const [selectedSlot, setSelectedSlot] = useState(null);
@@ -66,8 +68,8 @@ export default function TutorCard({ tutor, onBook }) {
       return slot;
     }
     if (slot && typeof slot === "object") {
-      const date = slot.schedule_date ? new Date(slot.schedule_date).toLocaleDateString("en-MY", { year: "numeric", month: "short", day: "numeric" }) : "";
-      const time = slot.start_time && slot.end_time ? `${slot.start_time} - ${slot.end_time}` : "";
+      const date = slot.schedule_date ? formatMalaysiaDate(slot.schedule_date, { year: "numeric", month: "short", day: "numeric" }) : "";
+      const time = slot.start_time && slot.end_time ? `${formatMalaysiaTime(slot.start_time, { hour: '2-digit', minute: '2-digit' })} - ${formatMalaysiaTime(slot.end_time, { hour: '2-digit', minute: '2-digit' })}` : "";
       return `${date} ${time}`.trim() || "Slot";
     }
     return "Slot";

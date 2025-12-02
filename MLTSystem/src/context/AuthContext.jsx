@@ -160,6 +160,17 @@ export const AuthProvider = ({ children }) => {
         apiUser.username // Include username from API response
       );
 
+      // Add role-specific IDs to the user object
+      if (apiUser.studentId) {
+        newUser.studentId = apiUser.studentId;
+      }
+      if (apiUser.tutorId) {
+        newUser.tutorId = apiUser.tutorId;
+      }
+      if (apiUser.adminId) {
+        newUser.adminId = apiUser.adminId;
+      }
+
       // Set approval status from API
       if (apiUser.isApproved !== undefined) {
         newUser.isApproved = apiUser.isApproved;
@@ -194,7 +205,10 @@ export const AuthProvider = ({ children }) => {
           profile: newUser.profile,
           isApproved: newUser.isApproved,
           approvalStatus: newUser.approvalStatus,
-          verificationDocuments: newUser.verificationDocuments
+          verificationDocuments: newUser.verificationDocuments,
+          studentId: newUser.studentId,
+          tutorId: newUser.tutorId,
+          adminId: newUser.adminId
         };
         sessionStorage.setItem('mlt_session_user', JSON.stringify(sessionUserData));
 
@@ -270,6 +284,17 @@ export const AuthProvider = ({ children }) => {
         apiUser.username // Include username from API response
       );
 
+      // Add role-specific IDs to the user object
+      if (apiUser.studentId) {
+        newUser.studentId = apiUser.studentId;
+      }
+      if (apiUser.tutorId) {
+        newUser.tutorId = apiUser.tutorId;
+      }
+      if (apiUser.adminId) {
+        newUser.adminId = apiUser.adminId;
+      }
+
       // Set approval status from API
       if (apiUser.isApproved !== undefined) {
         newUser.isApproved = apiUser.isApproved;
@@ -299,7 +324,10 @@ export const AuthProvider = ({ children }) => {
           profile: newUser.profile,
           isApproved: newUser.isApproved,
           approvalStatus: newUser.approvalStatus,
-          verificationDocuments: newUser.verificationDocuments
+          verificationDocuments: newUser.verificationDocuments,
+          studentId: newUser.studentId,
+          tutorId: newUser.tutorId,
+          adminId: newUser.adminId
         };
         sessionStorage.setItem('mlt_session_user', JSON.stringify(sessionUserData));
         

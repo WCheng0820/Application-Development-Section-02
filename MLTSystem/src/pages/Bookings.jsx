@@ -51,30 +51,34 @@ export default function Bookings() {
         </Typography>
       ) : (
         <Grid container spacing={3}>
-          {bookings.map((booking) => (
-            <Grid item xs={12} sm={6} md={4} key={booking.id}>
-              <Card
-                sx={{
-                  borderRadius: 3,
-                  boxShadow: 3,
-                  "&:hover": { boxShadow: 6 },
-                  transition: "0.3s",
-                  height: '100%',
-                  display: 'flex',
-                  flexDirection: 'column',
-                }}
-              >
-                <BookingCards
-                  tutor={booking.tutor}
-                  date={booking.date}
-                  time={booking.time}
-                  status={booking.status}
-                  id={booking.id}
-                  onCancel={handleCancel}
-                />
-              </Card>
-            </Grid>
-          ))}
+          {bookings.map((booking) => {
+            const isTutor = currentUser && (currentUser.role || '').toString().toLowerCase() === 'tutor';
+            const heading = isTutor ? booking.student : booking.tutor;
+            return (
+              <Grid item xs={12} sm={6} md={4} key={booking.id}>
+                <Card
+                  sx={{
+                    borderRadius: 3,
+                    boxShadow: 3,
+                    "&:hover": { boxShadow: 6 },
+                    transition: "0.3s",
+                    height: '100%',
+                    display: 'flex',
+                    flexDirection: 'column',
+                  }}
+                >
+                  <BookingCards
+                    tutor={heading}
+                    date={booking.date}
+                    time={booking.time}
+                    status={booking.status}
+                    id={booking.id}
+                    onCancel={handleCancel}
+                  />
+                </Card>
+              </Grid>
+            );
+          })}
         </Grid>
       )}
     </Container>
