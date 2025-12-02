@@ -13,10 +13,12 @@ import {
   InputLabel,
   Select,
   MenuItem,
-  FormHelperText
+  FormHelperText,
+  Divider
 } from '@mui/material';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
+import ScheduleManager from '../components/ScheduleManager';
 
 export default function EditProfile() {
   const { currentUser, updateProfile } = useAuth();
@@ -220,6 +222,13 @@ export default function EditProfile() {
             </Button>
           </Box>
         </Paper>
+
+        {/* Schedule Manager for tutors */}
+        {currentUser?.role === 'tutor' && currentUser?.profile?.tutorId && (
+          <Box sx={{ mt: 4 }}>
+            <ScheduleManager tutorId={currentUser.profile.tutorId} />
+          </Box>
+        )}
       </Box>
     </Container>
   );

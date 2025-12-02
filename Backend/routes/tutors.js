@@ -6,7 +6,17 @@ const { query } = require('../config/database');
 router.get('/', async (req, res, next) => {
     try {
         const results = await query('SELECT * FROM tutor');
-        res.json({ success: true, data: results });
+        
+        // Fetch schedules for each tutor
+        const tutorsWithSchedules = await Promise.all(results.map(async (tutor) => {
+            const schedules = await query('SELECT * FROM tutor_schedule WHERE tutorId = ?', [tutor.tutorId]);
+            return {
+                ...tutor,
+                schedule: schedules || []
+            };
+        }));
+        
+        res.json({ success: true, data: tutorsWithSchedules });
     } catch (err) {
         next(err);
     }
@@ -18,7 +28,15 @@ router.get('/:id', async (req, res, next) => {
     try {
         const results = await query('SELECT * FROM tutor WHERE tutorId = ?', [id]);
         if (!results || results.length === 0) return res.status(404).json({ success: false, message: 'Tutor not found' });
-        res.json({ success: true, data: results[0] });
+        
+        // Fetch schedules for this tutor
+        const schedules = await query('SELECT * FROM tutor_schedule WHERE tutorId = ?', [id]);
+        const tutor = {
+            ...results[0],
+            schedule: schedules || []
+        };
+        
+        res.json({ success: true, data: tutor });
     } catch (err) {
         next(err);
     }
@@ -37,8 +55,8 @@ router.post('/', async (req, res, next) => {
 
         // Insert without tutorId, then generate one from the inserted PK
         const insertRes = await query(
-            `INSERT INTO tutor (user_id, name, availability, yearsOfExperience, verification_documents, rating, price) VALUES (?, ?, ?, ?, ?, ?, ?)`,
-            [tutor.user_id || null, tutor.name, tutor.availability || null, tutor.yearsOfExperience || 0, JSON.stringify(tutor.verification_documents || []), tutor.rating || null, tutor.price || null]
+            `INSERT INTO tutor (user_id, name, yearsOfExperience, verification_documents, rating, price, bio, specialization) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+            [tutor.user_id || null, tutor.name, tutor.yearsOfExperience || 0, JSON.stringify(tutor.verification_documents || []), tutor.rating || null, tutor.price || null, tutor.bio || null, tutor.specialization || null]
         );
 
         const pk = insertRes.insertId;

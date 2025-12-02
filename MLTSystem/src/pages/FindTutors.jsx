@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   Container,
   Typography,
@@ -6,28 +7,31 @@ import {
   Grid,
   TextField,
   Button,
-  Card,
-  Slider,
+  Paper,
   FormControl,
   InputLabel,
   Select,
   MenuItem,
+  Slider,
   Chip,
-  Stack,
-  Paper,
   Collapse,
-  IconButton,
 } from "@mui/material";
 import FilterListIcon from "@mui/icons-material/FilterList";
 import ClearIcon from "@mui/icons-material/Clear";
 import SearchIcon from "@mui/icons-material/Search";
 import TutorCard from "../components/TutorCard";
 import * as TutorsController from "../controllers/TutorsController";
+import * as ScheduleController from "../controllers/ScheduleController";
+import { useAuth } from "../context/AuthContext";
 
 export default function FindTutors() {
+  const navigate = useNavigate();
+  const { currentUser } = useAuth();
+
   const [tutors, setTutors] = useState([]);
   const [filteredTutors, setFilteredTutors] = useState([]);
   const [expandFilters, setExpandFilters] = useState(false);
+  const [isBooking, setIsBooking] = useState(false);
 
   // Filter states
   const [keywords, setKeywords] = useState("");
@@ -40,47 +44,41 @@ export default function FindTutors() {
   const [priceMax, setPriceMax] = useState(50);
   const [experienceMax, setExperienceMax] = useState(10);
 
-  // Initialize
+  // Initialize tutors
   useEffect(() => {
-  const initializeTutors = async () => {
-    // Fetch tutors from backend
-    await TutorsController.fetchTutors();
-    
-    // Get cached tutors for display
-    const allTutors = TutorsController.getAllTutors();
-    setTutors(allTutors);
-    setFilteredTutors(allTutors);
+    const initializeTutors = async () => {
+      await TutorsController.fetchTutors();
 
-    // Set subjects and ranges
-    const availableSubjects = TutorsController.getUniqueSubjects();
-    setSubjects(availableSubjects);
+      const allTutors = TutorsController.getAllTutors();
+      setTutors(allTutors);
+      setFilteredTutors(allTutors);
 
-    const priceMaxValue = TutorsController.getMaxRate();
-    setPriceMax(priceMaxValue);
-    setPriceRange([0, priceMaxValue]);
+      setSubjects(TutorsController.getUniqueSubjects());
 
-    const expMaxValue = TutorsController.getMaxExperience();
-    setExperienceMax(expMaxValue);
-  };
+      const priceMaxValue = TutorsController.getMaxRate();
+      setPriceMax(priceMaxValue);
+      setPriceRange([0, priceMaxValue]);
 
-  initializeTutors();
-}, []);
+      const expMaxValue = TutorsController.getMaxExperience();
+      setExperienceMax(expMaxValue);
+    };
 
+    initializeTutors();
+  }, []);
 
   // Apply filters
   useEffect(() => {
-  const filters = {
-    keywords,
-    subject: selectedSubject,
-    minExperience,
-    maxPrice: priceRange[1],
-    minRating,
-  };
+    const filters = {
+      keywords,
+      subject: selectedSubject,
+      minExperience,
+      maxPrice: priceRange[1],
+      minRating,
+    };
 
-  const results = TutorsController.filterTutors(filters);
-  setFilteredTutors(results);
-}, [keywords, selectedSubject, priceRange, minExperience, minRating]);
-
+    const results = TutorsController.filterTutors(filters);
+    setFilteredTutors(results);
+  }, [keywords, selectedSubject, priceRange, minExperience, minRating]);
 
   const handleResetFilters = () => {
     setKeywords("");
@@ -90,11 +88,55 @@ export default function FindTutors() {
     setMinRating(0);
   };
 
-  const handleBooking = (tutor) => {
-    alert(`Booking tutor: ${tutor.name}\nThis would open a booking form in a full implementation.`);
-    // In a full implementation, this would navigate to a booking form or open a dialog
+  // Booking
+  const handleBooking = async (tutor, selectedSlot) => {
+    if (!selectedSlot) {
+      alert("Please select a time slot");
+      return;
+    }
+    if (!currentUser) {
+      alert("Please log in to book a session");
+      navigate("/login");
+      return;
+    }
+    if (currentUser.role !== "student") {
+      alert("Only students can book sessions");
+      return;
+    }
+
+    setIsBooking(true);
+
+    try {
+      const studentId = currentUser.studentId || currentUser.id;
+      await ScheduleController.reserveSlot(
+        tutor.id,
+        selectedSlot.schedule_id,
+        studentId
+      );
+
+      const bookingData = {
+        tutorId: tutor.id,
+        tutorName: tutor.name,
+        scheduleId: selectedSlot.schedule_id,
+        date: new Date(selectedSlot.schedule_date).toLocaleDateString("en-MY", {
+          weekday: "short",
+          year: "numeric",
+          month: "short",
+          day: "numeric",
+        }),
+        time: `${selectedSlot.start_time} - ${selectedSlot.end_time}`,
+        rate: tutor.ratePerHour,
+        subject: tutor.subject,
+      };
+
+      navigate("/payment", { state: { booking: bookingData } });
+    } catch (error) {
+      alert(error.response?.data?.error || "Failed to reserve slot.");
+      setIsBooking(false);
+    }
   };
 
+  // Count active filters
   const activeFiltersCount =
     (keywords ? 1 : 0) +
     (selectedSubject ? 1 : 0) +
@@ -104,18 +146,19 @@ export default function FindTutors() {
 
   return (
     <Container maxWidth="lg" sx={{ mt: 12, mb: 6 }}>
-      {/* Header Section */}
+      {/* Header */}
       <Box sx={{ mb: 6 }}>
         <Typography variant="h4" fontWeight="bold" gutterBottom>
           Find Your Perfect Mandarin Tutor 🇨🇳
         </Typography>
         <Typography variant="body1" color="text.secondary" paragraph>
-          Browse our experienced Mandarin Chinese tutors and filter by learning focus, experience, price, and rating to find the perfect match for your Mandarin learning journey.
+          Browse experienced Mandarin Chinese tutors and filter by focus,
+          experience, price, and rating to find your perfect match.
         </Typography>
       </Box>
 
-      {/* Search and Filter Section */}
-      <Paper elevation={1} sx={{ p: 3, mb: 4, bgcolor: "background.paper" }}>
+      {/* Search + Filters */}
+      <Paper elevation={1} sx={{ p: 3, mb: 4 }}>
         {/* Search Bar */}
         <Box sx={{ mb: 3 }}>
           <TextField
@@ -124,9 +167,10 @@ export default function FindTutors() {
             value={keywords}
             onChange={(e) => setKeywords(e.target.value)}
             InputProps={{
-              startAdornment: <SearchIcon sx={{ mr: 1, color: "text.secondary" }} />,
+              startAdornment: (
+                <SearchIcon sx={{ mr: 1, color: "text.secondary" }} />
+              ),
             }}
-            variant="outlined"
             size="small"
           />
         </Box>
@@ -148,13 +192,13 @@ export default function FindTutors() {
               />
             )}
           </Button>
+
           {activeFiltersCount > 0 && (
             <Button
               startIcon={<ClearIcon />}
               onClick={handleResetFilters}
               size="small"
               variant="text"
-              color="inherit"
             >
               Clear All
             </Button>
@@ -163,7 +207,7 @@ export default function FindTutors() {
 
         {/* Expandable Filters */}
         <Collapse in={expandFilters}>
-          <Box sx={{ pt: 2, borderTop: "1px solid", borderColor: "divider" }}>
+          <Box sx={{ pt: 2 }}>
             <Grid container spacing={3}>
               {/* Subject Filter */}
               <Grid item xs={12} sm={6} md={3}>
@@ -184,14 +228,14 @@ export default function FindTutors() {
                 </FormControl>
               </Grid>
 
-              {/* Price Range Filter */}
+              {/* Price Filter */}
               <Grid item xs={12} sm={6} md={3}>
-                <Typography variant="subtitle2" fontWeight="bold" mb={1}>
+                <Typography fontWeight="bold" mb={1}>
                   Price per Hour: RM{priceRange[1]}
                 </Typography>
                 <Slider
                   value={priceRange}
-                  onChange={(e, newValue) => setPriceRange(newValue)}
+                  onChange={(e, v) => setPriceRange(v)}
                   min={0}
                   max={priceMax}
                   step={2}
@@ -200,18 +244,17 @@ export default function FindTutors() {
                     { value: priceMax, label: `RM${priceMax}` },
                   ]}
                   valueLabelDisplay="auto"
-                  sx={{ mt: 2 }}
                 />
               </Grid>
 
               {/* Experience Filter */}
               <Grid item xs={12} sm={6} md={3}>
-                <Typography variant="subtitle2" fontWeight="bold" mb={1}>
+                <Typography fontWeight="bold" mb={1}>
                   Min. Experience: {minExperience} years
                 </Typography>
                 <Slider
                   value={minExperience}
-                  onChange={(e, newValue) => setMinExperience(newValue)}
+                  onChange={(e, v) => setMinExperience(v)}
                   min={0}
                   max={experienceMax}
                   step={1}
@@ -220,7 +263,6 @@ export default function FindTutors() {
                     { value: experienceMax, label: `${experienceMax}` },
                   ]}
                   valueLabelDisplay="auto"
-                  sx={{ mt: 2 }}
                 />
               </Grid>
 
@@ -246,31 +288,22 @@ export default function FindTutors() {
         </Collapse>
       </Paper>
 
-      {/* Results Section */}
+      {/* Results */}
       <Box sx={{ mb: 4 }}>
         <Typography variant="subtitle1" fontWeight="bold" mb={3}>
-          {filteredTutors.length} tutor{filteredTutors.length !== 1 ? "s" : ""} found
+          {filteredTutors.length} tutor
+          {filteredTutors.length !== 1 ? "s" : ""} found
         </Typography>
 
         {filteredTutors.length === 0 ? (
-          <Paper
-            sx={{
-              p: 6,
-              textAlign: "center",
-              bgcolor: "action.hover",
-              borderRadius: 2,
-            }}
-          >
-            <Typography variant="h6" color="text.secondary" mb={2}>
+          <Paper sx={{ p: 6, textAlign: "center" }}>
+            <Typography variant="h6" mb={2}>
               No tutors match your filters
-            </Typography>
-            <Typography variant="body2" color="text.secondary" mb={3}>
-              Try adjusting your search criteria to see more results.
             </Typography>
             <Button
               variant="contained"
-              onClick={handleResetFilters}
               startIcon={<ClearIcon />}
+              onClick={handleResetFilters}
             >
               Reset Filters
             </Button>
@@ -282,6 +315,7 @@ export default function FindTutors() {
                 <TutorCard
                   tutor={tutor}
                   onBook={handleBooking}
+                  isProcessing={isBooking}
                 />
               </Grid>
             ))}

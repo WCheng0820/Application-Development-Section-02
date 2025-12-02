@@ -67,7 +67,6 @@ const initDatabase = async () => {
                 tutorId VARCHAR(255) UNIQUE,
                 user_id INT NOT NULL,
                 name VARCHAR(255) NOT NULL,
-                availability VARCHAR(500),
                 yearsOfExperience INT DEFAULT 0,
                 verification_documents JSON,
                 rating DECIMAL(3,2) DEFAULT 0,
@@ -82,7 +81,28 @@ const initDatabase = async () => {
         `);
         console.log('✅ Tutor table created');
 
-        // Create student table with surrogate auto-increment and generated studentId
+        // Create tutor_schedule table for managing tutor availability with date and time
+        await connection.query(`
+            CREATE TABLE IF NOT EXISTS tutor_schedule (
+                schedule_id INT AUTO_INCREMENT PRIMARY KEY,
+                tutorId VARCHAR(255) NOT NULL,
+                schedule_date DATE NOT NULL,
+                start_time TIME NOT NULL,
+                end_time TIME NOT NULL,
+                -- Booking state: free, reserved (someone selected), booked (payment done)
+                status ENUM('free','reserved','booked') NOT NULL DEFAULT 'free',
+                reserved_by VARCHAR(255) DEFAULT NULL,
+                reserved_at TIMESTAMP NULL DEFAULT NULL,
+                booked_at TIMESTAMP NULL DEFAULT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                FOREIGN KEY (tutorId) REFERENCES tutor(tutorId) ON DELETE CASCADE,
+                INDEX idx_tutorId (tutorId),
+                INDEX idx_date (schedule_date),
+                UNIQUE KEY unique_schedule (tutorId, schedule_date, start_time, end_time)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        `);
+        console.log('✅ Tutor Schedule table created');
         await connection.query(`
             CREATE TABLE IF NOT EXISTS student (
                 student_pk INT AUTO_INCREMENT PRIMARY KEY,

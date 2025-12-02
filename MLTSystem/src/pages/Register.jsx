@@ -33,7 +33,6 @@ export default function Register() {
     faculty: '',
     // Tutor fields
     yearsOfExperience: 0,
-    availability: '',
     bio: '',
     specialization: ''
   });
@@ -124,7 +123,6 @@ export default function Register() {
         faculty: formData.role === 'student' ? formData.faculty.trim() || null : undefined,
         // Tutor-specific fields
         yearsOfExperience: formData.role === 'tutor' ? parseInt(formData.yearsOfExperience) || 0 : undefined,
-        availability: formData.role === 'tutor' ? formData.availability.trim() || null : undefined,
         bio: formData.role === 'tutor' ? formData.bio.trim() || null : undefined,
         specialization: formData.role === 'tutor' ? formData.specialization || null : undefined
       };
@@ -284,17 +282,6 @@ export default function Register() {
                   inputProps={{ min: 0 }}
                   sx={{ mb: 2 }}
                   helperText="How many years of teaching experience do you have?"
-                />
-                <TextField
-                  fullWidth
-                  name="availability"
-                  label="Availability"
-                  value={formData.availability}
-                  onChange={handleChange}
-                  multiline
-                  rows={3}
-                  sx={{ mb: 2 }}
-                  helperText="e.g., Monday-Friday, 9am-5pm"
                 />
                 <TextField
                   fullWidth

@@ -15,7 +15,11 @@ async function seed() {
         const tutors = [
             {
                 name: 'Ms. Chen Wei',
-                availability: JSON.stringify({ Monday: '9-17' }),
+                schedule: [
+                    { schedule_date: '2025-12-05', start_time: '09:00:00', end_time: '12:00:00' },
+                    { schedule_date: '2025-12-05', start_time: '13:00:00', end_time: '17:00:00' },
+                    { schedule_date: '2025-12-08', start_time: '10:00:00', end_time: '16:00:00' }
+                ],
                 yearsOfExperience: 5,
                 verification_documents: JSON.stringify([]),
                 rating: 4.8,
@@ -26,7 +30,11 @@ async function seed() {
             },
             {
                 name: 'Mr. Wang Ming',
-                availability: JSON.stringify({ Tuesday: '9-17' }),
+                schedule: [
+                    { schedule_date: '2025-12-06', start_time: '09:00:00', end_time: '13:00:00' },
+                    { schedule_date: '2025-12-06', start_time: '14:00:00', end_time: '18:00:00' },
+                    { schedule_date: '2025-12-10', start_time: '09:00:00', end_time: '17:00:00' }
+                ],
                 yearsOfExperience: 8,
                 verification_documents: JSON.stringify([]),
                 rating: 4.9,
@@ -37,7 +45,11 @@ async function seed() {
             },
             {
                 name: 'Ms. Liu Hong',
-                availability: JSON.stringify({ Wednesday: '10-18' }),
+                schedule: [
+                    { schedule_date: '2025-12-07', start_time: '10:00:00', end_time: '14:00:00' },
+                    { schedule_date: '2025-12-07', start_time: '15:00:00', end_time: '18:00:00' },
+                    { schedule_date: '2025-12-09', start_time: '09:00:00', end_time: '17:00:00' }
+                ],
                 yearsOfExperience: 6,
                 verification_documents: JSON.stringify([]),
                 rating: 4.7,
@@ -92,12 +104,11 @@ async function seed() {
 
                 if (tutorExists.length === 0) {
                     const tutorRes = await query(
-                        `INSERT INTO tutor (user_id, name, availability, yearsOfExperience, verification_documents, rating, price, specialization, bio)
-                         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                        `INSERT INTO tutor (user_id, name, yearsOfExperience, verification_documents, rating, price, specialization, bio)
+                         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
                         [
                             userId,
                             t.name,
-                            t.availability,
                             t.yearsOfExperience,
                             t.verification_documents,
                             t.rating,
@@ -110,6 +121,14 @@ async function seed() {
                     const tutorPk = tutorRes.insertId;
                     const tutorId = `t${String(userId).padStart(6, '0')}`;
                     await query('UPDATE tutor SET tutorId=? WHERE tutor_pk=?', [tutorId, tutorPk]);
+
+                    // Insert schedule slots with new date+time format
+                    for (const slot of t.schedule) {
+                        await query(
+                            `INSERT INTO tutor_schedule (tutorId, schedule_date, start_time, end_time) VALUES (?, ?, ?, ?)`,
+                            [tutorId, slot.schedule_date, slot.start_time, slot.end_time]
+                        );
+                    }
 
                     tutorIds.push(tutorId);
                     console.log('Inserted tutor record:', tutorId);

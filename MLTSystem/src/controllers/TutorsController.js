@@ -12,7 +12,7 @@ console.log("TutorsController - API_URL:", API_URL);
 let tutorsCache = [];
 
 /**
- * Fetch tutors from the backend API
+ * Fetch tutors from the backend API and their schedules
  */
 export async function fetchTutors() {
   try {
@@ -21,17 +21,6 @@ export async function fetchTutors() {
     if (response.data.success && Array.isArray(response.data.data)) {
       // Map backend data to our frontend model
       tutorsCache = response.data.data.map((tutor) => {
-        let schedule = [];
-        try {
-          if (tutor.availability) {
-            const parsed = JSON.parse(tutor.availability);
-            schedule = Object.entries(parsed).map(([day, time]) => `${day} ${time}`);
-          }
-        } catch (e) {
-          // If it's not valid JSON, treat it as plain text
-          schedule = tutor.availability ? [tutor.availability] : [];
-        }
-        
         return {
           id: tutor.tutorId,
           name: tutor.name,
@@ -40,7 +29,7 @@ export async function fetchTutors() {
           bio: tutor.bio || "",
           subject: tutor.specialization || "",
           rating: parseFloat(tutor.rating) || 0,
-          schedule: schedule,
+          schedule: tutor.schedule || [],
           createdAt: tutor.created_at,
           updatedAt: tutor.updated_at,
           imageUrl: `https://api.dicebear.com/7.x/avataaars/svg?seed=${tutor.name.replace(/\s/g, "")}`,

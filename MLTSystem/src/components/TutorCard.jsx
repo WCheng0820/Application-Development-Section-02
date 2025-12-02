@@ -17,15 +17,20 @@ import {
   List,
   ListItem,
   ListItemText,
+  ListItemButton,
+  Divider,
+  Paper,
 } from "@mui/material";
 import SchoolIcon from "@mui/icons-material/School";
 import StarIcon from "@mui/icons-material/Star";
 import AttachMoneyIcon from "@mui/icons-material/AttachMoney";
 import CalendarTodayIcon from "@mui/icons-material/CalendarToday";
 import ReviewsIcon from "@mui/icons-material/Reviews";
+import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 
 export default function TutorCard({ tutor, onBook }) {
   const [openProfile, setOpenProfile] = useState(false);
+  const [selectedSlot, setSelectedSlot] = useState(null);
 
   const handleOpenProfile = () => {
     setOpenProfile(true);
@@ -33,14 +38,42 @@ export default function TutorCard({ tutor, onBook }) {
 
   const handleCloseProfile = () => {
     setOpenProfile(false);
+    setSelectedSlot(null);
+  };
+
+  // Filter for free/available slots
+  const getAvailableSlots = () => {
+    if (!tutor.schedule || !Array.isArray(tutor.schedule)) return [];
+    return tutor.schedule.filter((slot) => slot.status === "free");
+  };
+
+  const availableSlots = getAvailableSlots();
+
+  const handleSelectSlot = (slot) => {
+    setSelectedSlot(slot);
   };
 
   const handleBook = () => {
     if (onBook) {
-      onBook(tutor);
+      onBook(tutor, selectedSlot);
     }
     handleCloseProfile();
   };
+
+  // Format slot info for display
+  const formatSlot = (slot) => {
+    if (typeof slot === "string") {
+      return slot;
+    }
+    if (slot && typeof slot === "object") {
+      const date = slot.schedule_date ? new Date(slot.schedule_date).toLocaleDateString("en-MY", { year: "numeric", month: "short", day: "numeric" }) : "";
+      const time = slot.start_time && slot.end_time ? `${slot.start_time} - ${slot.end_time}` : "";
+      return `${date} ${time}`.trim() || "Slot";
+    }
+    return "Slot";
+  };
+
+  const previewSlots = availableSlots.slice(0, 3);
 
   return (
     <>
@@ -121,6 +154,33 @@ export default function TutorCard({ tutor, onBook }) {
           >
             {tutor.bio}
           </Typography>
+
+          {/* Available Slots Preview */}
+          {availableSlots.length > 0 && (
+            <Box sx={{ mb: 2 }}>
+              <Typography variant="caption" fontWeight="bold" color="success.main" sx={{ display: "block", mb: 1 }}>
+                📅 {availableSlots.length} slots available
+              </Typography>
+              <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
+                {previewSlots.map((slot, idx) => (
+                  <Chip
+                    key={idx}
+                    label={formatSlot(slot)}
+                    size="small"
+                    variant="outlined"
+                    color="primary"
+                  />
+                ))}
+                {availableSlots.length > 3 && (
+                  <Chip
+                    label={`+${availableSlots.length - 3} more`}
+                    size="small"
+                    variant="outlined"
+                  />
+                )}
+              </Box>
+            </Box>
+          )}
         </CardContent>
 
         <CardActions sx={{ pt: 0 }}>
@@ -137,6 +197,7 @@ export default function TutorCard({ tutor, onBook }) {
             color="primary"
             onClick={handleBook}
             sx={{ ml: "auto" }}
+            disabled={availableSlots.length === 0}
           >
             Book Now
           </Button>
@@ -226,24 +287,84 @@ export default function TutorCard({ tutor, onBook }) {
             </Typography>
           </Box>
 
-          {/* Schedule */}
+          {/* Available Slots for Booking */}
           <Box sx={{ mb: 2 }}>
-            <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1 }}>
+            <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 2 }}>
               <CalendarTodayIcon sx={{ color: "info.main", fontSize: 20 }} />
               <Typography variant="subtitle2" fontWeight="bold">
-                Available Schedule
+                Available Slots ({availableSlots.length})
               </Typography>
             </Box>
-            <List dense sx={{ ml: 1 }}>
-              {tutor.schedule.map((slot, index) => (
-                <ListItem key={index} disableGutters>
-                  <ListItemText
-                    primary={slot}
-                    primaryTypographyProps={{ variant: "body2" }}
-                  />
-                </ListItem>
-              ))}
-            </List>
+
+            {availableSlots.length === 0 ? (
+              <Typography variant="body2" color="text.secondary" sx={{ ml: 1, fontStyle: "italic" }}>
+                No available slots at the moment. Please check back later.
+              </Typography>
+            ) : (
+              <List
+                sx={{
+                  ml: 1,
+                  maxHeight: 300,
+                  overflow: "auto",
+                  border: "1px solid",
+                  borderColor: "divider",
+                  borderRadius: 1,
+                }}
+              >
+                {availableSlots.map((slot, index) => (
+                  <ListItemButton
+                    key={index}
+                    selected={selectedSlot && selectedSlot.schedule_id === slot.schedule_id}
+                    onClick={() => handleSelectSlot(slot)}
+                    sx={{
+                      py: 1.5,
+                      "&.Mui-selected": {
+                        bgcolor: "primary.lighter",
+                        "&:hover": { bgcolor: "primary.lighter" },
+                      },
+                    }}
+                  >
+                    <Box sx={{ display: "flex", alignItems: "center", width: "100%", gap: 1 }}>
+                      <Box sx={{ flex: 1 }}>
+                        <Typography variant="body2" fontWeight="bold">
+                          {formatSlot(slot)}
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary">
+                          Free slot
+                        </Typography>
+                      </Box>
+                      {selectedSlot && selectedSlot.schedule_id === slot.schedule_id && (
+                        <CheckCircleIcon sx={{ color: "success.main", fontSize: 20 }} />
+                      )}
+                    </Box>
+                  </ListItemButton>
+                ))}
+              </List>
+            )}
+
+            {selectedSlot && (
+              <Paper
+                sx={{
+                  mt: 2,
+                  p: 1.5,
+                  bgcolor: "success.lighter",
+                  border: "1px solid",
+                  borderColor: "success.main",
+                }}
+              >
+                <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                  <CheckCircleIcon sx={{ color: "success.main" }} />
+                  <Box>
+                    <Typography variant="caption" fontWeight="bold" color="success.main">
+                      Selected Slot
+                    </Typography>
+                    <Typography variant="body2" fontWeight="bold">
+                      {formatSlot(selectedSlot)}
+                    </Typography>
+                  </Box>
+                </Box>
+              </Paper>
+            )}
           </Box>
         </DialogContent>
 
@@ -256,8 +377,9 @@ export default function TutorCard({ tutor, onBook }) {
             variant="contained"
             color="primary"
             size="small"
+            disabled={!selectedSlot || availableSlots.length === 0}
           >
-            Book This Tutor
+            Proceed to Payment
           </Button>
         </DialogActions>
       </Dialog>

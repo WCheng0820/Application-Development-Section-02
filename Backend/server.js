@@ -65,6 +65,13 @@ try {
     console.warn('Could not load bookings routes:', err.message);
 }
 
+try {
+    const scheduleRoutes = require('./routes/schedule');
+    app.use('/api/schedule', scheduleRoutes);
+} catch (err) {
+    console.warn('Could not load schedule routes:', err.message);
+}
+
 // Error handling middleware
 app.use((err, req, res, next) => {
     console.error('Error:', err);

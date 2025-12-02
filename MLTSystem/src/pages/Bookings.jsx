@@ -2,19 +2,38 @@ import React, { useState, useEffect } from "react";
 import { Container, Typography, Card, Grid } from "@mui/material";
 import BookingCards from "../components/BookingCard";
 import * as BookingsController from "../controllers/BookingsController";
+import { useAuth } from "../context/AuthContext";
 
 export default function Bookings() {
   // View: keeps its own UI state but delegates data ops to Controller
   const [bookings, setBookings] = useState([]);
 
+  const { currentUser } = useAuth();
+
   useEffect(() => {
-    const all = BookingsController.fetchBookings();
-    setBookings(all);
-  }, []);
+    let mounted = true;
+    const load = async () => {
+      // Backend will filter based on token/user role
+      const filters = { upcoming: true };
+      const all = await BookingsController.fetchBookings(filters);
+      if (mounted) setBookings(all || []);
+    };
+    load();
+    return () => { mounted = false; };
+  }, [currentUser]);
 
   const handleCancel = (id) => {
-    const updated = BookingsController.cancelBooking(id);
-    setBookings(updated);
+    const doCancel = async () => {
+      try {
+        await BookingsController.cancelBooking(id);
+        // Refetch bookings after cancel
+        const refreshed = await BookingsController.fetchBookings({ upcoming: true });
+        setBookings(refreshed || []);
+      } catch (err) {
+        console.error('Cancel failed', err);
+      }
+    };
+    doCancel();
   };
 
   return (

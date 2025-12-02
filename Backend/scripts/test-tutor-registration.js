@@ -42,7 +42,8 @@ const testTutorRegistration = async () => {
         const nophone = '9876543210';
         const fullName = 'Test Tutor';
         const yearsOfExperience = 5;
-        const availability = 'Monday-Friday, 9am-5pm';
+        const bio = 'Experienced tutor with a passion for teaching';
+        const specialization = 'Conversational Mandarin';
         const verificationDocuments = [
             {
                 name: 'teaching_certificate.pdf',
@@ -87,15 +88,16 @@ const testTutorRegistration = async () => {
 
         // Insert tutor record
         const [tutorResult] = await connection.query(
-            `INSERT INTO tutor (tutorId, user_id, name, availability, yearsOfExperience, verification_documents) 
-             VALUES (?, ?, ?, ?, ?, ?)`,
+            `INSERT INTO tutor (tutorId, user_id, name, yearsOfExperience, verification_documents, bio, specialization) 
+             VALUES (?, ?, ?, ?, ?, ?, ?)`,
             [
                 tutorId,
                 userId,
                 fullName,
-                availability,
                 yearsOfExperience,
-                JSON.stringify(verificationDocuments)
+                JSON.stringify(verificationDocuments),
+                bio,
+                specialization
             ]
         );
 

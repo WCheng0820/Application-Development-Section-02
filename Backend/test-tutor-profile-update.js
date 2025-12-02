@@ -27,7 +27,6 @@ async function testTutorProfileUpdate() {
                 password: 'tutorpass123',
                 role: 'tutor',
                 yearsOfExperience: 5,
-                availability: 'Weekends',
                 bio: 'Initial bio',
                 specialization: 'HSK Test Prep',
                 verificationDocuments: ['doc1.pdf']

@@ -11,6 +11,8 @@ import Messages from "./pages/Messages";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import EditProfile from "./pages/EditProfile";
+import ManageSchedule from "./pages/ManageSchedule";
+import Payment from "./pages/Payment";
 
 export default function App() {
   return (
@@ -37,6 +39,14 @@ export default function App() {
             element={
               <PrivateRoute>
                 <FindTutors />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/payment"
+            element={
+              <PrivateRoute>
+                <Payment />
               </PrivateRoute>
             }
           />
@@ -69,6 +79,14 @@ export default function App() {
             element={
               <PrivateRoute>
                 <EditProfile />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/manage-schedule"
+            element={
+              <PrivateRoute>
+                <ManageSchedule />
               </PrivateRoute>
             }
           />

@@ -1,0 +1,375 @@
+import React, { useState, useEffect } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
+import {
+  Container,
+  Typography,
+  Card,
+  CardContent,
+  Box,
+  Button,
+  Radio,
+  RadioGroup,
+  FormControlLabel,
+  FormControl,
+  FormLabel,
+  Divider,
+  Alert,
+  CircularProgress,
+  Paper,
+  Grid,
+} from "@mui/material";
+import CreditCardIcon from "@mui/icons-material/CreditCard";
+import AccountBalanceWalletIcon from "@mui/icons-material/AccountBalanceWallet";
+import ArrowBackIcon from "@mui/icons-material/ArrowBack";
+import CheckCircleIcon from "@mui/icons-material/CheckCircle";
+import * as ScheduleController from "../controllers/ScheduleController";
+import { useAuth } from "../context/AuthContext";
+
+export default function Payment() {
+  const location = useLocation();
+  const navigate = useNavigate();
+  const { currentUser } = useAuth();
+
+  const bookingData = location.state?.booking || null;
+  const [paymentMethod, setPaymentMethod] = useState("tng");
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState(false);
+
+  useEffect(() => {
+    if (!bookingData || !currentUser) {
+      navigate("/find-tutors");
+    }
+  }, [bookingData, currentUser, navigate]);
+
+  const handlePaymentMethodChange = (e) => {
+    setPaymentMethod(e.target.value);
+  };
+
+  const handleConfirmPayment = async () => {
+    if (!bookingData || !currentUser) return;
+
+    setIsProcessing(true);
+    setError("");
+
+    try {
+      // Call the book endpoint to finalize the booking
+      const token = sessionStorage.getItem("mlt_session_token");
+      const response = await fetch(
+        `http://localhost:5000/api/schedule/${bookingData.tutorId}/${bookingData.scheduleId}/book`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            studentId: currentUser.studentId || currentUser.id,
+            subject: bookingData.subject || "Mandarin Tutoring",
+            paymentMethod: paymentMethod,
+          }),
+        }
+      );
+
+      const result = await response.json();
+
+      if (!response.ok || !result.success) {
+        throw new Error(result.error || "Booking failed");
+      }
+
+      setSuccess(true);
+      setTimeout(() => {
+        navigate("/bookings");
+      }, 2000);
+    } catch (err) {
+      console.error("Payment error:", err);
+      setError(err.message || "Payment processing failed. Please try again.");
+      setIsProcessing(false);
+    }
+  };
+
+  const handleCancel = async () => {
+    if (!bookingData) return;
+
+    try {
+      // Release the reserved slot
+      const token = sessionStorage.getItem("mlt_session_token");
+      await fetch(
+        `http://localhost:5000/api/schedule/${bookingData.tutorId}/${bookingData.scheduleId}/release`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            studentId: currentUser.studentId || currentUser.id,
+          }),
+        }
+      );
+
+      navigate("/find-tutors");
+    } catch (err) {
+      console.error("Cancel error:", err);
+      setError("Failed to cancel booking");
+    }
+  };
+
+  if (!bookingData) {
+    return (
+      <Container maxWidth="md" sx={{ mt: 12, mb: 6, textAlign: "center" }}>
+        <Typography color="error">Booking data not found. Redirecting...</Typography>
+      </Container>
+    );
+  }
+
+  if (success) {
+    return (
+      <Container maxWidth="md" sx={{ mt: 12, mb: 6 }}>
+        <Card sx={{ p: 4, textAlign: "center" }}>
+          <CheckCircleIcon sx={{ fontSize: 80, color: "success.main", mb: 2 }} />
+          <Typography variant="h4" fontWeight="bold" mb={2}>
+            Booking Confirmed! ✅
+          </Typography>
+          <Typography variant="body1" color="text.secondary" mb={3}>
+            Your tutoring session has been successfully booked. You will be redirected to your bookings page.
+          </Typography>
+          <Typography variant="subtitle2" fontWeight="bold">
+            Tutor: {bookingData.tutorName}
+          </Typography>
+          <Typography variant="body2">
+            {bookingData.date} • {bookingData.time}
+          </Typography>
+        </Card>
+      </Container>
+    );
+  }
+
+  return (
+    <Container maxWidth="md" sx={{ mt: 12, mb: 6 }}>
+      {/* Back Button */}
+      <Button
+        startIcon={<ArrowBackIcon />}
+        onClick={handleCancel}
+        sx={{ mb: 3 }}
+        disabled={isProcessing}
+      >
+        Back to Tutors
+      </Button>
+
+      <Grid container spacing={3}>
+        {/* Booking Details */}
+        <Grid item xs={12} md={7}>
+          <Card sx={{ mb: 3 }}>
+            <CardContent>
+              <Typography variant="h6" fontWeight="bold" mb={2}>
+                Booking Details
+              </Typography>
+              <Box sx={{ display: "flex", gap: 2, mb: 2 }}>
+                <Box>
+                  <Typography variant="caption" color="text.secondary">
+                    Tutor
+                  </Typography>
+                  <Typography variant="body1" fontWeight="bold">
+                    {bookingData.tutorName}
+                  </Typography>
+                </Box>
+                <Box sx={{ flex: 1 }}>
+                  <Typography variant="caption" color="text.secondary">
+                    Date & Time
+                  </Typography>
+                  <Typography variant="body1" fontWeight="bold">
+                    {bookingData.date} • {bookingData.time}
+                  </Typography>
+                </Box>
+              </Box>
+              <Divider sx={{ my: 2 }} />
+              <Box sx={{ display: "flex", justifyContent: "space-between", mb: 2 }}>
+                <Typography variant="body2">Session Rate (per hour)</Typography>
+                <Typography variant="body2" fontWeight="bold">
+                  RM{bookingData.rate}
+                </Typography>
+              </Box>
+              <Box sx={{ display: "flex", justifyContent: "space-between" }}>
+                <Typography variant="subtitle2" fontWeight="bold">
+                  Total Amount
+                </Typography>
+                <Typography variant="h6" color="primary.main" fontWeight="bold">
+                  RM{bookingData.rate}
+                </Typography>
+              </Box>
+            </CardContent>
+          </Card>
+
+          {/* Payment Method Selection */}
+          <Card>
+            <CardContent>
+              <Typography variant="h6" fontWeight="bold" mb={2}>
+                Choose Payment Method
+              </Typography>
+
+              <FormControl component="fieldset" fullWidth>
+                <RadioGroup
+                  value={paymentMethod}
+                  onChange={handlePaymentMethodChange}
+                >
+                  {/* TNG eWallet */}
+                  <Paper
+                    variant="outlined"
+                    sx={{
+                      p: 2,
+                      mb: 2,
+                      cursor: "pointer",
+                      border: paymentMethod === "tng" ? "2px solid" : "1px solid",
+                      borderColor: paymentMethod === "tng" ? "primary.main" : "divider",
+                      bgcolor: paymentMethod === "tng" ? "action.selected" : "background.paper",
+                      transition: "all 0.3s",
+                      "&:hover": {
+                        bgcolor: "action.hover",
+                      },
+                    }}
+                    onClick={() => setPaymentMethod("tng")}
+                  >
+                    <FormControlLabel
+                      value="tng"
+                      control={<Radio />}
+                      label={
+                        <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
+                          <AccountBalanceWalletIcon color="primary" />
+                          <Box>
+                            <Typography variant="subtitle2" fontWeight="bold">
+                              TNG eWallet
+                            </Typography>
+                            <Typography variant="caption" color="text.secondary">
+                              Fast and secure payment via Touch 'n Go eWallet
+                            </Typography>
+                          </Box>
+                        </Box>
+                      }
+                      sx={{ width: "100%" }}
+                    />
+                  </Paper>
+
+                  {/* Credit/Debit Card */}
+                  <Paper
+                    variant="outlined"
+                    sx={{
+                      p: 2,
+                      mb: 2,
+                      cursor: "pointer",
+                      border: paymentMethod === "card" ? "2px solid" : "1px solid",
+                      borderColor: paymentMethod === "card" ? "primary.main" : "divider",
+                      bgcolor: paymentMethod === "card" ? "action.selected" : "background.paper",
+                      transition: "all 0.3s",
+                      "&:hover": {
+                        bgcolor: "action.hover",
+                      },
+                    }}
+                    onClick={() => setPaymentMethod("card")}
+                  >
+                    <FormControlLabel
+                      value="card"
+                      control={<Radio />}
+                      label={
+                        <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
+                          <CreditCardIcon color="primary" />
+                          <Box>
+                            <Typography variant="subtitle2" fontWeight="bold">
+                              Credit/Debit Card
+                            </Typography>
+                            <Typography variant="caption" color="text.secondary">
+                              Visa, MasterCard, or American Express
+                            </Typography>
+                          </Box>
+                        </Box>
+                      }
+                      sx={{ width: "100%" }}
+                    />
+                  </Paper>
+                </RadioGroup>
+              </FormControl>
+
+              <Alert severity="info" sx={{ mt: 2 }}>
+                <Typography variant="body2">
+                  💡 This is a demo payment flow. In production, this would integrate with a real payment gateway.
+                </Typography>
+              </Alert>
+            </CardContent>
+          </Card>
+        </Grid>
+
+        {/* Order Summary & Confirm */}
+        <Grid item xs={12} md={5}>
+          <Card sx={{ position: "sticky", top: 100 }}>
+            <CardContent>
+              <Typography variant="h6" fontWeight="bold" mb={3}>
+                Order Summary
+              </Typography>
+
+              <Box sx={{ mb: 3 }}>
+                <Box sx={{ display: "flex", justifyContent: "space-between", mb: 1 }}>
+                  <Typography variant="body2">Tutor Session</Typography>
+                  <Typography variant="body2">RM{bookingData.rate}</Typography>
+                </Box>
+                <Box sx={{ display: "flex", justifyContent: "space-between", mb: 2 }}>
+                  <Typography variant="body2">Platform Fee</Typography>
+                  <Typography variant="body2">RM0</Typography>
+                </Box>
+              </Box>
+
+              <Divider sx={{ my: 2 }} />
+
+              <Box sx={{ display: "flex", justifyContent: "space-between", mb: 3 }}>
+                <Typography variant="subtitle2" fontWeight="bold">
+                  Total Payment
+                </Typography>
+                <Typography variant="h5" fontWeight="bold" color="primary.main">
+                  RM{bookingData.rate}
+                </Typography>
+              </Box>
+
+              {error && (
+                <Alert severity="error" sx={{ mb: 2 }}>
+                  {error}
+                </Alert>
+              )}
+
+              <Button
+                variant="contained"
+                color="primary"
+                fullWidth
+                size="large"
+                onClick={handleConfirmPayment}
+                disabled={isProcessing}
+                sx={{ mb: 2 }}
+              >
+                {isProcessing ? (
+                  <>
+                    <CircularProgress size={20} sx={{ mr: 1 }} />
+                    Processing...
+                  </>
+                ) : (
+                  `Pay RM${bookingData.rate}`
+                )}
+              </Button>
+
+              <Button
+                variant="outlined"
+                color="inherit"
+                fullWidth
+                onClick={handleCancel}
+                disabled={isProcessing}
+              >
+                Cancel Booking
+              </Button>
+
+              <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 2, textAlign: "center" }}>
+                Your payment information is secure and encrypted.
+              </Typography>
+            </CardContent>
+          </Card>
+        </Grid>
+      </Grid>
+    </Container>
+  );
+}

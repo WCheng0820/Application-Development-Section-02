@@ -82,6 +82,21 @@ const Navbar = () => {
                 {item.label}
               </Button>
             ))}
+            {/* Top-level Manage Schedule for tutors */}
+            {currentUser?.role === 'tutor' && (
+              <Button
+                key="/manage-schedule"
+                component={Link}
+                to="/manage-schedule"
+                sx={{
+                  mx: 1,
+                  color: location.pathname === '/manage-schedule' ? 'black' : 'text.secondary',
+                  fontWeight: location.pathname === '/manage-schedule' ? 'bold' : 'normal'
+                }}
+              >
+                Manage Schedule
+              </Button>
+            )}
           </Box>
         )}
 
@@ -118,6 +133,12 @@ const Navbar = () => {
               onClose={handleClose}
             >
               <MenuItem onClick={handleProfile}>Edit Profile</MenuItem>
+              {/* Tutor-only menu entry to manage schedule */}
+              {currentUser.role === 'tutor' && (
+                <MenuItem onClick={() => { handleClose(); navigate('/manage-schedule'); }}>
+                  Manage Schedule
+                </MenuItem>
+              )}
               <MenuItem onClick={handleLogout}>Logout</MenuItem>
             </Menu>
           </Box>

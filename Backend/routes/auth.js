@@ -33,7 +33,7 @@ const generateRoleId = (role, userId) => {
 // Register new user
 router.post('/register', async (req, res) => {
     try {
-        const { username, email, password, role, nophone, verificationDocuments, yearOfStudy, programme, faculty, yearsOfExperience, availability, bio, specialization } = req.body;
+        const { username, email, password, role, nophone, verificationDocuments, yearOfStudy, programme, faculty, yearsOfExperience, bio, specialization } = req.body;
 
         // Validation
         if (!username || !email || !password || !role) {
@@ -117,13 +117,12 @@ router.post('/register', async (req, res) => {
             } else if (role === 'tutor') {
                 // Create tutor record for both pending and active tutors
                 await query(
-                    `INSERT INTO tutor (tutorId, user_id, name, availability, yearsOfExperience, verification_documents, bio, specialization)
-                     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+                    `INSERT INTO tutor (tutorId, user_id, name, yearsOfExperience, verification_documents, bio, specialization)
+                     VALUES (?, ?, ?, ?, ?, ?, ?)`,
                     [
                         roleId,
                         userId,
                         username,
-                        availability || null,
                         yearsOfExperience || 0,
                         JSON.stringify(verificationDocuments || []),
                         bio || null,
@@ -309,14 +308,13 @@ async function getUserWithRoleData(userId, role) {
     } else if (role === 'tutor') {
         // Include bio and specialization so frontend receives updated tutor profile fields
         const tutors = await query(
-            'SELECT tutorId, name, availability, yearsOfExperience, verification_documents, bio, specialization FROM tutor WHERE user_id = ?',
+            'SELECT tutorId, name, yearsOfExperience, verification_documents, bio, specialization FROM tutor WHERE user_id = ?',
             [userId]
         );
         if (tutors.length > 0) {
             roleData = {
                 tutorId: tutors[0].tutorId,
                 name: tutors[0].name,
-                availability: tutors[0].availability || null,
                 yearsOfExperience: tutors[0].yearsOfExperience || 0,
                 verificationDocuments: tutors[0].verification_documents ? JSON.parse(tutors[0].verification_documents) : [],
                 bio: tutors[0].bio || null,
