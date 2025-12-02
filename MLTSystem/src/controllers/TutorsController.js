@@ -5,6 +5,9 @@ import axios from "axios";
 const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:5000";
 const API_URL = `${API_BASE}/api/tutors`;
 
+console.log("TutorsController - API_BASE:", API_BASE);
+console.log("TutorsController - API_URL:", API_URL);
+
 // In-memory cache for tutors
 let tutorsCache = [];
 
@@ -14,23 +17,38 @@ let tutorsCache = [];
 export async function fetchTutors() {
   try {
     const response = await axios.get(API_URL);
+    console.log("API Response:", response.data);
     if (response.data.success && Array.isArray(response.data.data)) {
       // Map backend data to our frontend model
-      tutorsCache = response.data.data.map((tutor) => ({
-        id: tutor.tutor_id,
-        name: tutor.name,
-        experience: tutor.yearsOfExperience,
-        ratePerHour: tutor.price,
-        bio: tutor.bio || "",
-        subject: tutor.specialization || "",
-        rating: tutor.rating,
-        schedule: tutor.availability ? Object.entries(JSON.parse(tutor.availability)).map(([day, time]) => `${day} ${time}`) : [],
-        email: tutor.email,
-        phone: tutor.phone,
-        createdAt: tutor.created_at,
-        updatedAt: tutor.updated_at,
-        imageUrl: `https://api.dicebear.com/7.x/avataaars/svg?seed=${tutor.name.replace(/\s/g, "")}`,
-      }));
+      tutorsCache = response.data.data.map((tutor) => {
+        let schedule = [];
+        try {
+          if (tutor.availability) {
+            const parsed = JSON.parse(tutor.availability);
+            schedule = Object.entries(parsed).map(([day, time]) => `${day} ${time}`);
+          }
+        } catch (e) {
+          // If it's not valid JSON, treat it as plain text
+          schedule = tutor.availability ? [tutor.availability] : [];
+        }
+        
+        return {
+          id: tutor.tutorId,
+          name: tutor.name,
+          experience: tutor.yearsOfExperience,
+          ratePerHour: parseFloat(tutor.price) || 0,
+          bio: tutor.bio || "",
+          subject: tutor.specialization || "",
+          rating: parseFloat(tutor.rating) || 0,
+          schedule: schedule,
+          createdAt: tutor.created_at,
+          updatedAt: tutor.updated_at,
+          imageUrl: `https://api.dicebear.com/7.x/avataaars/svg?seed=${tutor.name.replace(/\s/g, "")}`,
+        };
+      });
+      console.log("Mapped tutors cache:", tutorsCache);
+    } else {
+      console.warn("Unexpected response structure:", response.data);
     }
   } catch (error) {
     console.error("Error fetching tutors:", error);

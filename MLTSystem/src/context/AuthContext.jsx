@@ -240,7 +240,9 @@ export const AuthProvider = ({ children }) => {
           faculty: userData.faculty,
           // Tutor fields
           yearsOfExperience: userData.yearsOfExperience,
-          availability: userData.availability
+          availability: userData.availability,
+          bio: userData.bio,
+          specialization: userData.specialization
         })
       });
 

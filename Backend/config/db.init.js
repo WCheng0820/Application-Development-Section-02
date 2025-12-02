@@ -175,6 +175,12 @@ const initDatabase = async () => {
                 [adminId, userId, 'System Administrator']
             );
 
+            // Ensure the users table has the application-facing userId populated
+            await connection.query(
+                `UPDATE users SET userId = ? WHERE id = ?`,
+                [adminId, userId]
+            );
+
             console.log('✅ Default admin user created');
             console.log('   Username: admin');
             console.log('   Email: admin@mltsystem.com');
