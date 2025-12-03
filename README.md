@@ -9,6 +9,7 @@ In this project,we decided to solve the problem and challenges that are faced by
 | **2**  | Login Module | | | |
 | **3**  | Edit User Profile Module | | | |
 
+
 # 📩Communication and Feedback Subsystem
 **Developer: Tay Wei Cheng**
 | Sprint | Module Name | Frontend | Backend | Database |
@@ -16,6 +17,7 @@ In this project,we decided to solve the problem and challenges that are faced by
 | **1**  | Send Message and Receive Notification Module | | | |
 | **2**  | Submit Feedback Module | | | |
 | **3**  | Flag Report Module | | | |
+
 
 # 📚Learning Material Access Subsystem
 **Developer: Teow Zi Xian**
@@ -25,6 +27,7 @@ In this project,we decided to solve the problem and challenges that are faced by
 | **2**  | Access Material Library Module | | | |
 | **3**  | Manage Learning Resource Module | | | |
 | **4**  | Delete Material Module | | | |
+
 
 # 📅Booking Subsystem
 **Developer: Chu Chen Qing**
