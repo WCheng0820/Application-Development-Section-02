@@ -55,8 +55,8 @@ router.post('/', async (req, res, next) => {
 
         // Insert without tutorId, then generate one from the inserted PK
         const insertRes = await query(
-            `INSERT INTO tutor (user_id, name, yearsOfExperience, verification_documents, rating, price, bio, specialization) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-            [tutor.user_id || null, tutor.name, tutor.yearsOfExperience || 0, JSON.stringify(tutor.verification_documents || []), tutor.rating || null, tutor.price || null, tutor.bio || null, tutor.specialization || null]
+            `INSERT INTO tutor (user_id, name, yearsOfExperience, verification_documents, rating, rating_count, price, bio, specialization) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            [tutor.user_id || null, tutor.name, tutor.yearsOfExperience || 0, JSON.stringify(tutor.verification_documents || []), tutor.rating || null, tutor.rating_count || 0, tutor.price || null, tutor.bio || null, tutor.specialization || null]
         );
 
         const pk = insertRes.insertId;

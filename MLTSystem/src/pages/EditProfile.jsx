@@ -29,6 +29,7 @@ export default function EditProfile() {
     email: '',
     bio: '',
     specialization: '',
+    price: '',
     password: ''
   });
   const [error, setError] = useState('');
@@ -42,6 +43,7 @@ export default function EditProfile() {
         email: currentUser.email || '',
         bio: currentUser.role === 'tutor' ? (currentUser.profile.bio || '') : '',
         specialization: currentUser.role === 'tutor' ? (currentUser.profile.specialization || '') : '',
+        price: currentUser.role === 'tutor' ? (currentUser.profile.price ?? currentUser.price ?? '') : '',
         password: ''
       });
     }
@@ -65,6 +67,18 @@ export default function EditProfile() {
       setError('Password must be at least 6 characters long');
       setIsLoading(false);
       return;
+    }
+
+    // Validate price when provided
+    if (formData.price !== undefined && formData.price !== '') {
+      const p = parseFloat(formData.price);
+      if (Number.isNaN(p) || p < 0) {
+        setError('Price must be a non-negative number');
+        setIsLoading(false);
+        return;
+      }
+      // normalize to 2 decimal places
+      formData.price = p.toFixed(2);
     }
 
     try {
@@ -167,6 +181,17 @@ export default function EditProfile() {
                   rows={4}
                   placeholder="Tell students about your teaching style..."
                   value={formData.bio}
+                  onChange={handleChange}
+                  sx={{ mb: 2 }}
+                />
+                <TextField
+                  fullWidth
+                  id="price"
+                  label="Tutoring Rate (MYR per hour)"
+                  name="price"
+                  type="number"
+                  inputProps={{ step: '0.50', min: 0 }}
+                  value={formData.price}
                   onChange={handleChange}
                   sx={{ mb: 2 }}
                 />

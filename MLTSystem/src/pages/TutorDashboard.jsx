@@ -1,5 +1,5 @@
 // src/pages/TutorDashboard.jsx
-import React from "react";
+import React, { useEffect, useState } from "react";
 import {
   Box,
   Card,
@@ -23,9 +23,28 @@ import MessageIcon from "@mui/icons-material/Message";
 import ScheduleIcon from "@mui/icons-material/Schedule";
 import UploadIcon from "@mui/icons-material/Upload";
 import { useAuth } from "../context/AuthContext";
+import * as TutorsController from "../controllers/TutorsController";
+import StarIcon from '@mui/icons-material/Star';
 
 export default function TutorDashboard() {
   const { currentUser } = useAuth();
+  const [tutorInfo, setTutorInfo] = useState(null);
+
+  useEffect(() => {
+    let mounted = true;
+    const load = async () => {
+      try {
+        // Ensure tutors cache is loaded then pick current tutor by id
+        await TutorsController.fetchTutors();
+        const t = TutorsController.getTutorById(currentUser?.tutorId);
+        if (mounted) setTutorInfo(t || null);
+      } catch (e) {
+        console.error('Failed to load tutor info for dashboard', e);
+      }
+    };
+    if (currentUser && currentUser.role === 'tutor') load();
+    return () => { mounted = false; };
+  }, [currentUser]);
 
   return (
     <Box sx={{ bgcolor: "#f8f9fb", minHeight: "100vh", pt: 10 }}>
@@ -98,11 +117,20 @@ export default function TutorDashboard() {
             <Card>
               <CardContent>
                 <Typography variant="subtitle2" color="text.secondary">
-                  Unread Messages
+                  Rating
                 </Typography>
                 <Box display="flex" alignItems="center" justifyContent="space-between">
-                  <Typography variant="h5" fontWeight="bold">5</Typography>
-                  <ChatBubbleOutlineIcon color="warning" />
+                  <Box>
+                    <Box display="flex" alignItems="center" gap={1}>
+                      <StarIcon sx={{ color: 'warning.main' }} />
+                      <Typography variant="h6" fontWeight="bold">
+                        {tutorInfo && tutorInfo.rating != null ? Number(tutorInfo.rating).toFixed(1) : '—'}
+                      </Typography>
+                    </Box>
+                    <Typography variant="caption" color="text.secondary">
+                      {tutorInfo && (tutorInfo.ratingCount != null) ? `${tutorInfo.ratingCount} review${tutorInfo.ratingCount === 1 ? '' : 's'}` : 'No reviews yet'}
+                    </Typography>
+                  </Box>
                 </Box>
               </CardContent>
             </Card>

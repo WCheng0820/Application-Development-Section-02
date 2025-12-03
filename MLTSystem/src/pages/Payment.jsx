@@ -31,6 +31,32 @@ export default function Payment() {
   const { currentUser } = useAuth();
 
   const bookingData = location.state?.booking || null;
+  // compute price based on slot duration and tutor rate
+  const computeTotalAmount = (b) => {
+    if (!b) return 0;
+    const rate = parseFloat(b.rate) || 0;
+    const scheduleDate = b.scheduleDate || b.schedule_date || null;
+    const start = b.start_time || b.startTime || null;
+    const end = b.end_time || b.endTime || null;
+
+    const parseTimeToDate = (dateStr, timeStr) => {
+      if (!dateStr || !timeStr) return null;
+      const d = new Date(dateStr);
+      const m = (timeStr || '').trim().match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?$/);
+      if (!m || isNaN(d.getTime())) return null;
+      d.setHours(parseInt(m[1], 10), parseInt(m[2], 10), m[3] ? parseInt(m[3], 10) : 0, 0);
+      return d;
+    };
+
+    const s = parseTimeToDate(scheduleDate, start);
+    const e = parseTimeToDate(scheduleDate, end);
+    if (!s || !e) return +rate.toFixed(2);
+    const hours = Math.max(0, (e.getTime() - s.getTime()) / (1000 * 60 * 60));
+    const total = +(rate * hours).toFixed(2);
+    return isNaN(total) ? +rate.toFixed(2) : total;
+  };
+
+  const totalAmount = computeTotalAmount(bookingData);
   const [paymentMethod, setPaymentMethod] = useState("tng");
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState("");
@@ -67,6 +93,7 @@ export default function Payment() {
             studentId: currentUser.studentId || currentUser.id,
             subject: bookingData.subject || "Mandarin Tutoring",
             paymentMethod: paymentMethod,
+            amount: totalAmount,
           }),
         }
       );
@@ -187,7 +214,7 @@ export default function Payment() {
               <Box sx={{ display: "flex", justifyContent: "space-between", mb: 2 }}>
                 <Typography variant="body2">Session Rate (per hour)</Typography>
                 <Typography variant="body2" fontWeight="bold">
-                  RM{bookingData.rate}
+                  RM{Number(bookingData.rate).toFixed(2)}
                 </Typography>
               </Box>
               <Box sx={{ display: "flex", justifyContent: "space-between" }}>
@@ -195,7 +222,7 @@ export default function Payment() {
                   Total Amount
                 </Typography>
                 <Typography variant="h6" color="primary.main" fontWeight="bold">
-                  RM{bookingData.rate}
+                  RM{Number(totalAmount).toFixed(2)}
                 </Typography>
               </Box>
             </CardContent>
@@ -309,7 +336,7 @@ export default function Payment() {
               <Box sx={{ mb: 3 }}>
                 <Box sx={{ display: "flex", justifyContent: "space-between", mb: 1 }}>
                   <Typography variant="body2">Tutor Session</Typography>
-                  <Typography variant="body2">RM{bookingData.rate}</Typography>
+                  <Typography variant="body2">RM{Number(bookingData.rate).toFixed(2)}</Typography>
                 </Box>
                 <Box sx={{ display: "flex", justifyContent: "space-between", mb: 2 }}>
                   <Typography variant="body2">Platform Fee</Typography>
@@ -324,7 +351,7 @@ export default function Payment() {
                   Total Payment
                 </Typography>
                 <Typography variant="h5" fontWeight="bold" color="primary.main">
-                  RM{bookingData.rate}
+                  RM{Number(totalAmount).toFixed(2)}
                 </Typography>
               </Box>
 
@@ -349,7 +376,7 @@ export default function Payment() {
                     Processing...
                   </>
                 ) : (
-                  `Pay RM${bookingData.rate}`
+                  `Pay RM${Number(totalAmount).toFixed(2)}`
                 )}
               </Button>
 

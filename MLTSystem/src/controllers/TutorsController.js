@@ -28,7 +28,10 @@ export async function fetchTutors() {
           ratePerHour: parseFloat(tutor.price) || 0,
           bio: tutor.bio || "",
           subject: tutor.specialization || "",
-          rating: parseFloat(tutor.rating) || 0,
+          // Preserve null when backend doesn't provide a rating so the UI
+          // can show a placeholder (e.g. '—') instead of 0.0
+          rating: tutor.rating != null ? parseFloat(tutor.rating) : null,
+          ratingCount: tutor.rating_count != null ? parseInt(tutor.rating_count, 10) : 0,
           schedule: tutor.schedule || [],
           createdAt: tutor.created_at,
           updatedAt: tutor.updated_at,
@@ -118,5 +121,7 @@ export function getMaxExperience() {
  * Get a single tutor by ID
  */
 export function getTutorById(id) {
-  return tutorsCache.find((t) => t.id === id);
+  if (id == null) return null;
+  const sid = String(id);
+  return tutorsCache.find((t) => String(t.id) === sid);
 }

@@ -116,9 +116,9 @@ router.post('/register', async (req, res) => {
                 console.log(`✅ Admin record created: ${roleId}`);
             } else if (role === 'tutor') {
                 // Create tutor record for both pending and active tutors
+                // When a tutor registers, set initial rating to the maximum (5.00)
                 await query(
-                    `INSERT INTO tutor (tutorId, user_id, name, yearsOfExperience, verification_documents, bio, specialization)
-                     VALUES (?, ?, ?, ?, ?, ?, ?)`,
+                    'INSERT INTO tutor (tutorId, user_id, name, yearsOfExperience, verification_documents, bio, specialization, rating, rating_count, price) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
                     [
                         roleId,
                         userId,
@@ -126,14 +126,16 @@ router.post('/register', async (req, res) => {
                         yearsOfExperience || 0,
                         JSON.stringify(verificationDocuments || []),
                         bio || null,
-                        specialization || null
+                        specialization || null,
+                        5.00,
+                        1,
+                        null
                     ]
                 );
                 console.log(`✅ Tutor record created: ${roleId} (status: ${status})`);
             } else if (role === 'student') {
                 await query(
-                    `INSERT INTO student (studentId, user_id, yearOfStudy, programme, faculty)
-                     VALUES (?, ?, ?, ?, ?)`,
+                    'INSERT INTO student (studentId, user_id, yearOfStudy, programme, faculty) VALUES (?, ?, ?, ?, ?)',
                     [
                         roleId,
                         userId,
@@ -282,16 +284,16 @@ router.post('/login', async (req, res) => {
 
 // Helper function to get user with role-specific data
 async function getUserWithRoleData(userId, role) {
-        const users = await query(
-                'SELECT id, userId, username, email, role, status, nophone, created_at FROM users WHERE id = ?',
-                [userId]
-            );
+    const users = await query(
+        'SELECT id, userId, username, email, role, status, nophone, created_at FROM users WHERE id = ?',
+        [userId]
+    );
 
-        if (users.length === 0) {
-            return null;
-        }
+    if (users.length === 0) {
+        return null;
+    }
 
-        const user = users[0];
+    const user = users[0];
     let roleData = {};
 
     if (role === 'admin') {
@@ -305,20 +307,23 @@ async function getUserWithRoleData(userId, role) {
                 name: admins[0].name
             };
         }
-    } else if (role === 'tutor') {
-        // Include bio and specialization so frontend receives updated tutor profile fields
+        } else if (role === 'tutor') {
+        // Include bio, specialization, rating and price so frontend receives updated tutor profile fields
         const tutors = await query(
-            'SELECT tutorId, name, yearsOfExperience, verification_documents, bio, specialization FROM tutor WHERE user_id = ?',
+            'SELECT tutorId, name, yearsOfExperience, verification_documents, bio, specialization, rating, rating_count, price FROM tutor WHERE user_id = ?',
             [userId]
         );
         if (tutors.length > 0) {
-            roleData = {
+                roleData = {
                 tutorId: tutors[0].tutorId,
                 name: tutors[0].name,
                 yearsOfExperience: tutors[0].yearsOfExperience || 0,
                 verificationDocuments: tutors[0].verification_documents ? JSON.parse(tutors[0].verification_documents) : [],
                 bio: tutors[0].bio || null,
-                specialization: tutors[0].specialization || null
+                specialization: tutors[0].specialization || null,
+                rating: tutors[0].rating != null ? tutors[0].rating : null,
+                ratingCount: tutors[0].rating_count != null ? tutors[0].rating_count : 0,
+                price: tutors[0].price != null ? parseFloat(tutors[0].price) : null
             };
         }
     } else if (role === 'student') {
@@ -338,6 +343,7 @@ async function getUserWithRoleData(userId, role) {
 
     return {
         id: user.id,
+        userId: user.userId,
         username: user.username,
         email: user.email,
         role: user.role,
@@ -538,6 +544,11 @@ router.put('/profile', async (req, res) => {
             if (specialization !== undefined) {
                 updates.push(' specialization = ?');
                 tutorUpdateParams.push(specialization);
+            }
+
+            if (req.body.price !== undefined) {
+                updates.push(' price = ?');
+                tutorUpdateParams.push(req.body.price);
             }
 
             if (updates.length > 0) {

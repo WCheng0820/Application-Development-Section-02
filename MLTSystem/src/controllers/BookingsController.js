@@ -44,14 +44,22 @@ export async function fetchBookings(filters = {}) {
       const tutorEmail = r.tutor_email || r.tutorEmail || r.tutor_contact_email || r.tutor_contact || null;
       const tutorPhone = r.tutor_phone || r.tutorPhone || r.tutor_contact_phone || null;
 
+      // tutor and student account usernames (if provided by backend)
+      const tutorUsername = r.tutor_username || r.tutorUsername || null;
+      const studentUsername = r.student_username || r.studentUsername || null;
+
       return {
         id: r.bookingId,
         tutorId: r.tutorId,
         studentId: r.studentId,
         tutor: tutorName,
+        tutorUsername,
         student: studentName,
+        studentUsername,
         date,
         time,
+        // include per-booking rating so frontend can detect if booking was already rated
+        rating: (r.rating !== undefined && r.rating !== null) ? parseInt(r.rating, 10) : null,
         subject: r.subject,
         status: r.status ? (r.status.charAt(0).toUpperCase() + r.status.slice(1)) : 'Pending',
         studentContact: { email: studentEmail, phone: studentPhone },

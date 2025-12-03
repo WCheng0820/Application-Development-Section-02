@@ -36,6 +36,36 @@ export default function Bookings() {
     doCancel();
   };
 
+  const handleMarkCompleted = async (id) => {
+    // Optimistic UI update: set status to Completed immediately
+    setBookings(prev => prev.map(b => b.id === id ? { ...b, status: 'Completed' } : b));
+    try {
+      await BookingsController.updateBooking(id, { status: 'completed' });
+      const refreshed = await BookingsController.fetchBookings({ upcoming: true });
+      setBookings(refreshed || []);
+      return { success: true };
+    } catch (err) {
+      console.error('Mark completed failed', err);
+      // Revert optimistic change if request failed by refetching
+      const refreshed = await BookingsController.fetchBookings({ upcoming: true });
+      setBookings(refreshed || []);
+      throw err;
+    }
+  };
+
+  const handleRate = (id, rating) => {
+    const doRate = async () => {
+      try {
+        await BookingsController.updateBooking(id, { rating });
+        const refreshed = await BookingsController.fetchBookings({ upcoming: true });
+        setBookings(refreshed || []);
+      } catch (err) {
+        console.error('Rate failed', err);
+      }
+    };
+    doRate();
+  };
+
   return (
     <Container maxWidth="md" sx={{ mt: 12, mb: 6 }}>
       <Typography variant="h5" fontWeight="bold" gutterBottom>
@@ -52,29 +82,51 @@ export default function Bookings() {
       ) : (
         <Grid container spacing={3}>
           {bookings.map((booking) => {
-            const isTutor = currentUser && (currentUser.role || '').toString().toLowerCase() === 'tutor';
-            const heading = isTutor ? booking.student : booking.tutor;
+            const role = (currentUser && (currentUser.role || '').toString().toLowerCase()) || '';
+            const isTutor = role === 'tutor';
+            const isAdmin = role === 'admin';
+            let heading = '';
+            if (isAdmin) {
+              // Admin: show booking id in the card title (details shown inside card)
+              heading = `Booking #${booking.id}`;
+            } else {
+              // Tutors should see the student's account username (if available) instead of raw id
+              heading = isTutor ? (booking.studentUsername || booking.student) : booking.tutor;
+            }
             return (
-              <Grid item xs={12} sm={6} md={4} key={booking.id}>
-                <Card
-                  sx={{
-                    borderRadius: 3,
-                    boxShadow: 3,
-                    "&:hover": { boxShadow: 6 },
-                    transition: "0.3s",
-                    height: '100%',
-                    display: 'flex',
-                    flexDirection: 'column',
-                  }}
-                >
-                  <BookingCards
-                    tutor={heading}
-                    date={booking.date}
-                    time={booking.time}
-                    status={booking.status}
-                    id={booking.id}
-                    onCancel={handleCancel}
-                  />
+              <Grid item xs={12} sm={6} md={6} key={booking.id}>
+                  <Card
+                    sx={{
+                      borderRadius: 3,
+                      boxShadow: 3,
+                      "&:hover": { boxShadow: 6 },
+                      transition: "0.3s",
+                      height: '100%',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      padding: 1.5,
+                    }}
+                  >
+                      <BookingCards
+                      tutor={heading}
+                      date={booking.date}
+                      time={booking.time}
+                      rating={booking.rating}
+                      status={booking.status}
+                      id={booking.id}
+                      onCancel={handleCancel}
+                      onMarkCompleted={handleMarkCompleted}
+                      onRate={handleRate}
+                      studentContact={booking.studentContact}
+                      tutorContact={booking.tutorContact}
+                      studentUsername={booking.studentUsername}
+                      studentName={booking.student}
+                      tutorUsername={booking.tutorUsername}
+                      tutorNameOriginal={booking.tutor}
+                      studentNameOriginal={booking.student}
+                        tutorId={booking.tutorId}
+                        studentId={booking.studentId}
+                    />
                 </Card>
               </Grid>
             );

@@ -23,7 +23,7 @@ import TutorCard from "../components/TutorCard";
 import * as TutorsController from "../controllers/TutorsController";
 import * as ScheduleController from "../controllers/ScheduleController";
 import { useAuth } from "../context/AuthContext";
-import { formatMalaysiaDate } from "../utils/dateUtils";
+import { formatMalaysiaDate, formatMalaysiaTime } from "../utils/dateUtils";
 
 export default function FindTutors() {
   const navigate = useNavigate();
@@ -108,7 +108,7 @@ export default function FindTutors() {
     setIsBooking(true);
 
     try {
-      const studentId = currentUser.studentId || currentUser.id;
+    const studentId = currentUser.studentId || `s${String(currentUser.id).padStart(6, '0')}`;
       await ScheduleController.reserveSlot(
         tutor.id,
         selectedSlot.schedule_id,
@@ -119,6 +119,11 @@ export default function FindTutors() {
         tutorId: tutor.id,
         tutorName: tutor.name,
         scheduleId: selectedSlot.schedule_id,
+        // keep a machine-readable schedule date and raw times so the payment page
+        // can compute duration/total price accurately
+        scheduleDate: selectedSlot.schedule_date,
+        start_time: selectedSlot.start_time,
+        end_time: selectedSlot.end_time,
         date: formatMalaysiaDate(selectedSlot.schedule_date, {
           weekday: "short",
           year: "numeric",
@@ -159,7 +164,9 @@ export default function FindTutors() {
       </Box>
 
       {/* Search + Filters */}
-      <Paper elevation={1} sx={{ p: 3, mb: 4 }}>
+      {/* Hide search/filter dash for tutors (they don't need to find other tutors) */}
+      {currentUser?.role?.toString().toLowerCase() !== 'tutor' && (
+        <Paper elevation={1} sx={{ p: 3, mb: 4 }}>
         {/* Search Bar */}
         <Box sx={{ mb: 3 }}>
           <TextField
@@ -288,6 +295,7 @@ export default function FindTutors() {
           </Box>
         </Collapse>
       </Paper>
+      )}
 
       {/* Results */}
       <Box sx={{ mb: 4 }}>

@@ -44,6 +44,7 @@ const query = async (sql, params) => {
 };
 
 module.exports = {
-    query
+    query,
+    pool
 };
 

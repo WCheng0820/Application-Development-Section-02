@@ -1,4 +1,3 @@
-# Remove Bio and Specialization for Tutor Registration
 
 ## Tasks
 - [x] Remove bio and specialization input fields from tutor section in Register.jsx

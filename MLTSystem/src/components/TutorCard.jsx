@@ -113,12 +113,12 @@ export default function TutorCard({ tutor, onBook }) {
 
           {/* Rating and Reviews */}
           <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 2 }}>
-            <Rating value={tutor.rating} readOnly size="small" precision={0.1} />
+            <Rating value={Number(tutor.rating) || 0} readOnly size="small" precision={0.1} />
             <Typography variant="body2" fontWeight="bold">
-              {tutor.rating}
+              {Number(tutor.rating || 0).toFixed(1)}
             </Typography>
             <Typography variant="body2" color="text.secondary">
-              ({tutor.reviews} reviews)
+              ({(tutor.ratingCount || 0)} review{(tutor.ratingCount || 0) === 1 ? '' : 's'})
             </Typography>
           </Box>
 
@@ -241,12 +241,12 @@ export default function TutorCard({ tutor, onBook }) {
               </Typography>
             </Box>
             <Box sx={{ display: "flex", alignItems: "center", gap: 1, ml: 3 }}>
-              <Rating value={tutor.rating} readOnly precision={0.1} />
+              <Rating value={Number(tutor.rating) || 0} readOnly precision={0.1} />
               <Typography variant="body2" fontWeight="bold">
-                {tutor.rating}/5
+                {Number(tutor.rating || 0).toFixed(1)}/5
               </Typography>
               <Typography variant="body2" color="text.secondary">
-                ({tutor.reviews} reviews)
+                ({(tutor.ratingCount || 0)} review{(tutor.ratingCount || 0) === 1 ? '' : 's'})
               </Typography>
             </Box>
           </Box>

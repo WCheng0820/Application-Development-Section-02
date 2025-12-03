@@ -47,6 +47,19 @@ const Navbar = () => {
     navigate('/edit-profile');
   };
 
+  // Compute display name and avatar initial for current user (safe fallbacks)
+  let displayName = 'User';
+  let avatarInitial = '?';
+  if (currentUser) {
+    const profile = currentUser.profile || {};
+    const firstName = profile.firstName || (profile.fullName ? profile.fullName.split(' ')[0] : '') || '';
+    const lastName = profile.lastName || (profile.fullName ? profile.fullName.split(' ').slice(1).join(' ') : '') || '';
+    const username = currentUser.username || '';
+    const email = currentUser.email || '';
+    displayName = (firstName || lastName) ? `${firstName} ${lastName}`.trim() : (username || email || 'User');
+    avatarInitial = (firstName && firstName[0]) || (username && username[0]) || (email && email[0]) || '?';
+  }
+
   // Don't show navbar on login/register pages
   if (location.pathname === '/login' || location.pathname === '/register') {
     return null;
@@ -66,22 +79,26 @@ const Navbar = () => {
 
         {isAuthenticated && (
           <Box>
-            {navItems.map((item) => (
-              <Button
-                key={item.path}
-                component={Link}
-                to={item.path}
-                sx={{
-                  mx: 1,
-                  color:
-                    location.pathname === item.path ? "black" : "text.secondary",
-                  fontWeight:
-                    location.pathname === item.path ? "bold" : "normal",
-                }}
-              >
-                {item.label}
-              </Button>
-            ))}
+            {navItems.map((item) => {
+              // Hide "Find Tutors" nav item for tutors
+              if (item.path === '/find-tutors' && currentUser?.role?.toString().toLowerCase() === 'tutor') {
+                return null;
+              }
+              return (
+                <Button
+                  key={item.path}
+                  component={Link}
+                  to={item.path}
+                  sx={{
+                    mx: 1,
+                    color: location.pathname === item.path ? "black" : "text.secondary",
+                    fontWeight: location.pathname === item.path ? "bold" : "normal",
+                  }}
+                >
+                  {item.label}
+                </Button>
+              );
+            })}
             {/* Top-level Manage Schedule for tutors */}
             {currentUser?.role === 'tutor' && (
               <Button
@@ -110,13 +127,9 @@ const Navbar = () => {
               onClick={handleMenu}
               color="inherit"
             >
-              <Avatar sx={{ bgcolor: "grey.700" }}>
-                {currentUser.profile.firstName?.[0]}{currentUser.profile.lastName?.[0]}
-              </Avatar>
+              <Avatar sx={{ bgcolor: "grey.700" }}>{avatarInitial}</Avatar>
             </IconButton>
-            <Typography variant="body1">
-              {currentUser.profile.firstName} {currentUser.profile.lastName}
-            </Typography>
+            <Typography variant="body1">{displayName}</Typography>
             <Menu
               id="menu-appbar"
               anchorEl={anchorEl}

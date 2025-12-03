@@ -70,6 +70,7 @@ const initDatabase = async () => {
                 yearsOfExperience INT DEFAULT 0,
                 verification_documents JSON,
                 rating DECIMAL(3,2) DEFAULT 0,
+                rating_count INT DEFAULT 0,
                 price DECIMAL(10,2) DEFAULT 0,
                 bio TEXT,
                 specialization VARCHAR(255),
@@ -138,7 +139,7 @@ const initDatabase = async () => {
         `);
         console.log('✅ Sessions table created');
 
-        // Create booking table
+        // Create booking table (include 'completed' status and per-booking rating)
         await connection.query(`
             CREATE TABLE IF NOT EXISTS booking (
                 bookingId INT AUTO_INCREMENT PRIMARY KEY,
@@ -148,7 +149,8 @@ const initDatabase = async () => {
                 start_time TIME NOT NULL,
                 end_time TIME NOT NULL,
                 subject VARCHAR(255),
-                status ENUM('confirmed','pending','cancelled') DEFAULT 'pending',
+                status ENUM('confirmed','pending','cancelled','completed') DEFAULT 'pending',
+                rating TINYINT NULL,
                 notes TEXT,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,

@@ -72,6 +72,14 @@ try {
     console.warn('Could not load schedule routes:', err.message);
 }
 
+// Add payments route (for handling cancellations / webhooks)
+try {
+    const paymentsRoutes = require('./routes/payments');
+    app.use('/api/payments', paymentsRoutes);
+} catch (err) {
+    console.warn('Could not load payments routes:', err.message);
+}
+
 // Error handling middleware
 app.use((err, req, res, next) => {
     console.error('Error:', err);

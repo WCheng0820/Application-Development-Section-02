@@ -23,6 +23,7 @@ async function seed() {
                 yearsOfExperience: 5,
                 verification_documents: JSON.stringify([]),
                 rating: 4.8,
+                rating_count: 1,
                 price: 30.00,
                 specialization: 'Conversational Mandarin',
                 bio: 'I specialize in conversational Mandarin and help students build confidence in real-world communication. With 5 years of teaching experience, I make learning fun and engaging.',
@@ -38,10 +39,11 @@ async function seed() {
                 yearsOfExperience: 8,
                 verification_documents: JSON.stringify([]),
                 rating: 4.9,
+                rating_count: 1,
                 price: 35.00,
                 specialization: 'HSK preparation and Business Mandarin',
                 bio: 'Experienced in teaching both HSK preparation and business Mandarin. I focus on grammar and pronunciation to help students achieve fluency.',
-                nophone: '012345678'
+                nophone: '012345679'
             },
             {
                 name: 'Ms. Liu Hong',
@@ -53,10 +55,11 @@ async function seed() {
                 yearsOfExperience: 6,
                 verification_documents: JSON.stringify([]),
                 rating: 4.7,
+                rating_count: 1,
                 price: 28.00,
                 specialization: 'Cultural Mandarin',
                 bio: 'My teaching style blends language learning with cultural immersion for deeper understanding.',
-                nophone: '012345678'
+                nophone: '012345680'
             }
         ];
 
@@ -104,14 +107,15 @@ async function seed() {
 
                 if (tutorExists.length === 0) {
                     const tutorRes = await query(
-                        `INSERT INTO tutor (user_id, name, yearsOfExperience, verification_documents, rating, price, specialization, bio)
-                         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+                        `INSERT INTO tutor (user_id, name, yearsOfExperience, verification_documents, rating, rating_count, price, specialization, bio)
+                         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
                         [
                             userId,
                             t.name,
                             t.yearsOfExperience,
                             t.verification_documents,
                             t.rating,
+                            t.rating_count || 0,
                             t.price,
                             t.specialization,
                             t.bio
@@ -152,6 +156,7 @@ async function seed() {
                 tutorIndex: 0,
                 studentName: 'John Smith',
                 studentEmail: 'john.smith@email.com',
+                nophone: '019111222',
                 booking_date: '2025-11-28',
                 start_time: '10:00:00',
                 end_time: '11:00:00',
@@ -163,6 +168,7 @@ async function seed() {
                 tutorIndex: 1,
                 studentName: 'Sarah Johnson',
                 studentEmail: 'sarah.j@email.com',
+                nophone: '019333444',
                 booking_date: '2025-11-29',
                 start_time: '14:00:00',
                 end_time: '15:00:00',
@@ -193,8 +199,8 @@ async function seed() {
                 } else {
                     const res = await query(
                         `INSERT INTO users (username, email, password, role, status, nophone)
-                         VALUES (?, ?, ?, 'student', 'active', NULL)`,
-                        [username, b.studentEmail, hashPassword('seeded')]
+                         VALUES (?, ?, ?, 'student', 'active', ?)`,
+                        [username, b.studentEmail, hashPassword('seeded'), b.nophone || null]
                     );
 
                     studentUserId = res.insertId;

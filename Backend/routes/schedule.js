@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { query } = require('../config/database');
+const { query, pool } = require('../config/database');
 
 // Get tutor's schedule
 router.get('/:tutorId', async (req, res, next) => {
@@ -18,7 +18,7 @@ router.get('/:tutorId', async (req, res, next) => {
 
         // Get all schedules for this tutor, ordered by date and start time
         const schedules = await query(
-            'SELECT schedule_id, tutorId, schedule_date, start_time, end_time, created_at, updated_at FROM tutor_schedule WHERE tutorId = ? ORDER BY schedule_date DESC, start_time ASC',
+            'SELECT schedule_id, tutorId, schedule_date, start_time, end_time, status, reserved_by, reserved_at, booked_at, created_at, updated_at FROM tutor_schedule WHERE tutorId = ? ORDER BY schedule_date DESC, start_time ASC',
             [tutorId]
         );
 
@@ -261,31 +261,44 @@ router.post('/:tutorId/:scheduleId/book', async (req, res, next) => {
         if (!studentId) {
             return res.status(400).json({ success: false, error: 'studentId is required' });
         }
+        // Use a transaction so the schedule update and booking insert are atomic.
+        const conn = await pool.getConnection();
+        try {
+            await conn.beginTransaction();
 
-        // Only allow booking if currently reserved by the same student
-        const updateRes = await query(
-            'UPDATE tutor_schedule SET status = ?, booked_at = NOW() WHERE schedule_id = ? AND tutorId = ? AND reserved_by = ? AND status = ?',
-            ['booked', scheduleId, tutorId, studentId, 'reserved']
-        );
+            const [updateRes] = await conn.execute(
+                'UPDATE tutor_schedule SET status = ?, booked_at = NOW() WHERE schedule_id = ? AND tutorId = ? AND reserved_by = ? AND status = ?',
+                ['booked', scheduleId, tutorId, studentId, 'reserved']
+            );
 
-        if (!updateRes || updateRes.affectedRows === 0) {
-            return res.status(409).json({ success: false, error: 'Slot cannot be booked - not reserved by this student' });
+            if (!updateRes || updateRes.affectedRows === 0) {
+                await conn.rollback();
+                conn.release();
+                return res.status(409).json({ success: false, error: 'Slot cannot be booked - not reserved by this student' });
+            }
+
+            const [rows] = await conn.execute('SELECT schedule_date, start_time, end_time FROM tutor_schedule WHERE schedule_id = ?', [scheduleId]);
+            if (!rows || rows.length === 0) {
+                await conn.rollback();
+                conn.release();
+                return res.status(404).json({ success: false, error: 'Schedule not found after update' });
+            }
+            const slot = rows[0];
+
+            const [bookingRes] = await conn.execute(
+                'INSERT INTO booking (tutorId, studentId, booking_date, start_time, end_time, subject, status, notes) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+                [tutorId, studentId, slot.schedule_date, slot.start_time, slot.end_time, subject || null, 'confirmed', `payment:${paymentMethod || 'unknown'}`]
+            );
+
+            await conn.commit();
+            conn.release();
+
+            res.status(201).json({ success: true, message: 'Slot booked', data: { bookingId: bookingRes.insertId } });
+        } catch (err) {
+            try { await conn.rollback(); } catch (e) {}
+            conn.release();
+            throw err;
         }
-
-        // Read schedule info to populate booking
-        const rows = await query('SELECT schedule_date, start_time, end_time FROM tutor_schedule WHERE schedule_id = ?', [scheduleId]);
-        if (!rows || rows.length === 0) {
-            return res.status(404).json({ success: false, error: 'Schedule not found after update' });
-        }
-        const slot = rows[0];
-
-        // Create booking record (status 'confirmed')
-        const bookingRes = await query(
-            'INSERT INTO booking (tutorId, studentId, booking_date, start_time, end_time, subject, status, notes) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-            [tutorId, studentId, slot.schedule_date, slot.start_time, slot.end_time, subject || null, 'confirmed', `payment:${paymentMethod || 'unknown'}`]
-        );
-
-        res.status(201).json({ success: true, message: 'Slot booked', data: { bookingId: bookingRes.insertId } });
     } catch (error) {
         console.error('Error booking slot:', error);
         res.status(500).json({ success: false, error: error.message || 'Failed to book slot' });
