@@ -162,6 +162,54 @@ const initDatabase = async () => {
         `);
         console.log('✅ Booking table created');
 
+        // Create message table for messaging between users
+        await connection.query(`
+            CREATE TABLE IF NOT EXISTS message (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                bookingId INT,
+                senderId VARCHAR(255) NOT NULL,
+                recipientId VARCHAR(255) NOT NULL,
+                content TEXT,
+                attachment_name VARCHAR(255),
+                attachment_type VARCHAR(100),
+                attachment_size INT,
+                attachment_data LONGBLOB,
+                status ENUM('sent','delivered','read') DEFAULT 'sent',
+                readBy_json JSON,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                FOREIGN KEY (bookingId) REFERENCES booking(bookingId) ON DELETE CASCADE,
+                INDEX idx_bookingId (bookingId),
+                INDEX idx_senderId (senderId),
+                INDEX idx_recipientId (recipientId),
+                INDEX idx_created_at (created_at)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        `);
+        console.log('✅ Message table created');
+
+        // Create notification table for message notifications
+        await connection.query(`
+            CREATE TABLE IF NOT EXISTS notification (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                recipientId VARCHAR(255) NOT NULL,
+                senderId VARCHAR(255) NOT NULL,
+                bookingId INT,
+                messageId INT,
+                text TEXT,
+                type ENUM('message','booking','material') DEFAULT 'message',
+                is_read BOOLEAN DEFAULT FALSE,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                FOREIGN KEY (bookingId) REFERENCES booking(bookingId) ON DELETE CASCADE,
+                FOREIGN KEY (messageId) REFERENCES message(id) ON DELETE CASCADE,
+                INDEX idx_recipientId (recipientId),
+                INDEX idx_senderId (senderId),
+                INDEX idx_is_read (is_read),
+                INDEX idx_created_at (created_at)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        `);
+        console.log('✅ Notification table created');
+
         // Insert default admin user if not exists
         const [existingAdmin] = await connection.query(
             'SELECT id FROM users WHERE email = ? OR username = ?',

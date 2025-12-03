@@ -8,17 +8,20 @@ import {
   Menu,
   MenuItem,
   IconButton,
+  Badge,
 } from "@mui/material";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import AccountCircle from "@mui/icons-material/AccountCircle";
+import * as MessagesController from "../controllers/MessagesController";
 
 const Navbar = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { currentUser, logout, isAuthenticated } = useAuth();
   const [anchorEl, setAnchorEl] = useState(null);
+  const [unreadCount, setUnreadCount] = useState(0);
 
   const navItems = [
     { label: "Dashboard", path: "/" },
@@ -46,6 +49,33 @@ const Navbar = () => {
     handleClose();
     navigate('/edit-profile');
   };
+
+  // Fetch unread count on mount and when currentUser changes
+  useEffect(() => {
+    if (currentUser?.id && location.pathname !== '/messages') {
+      refreshUnreadCount();
+      // Poll every 3 seconds for new messages
+      const interval = setInterval(refreshUnreadCount, 3000);
+      return () => clearInterval(interval);
+    }
+  }, [currentUser?.id, location.pathname]);
+
+  // Reset unread count when navigating to messages
+  useEffect(() => {
+    if (location.pathname === '/messages') {
+      setUnreadCount(0);
+    }
+  }, [location.pathname]);
+
+  async function refreshUnreadCount() {
+    if (!currentUser?.id) return;
+    try {
+      const count = await MessagesController.getUnreadCount(currentUser.id);
+      setUnreadCount(count);
+    } catch (err) {
+      console.error('Error fetching unread count:', err);
+    }
+  }
 
   // Compute display name and avatar initial for current user (safe fallbacks)
   let displayName = 'User';
@@ -83,6 +113,26 @@ const Navbar = () => {
               // Hide "Find Tutors" nav item for tutors
               if (item.path === '/find-tutors' && currentUser?.role?.toString().toLowerCase() === 'tutor') {
                 return null;
+              }
+              // Add badge to Messages button
+              if (item.path === '/messages') {
+                return (
+                  <Button
+                    key={item.path}
+                    component={Link}
+                    to={item.path}
+                    sx={{
+                      mx: 1,
+                      color: location.pathname === item.path ? "black" : "text.secondary",
+                      fontWeight: location.pathname === item.path ? "bold" : "normal",
+                      position: 'relative'
+                    }}
+                  >
+                    <Badge badgeContent={unreadCount} color="error">
+                      {item.label}
+                    </Badge>
+                  </Button>
+                );
               }
               return (
                 <Button

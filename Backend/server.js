@@ -80,6 +80,14 @@ try {
     console.warn('Could not load payments routes:', err.message);
 }
 
+// Add messages and notifications routes
+try {
+    const messagesRoutes = require('./routes/messages');
+    app.use('/api/messages', messagesRoutes);
+} catch (err) {
+    console.warn('Could not load messages routes:', err.message);
+}
+
 // Error handling middleware
 app.use((err, req, res, next) => {
     console.error('Error:', err);
