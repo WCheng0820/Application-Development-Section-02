@@ -1,5 +1,5 @@
 // src/pages/AdminDashboard.jsx
-import React from "react";
+import React, { useState, useEffect } from "react";
 import {
   Box,
   Card,
@@ -12,6 +12,14 @@ import {
   Typography,
   Chip,
   Button,
+  Alert,
+  Divider,
+  Paper,
+  IconButton,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
 } from "@mui/material";
 import PeopleIcon from "@mui/icons-material/People";
 import AccessTimeIcon from "@mui/icons-material/AccessTime";
@@ -22,10 +30,121 @@ import FolderIcon from "@mui/icons-material/Folder";
 import MessageIcon from "@mui/icons-material/Message";
 import ScheduleIcon from "@mui/icons-material/Schedule";
 import SettingsIcon from "@mui/icons-material/Settings";
+import PendingActionsIcon from "@mui/icons-material/PendingActions";
+import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutline";
+import CancelIcon from "@mui/icons-material/Cancel";
+import DescriptionIcon from "@mui/icons-material/Description";
 import { useAuth } from "../context/AuthContext";
 
 export default function AdminDashboard() {
   const { currentUser } = useAuth();
+  const [pendingTutors, setPendingTutors] = useState([]);
+  const [selectedTutor, setSelectedTutor] = useState(null);
+  const [viewDocumentsDialog, setViewDocumentsDialog] = useState(false);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    fetchPendingUsers();
+  }, []);
+
+  const fetchPendingUsers = async () => {
+    try {
+      const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+
+      const response = await fetch(`${API_URL}/api/auth/pending-tutors`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+
+      const result = await response.json();
+
+      if (response.ok && result.success) {
+        setPendingTutors(result.tutors || []);
+      } else {
+        console.error('Error fetching pending users:', result.error);
+        setPendingTutors([]);
+      }
+    } catch (error) {
+      console.error('Error fetching pending users:', error);
+      setPendingTutors([]);
+    }
+  };
+
+  const handleApprove = async (tutorId) => {
+    setLoading(true);
+    try {
+      const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+
+      const response = await fetch(`${API_URL}/api/auth/approve-tutor`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ tutorId })
+      });
+
+      const result = await response.json();
+
+      if (response.ok && result.success) {
+        // Refresh the list
+        await fetchPendingUsers();
+        alert('Tutor approved successfully!');
+      } else {
+        alert(`Error approving tutor: ${result.error || 'Unknown error'}`);
+      }
+    } catch (error) {
+      console.error('Error approving tutor:', error);
+      alert('Error approving tutor. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleReject = async (tutorId) => {
+    if (!window.confirm('Are you sure you want to reject this tutor registration?')) {
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+
+      const response = await fetch(`${API_URL}/api/auth/reject-tutor`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ tutorId })
+      });
+
+      const result = await response.json();
+
+      if (response.ok && result.success) {
+        // Refresh the list
+        await fetchPendingUsers();
+        alert('Tutor rejected successfully!');
+      } else {
+        alert(`Error rejecting tutor: ${result.error || 'Unknown error'}`);
+      }
+    } catch (error) {
+      console.error('Error rejecting tutor:', error);
+      alert('Error rejecting tutor. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleViewDocuments = (tutor) => {
+    setSelectedTutor(tutor);
+    setViewDocumentsDialog(true);
+  };
+
+  const handleCloseDocumentsDialog = () => {
+    setViewDocumentsDialog(false);
+    setSelectedTutor(null);
+  };
 
   return (
     <Box sx={{ bgcolor: "#f8f9fb", minHeight: "100vh", pt: 10 }}>
@@ -33,7 +152,7 @@ export default function AdminDashboard() {
       <Box sx={{ p: 4 }}>
         <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
           <Typography variant="h5" sx={{ fontWeight: "bold", mr: 2 }}>
-            Welcome back, {currentUser?.profile.firstName} {currentUser?.profile.lastName}!
+            Welcome back, {currentUser?.username}!
           </Typography>
           <Chip
             label="Admin"
@@ -98,16 +217,151 @@ export default function AdminDashboard() {
             <Card>
               <CardContent>
                 <Typography variant="subtitle2" color="text.secondary">
-                  Pending Reports
+                  Pending Tutor Approvals
                 </Typography>
                 <Box display="flex" alignItems="center" justifyContent="space-between">
-                  <Typography variant="h5" fontWeight="bold">7</Typography>
-                  <ChatBubbleOutlineIcon color="warning" />
+                  <Typography variant="h5" fontWeight="bold">{pendingTutors.length}</Typography>
+                  <PendingActionsIcon color="warning" />
                 </Box>
               </CardContent>
             </Card>
           </Grid>
         </Grid>
+
+        {/* Pending Tutor Approvals Section */}
+        {pendingTutors.length > 0 && (
+          <Card sx={{ mb: 4 }}>
+            <CardContent>
+              <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                <PendingActionsIcon color="warning" sx={{ mr: 1 }} />
+                <Typography variant="h6">
+                  Pending Tutor Approvals ({pendingTutors.length})
+                </Typography>
+              </Box>
+              <Alert severity="info" sx={{ mb: 2 }}>
+                {pendingTutors.length} tutor{pendingTutors.length > 1 ? 's' : ''} {pendingTutors.length > 1 ? 'are' : 'is'} waiting for approval
+              </Alert>
+              {pendingTutors.map((tutor) => (
+                <Paper
+                  key={tutor.tutorId}
+                  elevation={1}
+                  sx={{ p: 2, mb: 2, bgcolor: '#f9fafb' }}
+                >
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                    <Box sx={{ flex: 1 }}>
+                      <Typography variant="subtitle1" fontWeight="bold">
+                        {tutor.name || 'Unknown Tutor'}
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        ID: {tutor.tutorId}
+                      </Typography>
+                      {tutor.availability && (
+                        <Typography variant="body2" sx={{ mt: 1 }}>
+                          Availability: {tutor.availability}
+                        </Typography>
+                      )}
+                      {tutor.yearsOfExperience && (
+                        <Typography variant="body2" sx={{ mt: 0.5 }}>
+                          Experience: {tutor.yearsOfExperience} year{tutor.yearsOfExperience > 1 ? 's' : ''}
+                        </Typography>
+                      )}
+                      <Box sx={{ mt: 1, display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <Chip
+                          label={`${tutor.verificationDocuments?.length || 0} document(s) uploaded`}
+                          size="small"
+                          icon={<DescriptionIcon />}
+                        />
+                        {tutor.verificationDocuments && tutor.verificationDocuments.length > 0 && (
+                          <Button
+                            size="small"
+                            variant="outlined"
+                            onClick={() => handleViewDocuments(tutor)}
+                          >
+                            View Documents
+                          </Button>
+                        )}
+                      </Box>
+                    </Box>
+                    <Box sx={{ display: 'flex', gap: 1 }}>
+                      <Button
+                        variant="contained"
+                        color="success"
+                        startIcon={<CheckCircleOutlineIcon />}
+                        onClick={() => handleApprove(tutor.tutorId)}
+                        disabled={loading}
+                      >
+                        Approve
+                      </Button>
+                      <Button
+                        variant="outlined"
+                        color="error"
+                        startIcon={<CancelIcon />}
+                        onClick={() => handleReject(tutor.tutorId)}
+                        disabled={loading}
+                      >
+                        Reject
+                      </Button>
+                    </Box>
+                  </Box>
+                </Paper>
+              ))}
+            </CardContent>
+          </Card>
+        )}
+
+        {/* View Documents Dialog */}
+        <Dialog
+          open={viewDocumentsDialog}
+          onClose={handleCloseDocumentsDialog}
+          maxWidth="md"
+          fullWidth
+        >
+          <DialogTitle>
+            Verification Documents - {selectedTutor?.name || 'Unknown Tutor'}
+          </DialogTitle>
+          <DialogContent>
+            {selectedTutor?.verificationDocuments && selectedTutor.verificationDocuments.length > 0 ? (
+              <Box>
+                {selectedTutor.verificationDocuments.map((doc, index) => (
+                  <Paper key={index} sx={{ p: 2, mb: 2 }}>
+                    <Typography variant="subtitle2" fontWeight="bold">
+                      {doc.name}
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      Type: {doc.type} | Size: {(doc.size / 1024).toFixed(2)} KB
+                    </Typography>
+                    {doc.data && (
+                      <Box sx={{ mt: 2 }}>
+                        {doc.type.startsWith('image/') ? (
+                          <img
+                            src={doc.data}
+                            alt={doc.name}
+                            style={{ maxWidth: '100%', height: 'auto', borderRadius: 4 }}
+                          />
+                        ) : (
+                          <Button
+                            variant="outlined"
+                            href={doc.data}
+                            target="_blank"
+                            download={doc.name}
+                            startIcon={<DescriptionIcon />}
+                          >
+                            Download {doc.name}
+                          </Button>
+                        )}
+                      </Box>
+                    )}
+                  </Paper>
+                ))}
+              </Box>
+            ) : (
+              <Typography>No documents available</Typography>
+            )}
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={handleCloseDocumentsDialog}>Close</Button>
+          </DialogActions>
+        </Dialog>
 
         {/* Bottom Sections */}
         <Grid container spacing={3}>

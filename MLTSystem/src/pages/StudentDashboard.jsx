@@ -32,7 +32,7 @@ export default function StudentDashboard() {
       <Box sx={{ p: 4 }}>
         <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
           <Typography variant="h5" sx={{ fontWeight: "bold", mr: 2 }}>
-            Welcome back, {currentUser?.profile.firstName} {currentUser?.profile.lastName}!
+            Welcome back, {currentUser?.username}!
           </Typography>
           <Chip
             label="Student"

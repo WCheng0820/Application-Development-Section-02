@@ -20,14 +20,10 @@ import SearchIcon from "@mui/icons-material/Search";
 import FolderIcon from "@mui/icons-material/Folder";
 import MessageIcon from "@mui/icons-material/Message";
 import ScheduleIcon from "@mui/icons-material/Schedule";
-import GridLayout from "react-grid-layout";
-
-
 import { useAuth } from "../context/AuthContext";
 
 export default function Dashboard() {
   const { currentUser } = useAuth();
-
 
   return (
     <Box sx={{ bgcolor: "#f8f9fb", minHeight: "100vh", pt: 10 }}>
@@ -35,7 +31,7 @@ export default function Dashboard() {
       <Box sx={{ p: 4 }}>
         <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
           <Typography variant="h5" sx={{ fontWeight: "bold", mr: 2 }}>
-            Welcome back, {currentUser?.profile.firstName} {currentUser?.profile.lastName}!
+            Welcome back, {currentUser?.username}!
           </Typography>
           <Chip
             label={currentUser?.role.charAt(0).toUpperCase() + currentUser?.role.slice(1)}

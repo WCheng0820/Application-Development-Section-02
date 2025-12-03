@@ -8,48 +8,17 @@ import {
   Menu,
   MenuItem,
   IconButton,
-  Badge,
 } from "@mui/material";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import AccountCircle from "@mui/icons-material/AccountCircle";
-import * as MessagesController from "../controllers/MessagesController";
 
 const Navbar = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { currentUser, logout, isAuthenticated } = useAuth();
   const [anchorEl, setAnchorEl] = useState(null);
-  const [unreadCount, setUnreadCount] = useState(0);
-
-  // Fetch unread message count when user logs in or navigates
-  useEffect(() => {
-    if (currentUser?.id) {
-      fetchUnreadCount();
-      // Refresh unread count every 3 seconds
-      const interval = setInterval(fetchUnreadCount, 3000);
-      return () => clearInterval(interval);
-    }
-  }, [currentUser?.id]);
-
-  // Reset unread count when navigating to Messages page
-  useEffect(() => {
-    if (location.pathname === "/messages") {
-      setUnreadCount(0);
-    }
-  }, [location.pathname]);
-
-  async function fetchUnreadCount() {
-    if (!currentUser?.id) return;
-    try {
-      const conversations = await MessagesController.fetchConversations(currentUser.id);
-      const unread = conversations.reduce((count, c) => count + (c.unread ? 1 : 0), 0);
-      setUnreadCount(unread);
-    } catch (err) {
-      console.error("Failed to fetch unread count:", err);
-    }
-  }
 
   const navItems = [
     { label: "Dashboard", path: "/" },
@@ -78,6 +47,19 @@ const Navbar = () => {
     navigate('/edit-profile');
   };
 
+  // Compute display name and avatar initial for current user (safe fallbacks)
+  let displayName = 'User';
+  let avatarInitial = '?';
+  if (currentUser) {
+    const profile = currentUser.profile || {};
+    const firstName = profile.firstName || (profile.fullName ? profile.fullName.split(' ')[0] : '') || '';
+    const lastName = profile.lastName || (profile.fullName ? profile.fullName.split(' ').slice(1).join(' ') : '') || '';
+    const username = currentUser.username || '';
+    const email = currentUser.email || '';
+    displayName = (firstName || lastName) ? `${firstName} ${lastName}`.trim() : (username || email || 'User');
+    avatarInitial = (firstName && firstName[0]) || (username && username[0]) || (email && email[0]) || '?';
+  }
+
   // Don't show navbar on login/register pages
   if (location.pathname === '/login' || location.pathname === '/register') {
     return null;
@@ -97,27 +79,41 @@ const Navbar = () => {
 
         {isAuthenticated && (
           <Box>
-            {navItems.map((item) => (
-              <Badge
-                key={item.path}
-                badgeContent={item.path === "/messages" ? unreadCount : 0}
-                color="error"
-              >
+            {navItems.map((item) => {
+              // Hide "Find Tutors" nav item for tutors
+              if (item.path === '/find-tutors' && currentUser?.role?.toString().toLowerCase() === 'tutor') {
+                return null;
+              }
+              return (
                 <Button
+                  key={item.path}
                   component={Link}
                   to={item.path}
                   sx={{
                     mx: 1,
-                    color:
-                      location.pathname === item.path ? "black" : "text.secondary",
-                    fontWeight:
-                      location.pathname === item.path ? "bold" : "normal",
+                    color: location.pathname === item.path ? "black" : "text.secondary",
+                    fontWeight: location.pathname === item.path ? "bold" : "normal",
                   }}
                 >
                   {item.label}
                 </Button>
-              </Badge>
-            ))}
+              );
+            })}
+            {/* Top-level Manage Schedule for tutors */}
+            {currentUser?.role === 'tutor' && (
+              <Button
+                key="/manage-schedule"
+                component={Link}
+                to="/manage-schedule"
+                sx={{
+                  mx: 1,
+                  color: location.pathname === '/manage-schedule' ? 'black' : 'text.secondary',
+                  fontWeight: location.pathname === '/manage-schedule' ? 'bold' : 'normal'
+                }}
+              >
+                Manage Schedule
+              </Button>
+            )}
           </Box>
         )}
 
@@ -131,13 +127,9 @@ const Navbar = () => {
               onClick={handleMenu}
               color="inherit"
             >
-              <Avatar sx={{ bgcolor: "grey.700" }}>
-                {currentUser.profile.firstName?.[0]}{currentUser.profile.lastName?.[0]}
-              </Avatar>
+              <Avatar sx={{ bgcolor: "grey.700" }}>{avatarInitial}</Avatar>
             </IconButton>
-            <Typography variant="body1">
-              {currentUser.profile.firstName} {currentUser.profile.lastName}
-            </Typography>
+            <Typography variant="body1">{displayName}</Typography>
             <Menu
               id="menu-appbar"
               anchorEl={anchorEl}
@@ -154,6 +146,12 @@ const Navbar = () => {
               onClose={handleClose}
             >
               <MenuItem onClick={handleProfile}>Edit Profile</MenuItem>
+              {/* Tutor-only menu entry to manage schedule */}
+              {currentUser.role === 'tutor' && (
+                <MenuItem onClick={() => { handleClose(); navigate('/manage-schedule'); }}>
+                  Manage Schedule
+                </MenuItem>
+              )}
               <MenuItem onClick={handleLogout}>Logout</MenuItem>
             </Menu>
           </Box>

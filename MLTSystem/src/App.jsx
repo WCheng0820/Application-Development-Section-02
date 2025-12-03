@@ -2,6 +2,7 @@ import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "./context/AuthContext";
 import Navbar from "./components/Navbar";
 import PrivateRoute from "./components/PrivateRoute";
+import SessionTimeout from "./components/SessionTimeout";
 import RoleBasedDashboard from "./components/RoleBasedDashboard";
 import FindTutors from "./pages/FindTutors";
 import Bookings from "./pages/Bookings";
@@ -10,12 +11,15 @@ import Messages from "./pages/Messages";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import EditProfile from "./pages/EditProfile";
+import ManageSchedule from "./pages/ManageSchedule";
+import Payment from "./pages/Payment";
 
 export default function App() {
   return (
     <AuthProvider>
       <Router>
         <Navbar />
+        <SessionTimeout />
         <Routes>
           {/* Public routes */}
           <Route path="/login" element={<Login />} />
@@ -35,6 +39,14 @@ export default function App() {
             element={
               <PrivateRoute>
                 <FindTutors />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/payment"
+            element={
+              <PrivateRoute>
+                <Payment />
               </PrivateRoute>
             }
           />
@@ -67,6 +79,14 @@ export default function App() {
             element={
               <PrivateRoute>
                 <EditProfile />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/manage-schedule"
+            element={
+              <PrivateRoute>
+                <ManageSchedule />
               </PrivateRoute>
             }
           />

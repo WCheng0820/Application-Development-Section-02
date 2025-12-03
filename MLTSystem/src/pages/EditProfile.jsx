@@ -8,20 +8,28 @@ import {
   Typography,
   Box,
   Alert,
-  Avatar
+  Avatar,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
+  FormHelperText,
+  Divider
 } from '@mui/material';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
+import ScheduleManager from '../components/ScheduleManager';
 
 export default function EditProfile() {
   const { currentUser, updateProfile } = useAuth();
   const navigate = useNavigate();
 
   const [formData, setFormData] = useState({
-    firstName: '',
-    lastName: '',
+    username: '',
     email: '',
     bio: '',
+    specialization: '',
+    price: '',
     password: ''
   });
   const [error, setError] = useState('');
@@ -31,10 +39,11 @@ export default function EditProfile() {
   useEffect(() => {
     if (currentUser) {
       setFormData({
-        firstName: currentUser.profile.firstName || '',
-        lastName: currentUser.profile.lastName || '',
+        username: currentUser.username || currentUser.profile.username || '',
         email: currentUser.email || '',
-        bio: currentUser.profile.bio || '',
+        bio: currentUser.role === 'tutor' ? (currentUser.profile.bio || '') : '',
+        specialization: currentUser.role === 'tutor' ? (currentUser.profile.specialization || '') : '',
+        price: currentUser.role === 'tutor' ? (currentUser.profile.price ?? currentUser.price ?? '') : '',
         password: ''
       });
     }
@@ -58,6 +67,18 @@ export default function EditProfile() {
       setError('Password must be at least 6 characters long');
       setIsLoading(false);
       return;
+    }
+
+    // Validate price when provided
+    if (formData.price !== undefined && formData.price !== '') {
+      const p = parseFloat(formData.price);
+      if (Number.isNaN(p) || p < 0) {
+        setError('Price must be a non-negative number');
+        setIsLoading(false);
+        return;
+      }
+      // normalize to 2 decimal places
+      formData.price = p.toFixed(2);
     }
 
     try {
@@ -103,7 +124,7 @@ export default function EditProfile() {
             <Avatar
               sx={{ width: 80, height: 80, bgcolor: 'primary.main', mb: 2 }}
             >
-              {currentUser.profile.firstName?.[0]}{currentUser.profile.lastName?.[0]}
+              {currentUser.username?.[0]?.toUpperCase()}
             </Avatar>
             <Typography component="h1" variant="h4" align="center">
               Edit Profile
@@ -127,24 +148,13 @@ export default function EditProfile() {
 
           <Box component="form" onSubmit={handleSubmit} sx={{ mt: 1 }}>
             <TextField
-              autoComplete="given-name"
-              name="firstName"
+              autoComplete="username"
+              name="username"
               required
               fullWidth
-              id="firstName"
-              label="First Name"
-              value={formData.firstName}
-              onChange={handleChange}
-              sx={{ mb: 2 }}
-            />
-            <TextField
-              autoComplete="family-name"
-              name="lastName"
-              required
-              fullWidth
-              id="lastName"
-              label="Last Name"
-              value={formData.lastName}
+              id="username"
+              label="Username"
+              value={formData.username}
               onChange={handleChange}
               sx={{ mb: 2 }}
             />
@@ -158,21 +168,53 @@ export default function EditProfile() {
               type="email"
               value={formData.email}
               onChange={handleChange}
-              disabled // Email changes might require verification in real app
               sx={{ mb: 2 }}
             />
-            <TextField
-              fullWidth
-              id="bio"
-              label="Bio"
-              name="bio"
-              multiline
-              rows={4}
-              placeholder="Tell us about yourself..."
-              value={formData.bio}
-              onChange={handleChange}
-              sx={{ mb: 2 }}
-            />
+            {currentUser?.role === 'tutor' && (
+              <>
+                <TextField
+                  fullWidth
+                  id="bio"
+                  label="Bio"
+                  name="bio"
+                  multiline
+                  rows={4}
+                  placeholder="Tell students about your teaching style..."
+                  value={formData.bio}
+                  onChange={handleChange}
+                  sx={{ mb: 2 }}
+                />
+                <TextField
+                  fullWidth
+                  id="price"
+                  label="Tutoring Rate (MYR per hour)"
+                  name="price"
+                  type="number"
+                  inputProps={{ step: '0.50', min: 0 }}
+                  value={formData.price}
+                  onChange={handleChange}
+                  sx={{ mb: 2 }}
+                />
+                <FormControl fullWidth sx={{ mb: 2 }}>
+                  <InputLabel>Specialization</InputLabel>
+                  <Select
+                    name="specialization"
+                    value={formData.specialization}
+                    label="Specialization"
+                    onChange={handleChange}
+                  >
+                    <MenuItem value="">Select a specialization</MenuItem>
+                    <MenuItem value="HSK Test Prep">HSK Test Preparation</MenuItem>
+                    <MenuItem value="Conversational">Conversational Mandarin</MenuItem>
+                    <MenuItem value="Business">Business Mandarin</MenuItem>
+                    <MenuItem value="Children">Children & Beginners</MenuItem>
+                    <MenuItem value="Advanced">Advanced Mandarin</MenuItem>
+                    <MenuItem value="General">General Chinese</MenuItem>
+                  </Select>
+                  <FormHelperText>Choose your primary teaching specialization</FormHelperText>
+                </FormControl>
+              </>
+            )}
             <TextField
               fullWidth
               name="password"
@@ -205,6 +247,13 @@ export default function EditProfile() {
             </Button>
           </Box>
         </Paper>
+
+        {/* Schedule Manager for tutors */}
+        {currentUser?.role === 'tutor' && currentUser?.profile?.tutorId && (
+          <Box sx={{ mt: 4 }}>
+            <ScheduleManager tutorId={currentUser.profile.tutorId} />
+          </Box>
+        )}
       </Box>
     </Container>
   );
