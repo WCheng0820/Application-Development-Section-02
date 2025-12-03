@@ -28,6 +28,7 @@ import StarIcon from "@mui/icons-material/Star";
 
 import * as MessagesController from "../controllers/MessagesController";
 import { useAuth } from "../context/AuthContext";
+import * as socketService from "../services/socketService";
 
 export default function Messages() {
   const { currentUser } = useAuth();
@@ -38,12 +39,98 @@ export default function Messages() {
   const [fileObj, setFileObj] = useState(null);
   const [snack, setSnack] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [onlineUsers, setOnlineUsers] = useState([]);
+  const [typingUsers, setTypingUsers] = useState(new Set());
 
   // Load conversations on mount and when currentUser changes
   useEffect(() => {
     if (currentUser?.studentId || currentUser?.tutorId) {
       refreshConversations();
     }
+  }, [currentUser?.studentId, currentUser?.tutorId]);
+
+  // Initialize socket connection
+  useEffect(() => {
+    if (!currentUser?.studentId && !currentUser?.tutorId) return;
+
+    const userId = currentUser.studentId || currentUser.tutorId;
+    socketService.initSocket(userId);
+
+    // Clean up old listeners first to prevent duplicates
+    socketService.offMessageReceived();
+    socketService.offReadReceipt();
+    socketService.offUserStatus();
+    socketService.offTypingStatus();
+
+    // Listen for incoming messages
+    socketService.onMessageReceived((data) => {
+      setThreadMessages(prev => [...prev, {
+        id: Math.random(),
+        ...data,
+        timestamp: data.timestamp || Date.now(),
+        readBy: [],
+        status: 'delivered'
+      }]);
+    });
+
+    // Listen for read receipts - update message status in real-time
+    socketService.onReadReceipt((data) => {
+      const { messageId, userId: readByUserId, readAt } = data;
+      setThreadMessages(prev => prev.map(msg => {
+        if (msg.id === messageId) {
+          let readBy = msg.readBy || [];
+          const alreadyRead = readBy.some(r => r.userId === readByUserId);
+          if (!alreadyRead) {
+            readBy = [...readBy, { userId: readByUserId, readAt }];
+          }
+          return {
+            ...msg,
+            readBy,
+            status: readBy.length >= 2 ? 'read' : 'delivered'
+          };
+        }
+        return msg;
+      }));
+    });
+
+    // Listen for user status changes
+    socketService.onUserStatus((data) => {
+      setOnlineUsers(data.onlineUsers || []);
+    });
+
+    // Listen for typing status
+    socketService.onTypingStatus((data) => {
+      setTypingUsers(prev => {
+        const newSet = new Set(prev);
+        if (data.isTyping) {
+          newSet.add(JSON.stringify({ userId: data.userId, userName: data.userName }));
+          return newSet;
+        } else {
+          // Remove all entries with this userId
+          const filtered = new Set();
+          newSet.forEach(item => {
+            try {
+              const parsed = JSON.parse(item);
+              if (parsed.userId !== data.userId) {
+                filtered.add(item);
+              }
+            } catch (e) {
+              // Skip invalid JSON items
+            }
+          });
+          return filtered;
+        }
+      });
+    });
+
+    // Cleanup on unmount
+    return () => {
+      socketService.offMessageReceived();
+      socketService.offReadReceipt();
+      socketService.offUserStatus();
+      socketService.offTypingStatus();
+      socketService.disconnectSocket();
+    };
   }, [currentUser?.studentId, currentUser?.tutorId]);
 
   async function refreshConversations() {
@@ -70,6 +157,14 @@ export default function Messages() {
     (async () => {
       try {
         const currentUserId = currentUser.studentId || currentUser.tutorId;
+        
+        // Join socket room for real-time updates
+        socketService.joinConversation(
+          selectedConversation.bookingId,
+          currentUserId,
+          selectedConversation.otherParticipantId
+        );
+        
         const msgs = await MessagesController.fetchMessages(
           selectedConversation.bookingId,
           currentUserId,
@@ -81,6 +176,11 @@ export default function Messages() {
         for (const msg of msgs) {
           if (msg.senderId !== currentUserId && !msg.readBy?.some((r) => r.userId === currentUserId)) {
             await MessagesController.markRead(msg.id, currentUserId);
+            
+            // Send read receipt via socket
+            const conversationId = selectedConversation.bookingId || 
+              `${[currentUserId, selectedConversation.otherParticipantId].sort().join('-')}`;
+            socketService.sendReadReceipt(conversationId, msg.id, currentUserId);
           }
         }
         
@@ -99,6 +199,19 @@ export default function Messages() {
         setSnack({ severity: "error", message: "Failed to load messages" });
       }
     })();
+
+    // Cleanup when leaving conversation
+    return () => {
+      if (selectedConversation && currentUser?.studentId || currentUser?.tutorId) {
+        const currentUserId = currentUser.studentId || currentUser.tutorId;
+        socketService.leaveConversation(
+          selectedConversation.bookingId,
+          currentUserId,
+          selectedConversation.otherParticipantId
+        );
+        setTypingUsers(new Set());
+      }
+    };
   }, [selectedConversation, currentUser?.id]);
 
   function handleFileChange(e) {
@@ -123,6 +236,47 @@ export default function Messages() {
     setFileObj(null);
   }
 
+  // Handle typing indicators with debounce
+  const typingTimeoutRef = React.useRef(null);
+  
+  function handleTextChange(e) {
+    const newText = e.target.value;
+    setText(newText);
+    
+    if (!selectedConversation) return;
+    
+    const conversationId = selectedConversation.bookingId || 
+      `${[currentUser.studentId || currentUser.tutorId, selectedConversation.otherParticipantId].sort().join('-')}`;
+    const userId = currentUser.studentId || currentUser.tutorId;
+    
+    // Get user's full name from profile
+    const firstName = currentUser.profile?.firstName || '';
+    const lastName = currentUser.profile?.lastName || '';
+    const userName = (firstName || lastName) 
+      ? `${firstName} ${lastName}`.trim()
+      : currentUser.username || userId;
+    
+    // Send typing indicator
+    if (newText.trim().length > 0) {
+      socketService.setTypingStatus(conversationId, userId, userName, true);
+      
+      // Clear previous timeout
+      if (typingTimeoutRef.current) {
+        clearTimeout(typingTimeoutRef.current);
+      }
+      
+      // Stop typing after 2 seconds of inactivity
+      typingTimeoutRef.current = setTimeout(() => {
+        socketService.setTypingStatus(conversationId, userId, userName, false);
+      }, 2000);
+    } else {
+      socketService.setTypingStatus(conversationId, userId, userName, false);
+      if (typingTimeoutRef.current) {
+        clearTimeout(typingTimeoutRef.current);
+      }
+    }
+  }
+
   async function handleSend() {
     if (!selectedConversation || !currentUser?.id) {
       setSnack({ severity: "error", message: "Please select a conversation" });
@@ -135,20 +289,27 @@ export default function Messages() {
     }
 
     try {
-      await MessagesController.sendMessage({
+      const currentUserId = currentUser.studentId || currentUser.tutorId;
+      const messageData = {
         bookingId: selectedConversation.bookingId,
-        senderId: currentUser.studentId || currentUser.tutorId,
+        senderId: currentUserId,
         senderName: `${currentUser.profile?.firstName || currentUser.email} ${currentUser.profile?.lastName || ""}`.trim(),
         recipientId: selectedConversation.otherParticipantId,
         content: text,
         attachment: fileObj,
-      });
+      };
+
+      // Try to send via socket first (real-time), fallback to HTTP
+      const socketSent = socketService.sendMessage(messageData);
+      
+      // Always also send via HTTP to ensure persistence in database
+      await MessagesController.sendMessage(messageData);
       
       setText("");
       setFileObj(null);
+      setTypingUsers(new Set()); // Clear typing status
       
       // Reload thread + conversations
-      const currentUserId = currentUser.studentId || currentUser.tutorId;
       const msgs = await MessagesController.fetchMessages(
         selectedConversation.bookingId,
         currentUserId,
@@ -184,12 +345,14 @@ export default function Messages() {
       <Box sx={{ display: "flex", gap: 3 }}>
         {/* Left column: conversations list */}
         <Paper sx={{ width: 320, p: 2, maxHeight: 700, overflowY: "auto" }}>
-          <Typography variant="h6" fontWeight="600" sx={{ mb: 2 }}>
-            Conversations
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 2 }}>
+            <Typography variant="h6" fontWeight="600">
+              Conversations
+            </Typography>
             {conversations.some(c => c.unread) && (
-              <Badge badgeContent={conversations.filter(c => c.unread).length} color="error" sx={{ ml: 1 }} />
+              <Badge badgeContent={conversations.filter(c => c.unread).length} color="error" />
             )}
-          </Typography>
+          </Box>
 
           <List sx={{ p: 0 }}>
             {conversations.map((c) => (
@@ -217,8 +380,10 @@ export default function Messages() {
                       <Typography fontWeight={c.unread ? 700 : 500} sx={{ flex: 1 }}>
                         {c.otherParticipantName}
                       </Typography>
-                      {c.unread && (
-                        <Badge color="error" variant="dot" sx={{ ml: 1 }} />
+                      {c.unreadCount && c.unreadCount > 0 && (
+                        <Box sx={{ display: "flex", alignItems: "center", ml: 1 }}>
+                          <Badge badgeContent={c.unreadCount} color="error" overlap="circular" />
+                        </Box>
                       )}
                     </Box>
                   }
@@ -227,22 +392,6 @@ export default function Messages() {
                       <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
                         {c.snippet}
                       </Typography>
-                      {c.hasBooking && c.bookingInfo && (
-                        <Box sx={{ display: "flex", gap: 1, mt: 0.5, flexWrap: "wrap" }}>
-                          <Chip
-                            size="small"
-                            icon={<CalendarTodayIcon />}
-                            label={c.bookingInfo.date}
-                            variant="outlined"
-                          />
-                          <Chip
-                            size="small"
-                            icon={<AccessTimeIcon />}
-                            label={`${c.bookingInfo.startTime} - ${c.bookingInfo.endTime}`}
-                            variant="outlined"
-                          />
-                        </Box>
-                      )}
                       {c.timestamp && (
                         <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 0.5 }}>
                           {new Date(c.timestamp).toLocaleString()}
@@ -393,13 +542,21 @@ export default function Messages() {
                               )}
                             </Box>
                             <Box sx={{ display: "flex", justifyContent: isCurrentUser ? "flex-end" : "flex-start", gap: 0.5, mt: 0.5 }}>
-                              {m.readBy && m.readBy.length >= 2 ? (
-                                <Typography variant="caption" sx={{ color: "#2196F3", fontWeight: "bold" }}>
-                                  ✓✓ Read
-                                </Typography>
+                              {isCurrentUser ? (
+                                // For sent messages, show read/sent status
+                                m.readBy && m.readBy.length >= 2 ? (
+                                  <Typography variant="caption" sx={{ color: "#2196F3", fontWeight: "bold" }}>
+                                    ✓✓ Read
+                                  </Typography>
+                                ) : (
+                                  <Typography variant="caption" sx={{ color: "#999" }}>
+                                    ✓ Sent
+                                  </Typography>
+                                )
                               ) : (
-                                <Typography variant="caption" sx={{ color: "#999" }}>
-                                  ✓ Sent
+                                // For received messages, show delivered status
+                                <Typography variant="caption" sx={{ color: "#4CAF50", fontWeight: "500" }}>
+                                  ✓ Delivered
                                 </Typography>
                               )}
                               <Typography variant="caption" color="text.secondary">
@@ -412,6 +569,27 @@ export default function Messages() {
                     })
                   )}
                 </Box>
+
+                {/* Typing indicator */}
+                {typingUsers.size > 0 && (
+                  <Box sx={{ mb: 1, px: 1.5, display: "flex", alignItems: "center", gap: 0.5 }}>
+                    <Typography variant="caption" color="text.secondary" sx={{ fontStyle: "italic" }}>
+                      {Array.from(typingUsers).map(item => {
+                        try {
+                          const parsed = JSON.parse(item);
+                          return parsed.userName || parsed.userId;
+                        } catch {
+                          return item;
+                        }
+                      }).join(", ")} {typingUsers.size === 1 ? "is" : "are"} typing...
+                    </Typography>
+                    <Box sx={{ display: "flex", gap: 0.3 }}>
+                      <Box sx={{ width: 4, height: 4, borderRadius: "50%", bgcolor: "#999", animation: "bounce 1.4s infinite" }} />
+                      <Box sx={{ width: 4, height: 4, borderRadius: "50%", bgcolor: "#999", animation: "bounce 1.4s infinite 0.2s" }} />
+                      <Box sx={{ width: 4, height: 4, borderRadius: "50%", bgcolor: "#999", animation: "bounce 1.4s infinite 0.4s" }} />
+                    </Box>
+                  </Box>
+                )}
 
                 {/* File draft preview */}
                 {fileObj && (
@@ -438,7 +616,7 @@ export default function Messages() {
                     maxRows={4}
                     placeholder="Type a message..."
                     value={text}
-                    onChange={(e) => setText(e.target.value)}
+                    onChange={handleTextChange}
                     onKeyPress={(e) => {
                       if (e.key === "Enter" && !e.shiftKey) {
                         e.preventDefault();

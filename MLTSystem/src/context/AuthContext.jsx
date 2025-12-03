@@ -25,36 +25,6 @@ export const AuthProvider = ({ children }) => {
   const [isLoading, setIsLoading] = useState(true);
   const sessionCheckInterval = useRef(null);
 
-  // Mock user database - in a real app, this would be an API call
-  const [users, setUsers] = useState([
-    new User(1, 'alice@example.com', 'password123', 'student', {
-      firstName: 'Alice',
-      lastName: 'Wang',
-      bio: 'Mandarin learner'
-    }, 'alice'),
-    new User(2, 'li.ming@example.com', 'password123', 'tutor', {
-      firstName: 'Li',
-      lastName: 'Ming',
-      bio: 'Experienced Mandarin tutor',
-      verificationDocuments: []
-    }, 'li.ming'),
-    new User(3, 'admin@mltsystem.com', 'admin123', 'admin', {
-      firstName: 'Admin',
-      lastName: 'User',
-      bio: 'System administrator'
-    }, 'admin')
-  ]);
-
-  // Initialize: Approve existing tutor for demo purposes
-  useEffect(() => {
-    const existingTutor = users.find(u => u.id === 2 && u.role === 'tutor');
-    if (existingTutor && !existingTutor.isApproved) {
-      existingTutor.approve();
-      setUsers(prev => prev.map(u => u.id === 2 ? existingTutor : u));
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
   // Initialize session on app load
   useEffect(() => {
     const initializeSession = () => {
@@ -308,8 +278,8 @@ export const AuthProvider = ({ children }) => {
       }
 
       // Update users list (for admin dashboard)
-      setUsers(prev => [...prev, newUser]);
-
+      // Note: With backend API, this would be fetched from server
+      
       // Only set current user if session is provided (not pending tutors)
       if (result.session && result.session.token) {
         // Store session token with consistent User object structure
@@ -446,8 +416,7 @@ export const AuthProvider = ({ children }) => {
         updatedUser.approvalStatus = result.user.status === 'active' ? 'approved' : result.user.status;
       }
 
-      // Update users list (for admin dashboard)
-      setUsers(prev => prev.map(u => u.id === currentUser.id ? updatedUser : u));
+      // Note: User list in admin dashboard will be fetched from server
       setCurrentUser(updatedUser);
 
       // Refresh session with updated user data - store consistent User object structure
@@ -480,44 +449,69 @@ export const AuthProvider = ({ children }) => {
   };
 
   // Get all users (for admin dashboard)
+  // Note: With backend API, this should be fetched from server via API call
   const getAllUsers = () => {
-    return users;
+    return [];
   };
 
   // Get pending tutors (for admin approval)
+  // Note: With backend API, this should be fetched from server via API call
   const getPendingTutors = () => {
-    return users.filter(u => u.role === 'tutor' && u.approvalStatus === 'pending');
+    return [];
   };
 
   // Approve tutor
-  const approveTutor = (tutorId) => {
-    setUsers(prev => prev.map(u => {
-      if (u.id === tutorId && u.role === 'tutor') {
-        u.approve();
-        return u;
+  // Note: This should call backend API to approve tutor
+  const approveTutor = async (tutorId) => {
+    try {
+      const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+      const token = sessionStorage.getItem('mlt_session_token');
+      
+      const response = await fetch(`${API_URL}/api/admin/tutors/${tutorId}/approve`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      if (!response.ok) {
+        console.error('Failed to approve tutor');
+        return false;
       }
-      return u;
-    }));
-    // Update current user if it's the approved tutor
-    if (currentUser && currentUser.id === tutorId) {
-      const updatedUser = users.find(u => u.id === tutorId);
-      if (updatedUser) {
-        updatedUser.approve();
-        setCurrentUser(updatedUser);
-        refreshSession(updatedUser);
-      }
+      
+      return true;
+    } catch (error) {
+      console.error('Error approving tutor:', error);
+      return false;
     }
   };
 
   // Reject tutor
-  const rejectTutor = (tutorId) => {
-    setUsers(prev => prev.map(u => {
-      if (u.id === tutorId && u.role === 'tutor') {
-        u.reject();
-        return u;
+  // Note: This should call backend API to reject tutor
+  const rejectTutor = async (tutorId) => {
+    try {
+      const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+      const token = sessionStorage.getItem('mlt_session_token');
+      
+      const response = await fetch(`${API_URL}/api/admin/tutors/${tutorId}/reject`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      if (!response.ok) {
+        console.error('Failed to reject tutor');
+        return false;
       }
-      return u;
-    }));
+      
+      return true;
+    } catch (error) {
+      console.error('Error rejecting tutor:', error);
+      return false;
+    }
   };
 
   // Get session info

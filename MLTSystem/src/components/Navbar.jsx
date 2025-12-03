@@ -15,6 +15,7 @@ import { useAuth } from "../context/AuthContext";
 import { useState, useEffect } from "react";
 import AccountCircle from "@mui/icons-material/AccountCircle";
 import * as MessagesController from "../controllers/MessagesController";
+import * as socketService from "../services/socketService";
 
 const Navbar = () => {
   const location = useLocation();
@@ -52,25 +53,45 @@ const Navbar = () => {
 
   // Fetch unread count on mount and when currentUser changes
   useEffect(() => {
-    if (currentUser?.id && location.pathname !== '/messages') {
-      refreshUnreadCount();
-      // Poll every 3 seconds for new messages
-      const interval = setInterval(refreshUnreadCount, 3000);
-      return () => clearInterval(interval);
-    }
-  }, [currentUser?.id, location.pathname]);
-
-  // Reset unread count when navigating to messages
-  useEffect(() => {
+    const userId = currentUser?.studentId || currentUser?.tutorId;
+    
+    if (!userId) return;
+    
+    // If on messages page, set to 0 immediately and don't poll
     if (location.pathname === '/messages') {
       setUnreadCount(0);
+      return;
     }
-  }, [location.pathname]);
+    
+    // Refresh count immediately when NOT on messages page
+    refreshUnreadCount(userId);
+    
+    // Listen for new notifications via socket (user receives new message)
+    const handleNotification = (notification) => {
+      // Only increment if NOT on messages page
+      if (location.pathname !== '/messages') {
+        setUnreadCount(prev => prev + 1);
+      }
+    };
+    socketService.onNotification(handleNotification);
+    
+    // Poll every 3 seconds for unread count (only if not on messages page)
+    const interval = setInterval(() => {
+      if (location.pathname !== '/messages') {
+        refreshUnreadCount(userId);
+      }
+    }, 3000);
+    
+    return () => {
+      clearInterval(interval);
+      socketService.offNotification();
+    };
+  }, [currentUser?.studentId, currentUser?.tutorId, location.pathname]);
 
-  async function refreshUnreadCount() {
-    if (!currentUser?.id) return;
+  async function refreshUnreadCount(userId) {
+    if (!userId) return;
     try {
-      const count = await MessagesController.getUnreadCount(currentUser.id);
+      const count = await MessagesController.getUnreadCount(userId);
       setUnreadCount(count);
     } catch (err) {
       console.error('Error fetching unread count:', err);
@@ -128,9 +149,13 @@ const Navbar = () => {
                       position: 'relative'
                     }}
                   >
-                    <Badge badgeContent={unreadCount} color="error">
-                      {item.label}
-                    </Badge>
+                    {unreadCount > 0 ? (
+                      <Badge badgeContent={unreadCount} color="error">
+                        {item.label}
+                      </Badge>
+                    ) : (
+                      item.label
+                    )}
                   </Button>
                 );
               }

@@ -59,6 +59,14 @@ router.get('/conversations/:userId', authenticateToken, async (req, res) => {
                 [booking.bookingId]
             );
 
+            // Count unread messages in this conversation
+            const unreadMsgs = await query(
+                `SELECT COUNT(*) as count FROM message 
+                 WHERE bookingId = ? AND senderId != ? AND JSON_CONTAINS(readBy_json, ?, '$[*].userId') = 0`,
+                [booking.bookingId, userId, JSON.stringify(userId)]
+            );
+            const unreadCount = unreadMsgs[0]?.count || 0;
+
             const otherParticipantId = booking.tutorId === userId ? booking.studentId : booking.tutorId;
             const otherParticipantName = booking.tutorId === userId ? booking.student_name : booking.tutor_name;
 
@@ -80,6 +88,7 @@ router.get('/conversations/:userId', authenticateToken, async (req, res) => {
                 snippet,
                 timestamp: latest ? new Date(latest.created_at).getTime() : null,
                 unread,
+                unreadCount,
                 hasBooking: true,
                 bookingInfo: {
                     date: booking.booking_date,
@@ -115,6 +124,14 @@ router.get('/conversations/:userId', authenticateToken, async (req, res) => {
                 // Check if this tutor is already in conversations via booking
                 const alreadyExists = conversations.some(c => c.otherParticipantId === tutor.tutorId);
                 if (!alreadyExists) {
+                    // Count unread messages from this tutor (non-booked chats)
+                    const unreadFromTutor = await query(
+                        `SELECT COUNT(*) as count FROM message 
+                         WHERE bookingId IS NULL AND senderId = ? AND recipientId = ? AND JSON_CONTAINS(readBy_json, ?, '$[*].userId') = 0`,
+                        [tutor.tutorId, userId, JSON.stringify(userId)]
+                    );
+                    const unreadCount = unreadFromTutor[0]?.count || 0;
+
                     conversations.push({
                         bookingId: null,  // No booking yet
                         title: `Chat with ${tutor.name}`,
@@ -123,6 +140,7 @@ router.get('/conversations/:userId', authenticateToken, async (req, res) => {
                         snippet: 'No messages yet',
                         timestamp: null,
                         unread: false,
+                        unreadCount,
                         hasBooking: false,
                         tutorInfo: {
                             price: tutor.price,
