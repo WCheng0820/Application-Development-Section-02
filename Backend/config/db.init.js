@@ -16,6 +16,14 @@ const initDatabase = async () => {
         connection = await mysql.createConnection(config);
         console.log('Connected to MySQL server');
 
+        // Increase max_allowed_packet to 64MB to support file attachments
+        try {
+            await connection.query("SET GLOBAL max_allowed_packet = 67108864");
+            console.log('✅ Set max_allowed_packet to 64MB');
+        } catch (err) {
+            console.warn('⚠️ Failed to set max_allowed_packet:', err.message);
+        }
+
         // Create database if it doesn't exist
         const dbName = process.env.DB_NAME || 'mlt_system';
         await connection.query(`CREATE DATABASE IF NOT EXISTS \`${dbName}\``);

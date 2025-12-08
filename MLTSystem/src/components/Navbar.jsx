@@ -57,36 +57,25 @@ const Navbar = () => {
     
     if (!userId) return;
     
-    // If on messages page, set to 0 immediately and don't poll
-    if (location.pathname === '/messages') {
-      setUnreadCount(0);
-      return;
-    }
-    
-    // Refresh count immediately when NOT on messages page
+    // Refresh count immediately
     refreshUnreadCount(userId);
     
     // Listen for new notifications via socket (user receives new message)
     const handleNotification = (notification) => {
-      // Only increment if NOT on messages page
-      if (location.pathname !== '/messages') {
         setUnreadCount(prev => prev + 1);
-      }
     };
     socketService.onNotification(handleNotification);
     
-    // Poll every 3 seconds for unread count (only if not on messages page)
+    // Poll every 3 seconds for unread count
     const interval = setInterval(() => {
-      if (location.pathname !== '/messages') {
-        refreshUnreadCount(userId);
-      }
+      refreshUnreadCount(userId);
     }, 3000);
     
     return () => {
       clearInterval(interval);
       socketService.offNotification();
     };
-  }, [currentUser?.studentId, currentUser?.tutorId, location.pathname]);
+  }, [currentUser?.studentId, currentUser?.tutorId]);
 
   async function refreshUnreadCount(userId) {
     if (!userId) return;

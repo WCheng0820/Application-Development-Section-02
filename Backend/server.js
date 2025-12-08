@@ -22,6 +22,13 @@ app.use(cors());
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
+// Make io and onlineUsers available to routes
+app.use((req, res, next) => {
+    req.io = io;
+    req.onlineUsers = onlineUsers;
+    next();
+});
+
 // Initialize database on server start
 initDatabase()
     .then(() => {
@@ -129,37 +136,6 @@ io.on('connection', (socket) => {
         const { conversationId } = data;
         socket.leave(`conversation:${conversationId}`);
         console.log(`📍 User left conversation: ${conversationId}`);
-    });
-
-    // Handle new message
-    socket.on('message:send', async (data) => {
-        const { bookingId, senderId, recipientId, content, attachment } = data;
-        
-        console.log(`💬 Message from ${senderId} to ${recipientId}: "${content.substring(0, 30)}..."`);
-        
-        // Determine conversation ID for room broadcast
-        const conversationId = bookingId || `${[senderId, recipientId].sort().join('-')}`;
-        
-        // Broadcast message to conversation room
-        io.to(`conversation:${conversationId}`).emit('message:received', {
-            bookingId,
-            senderId,
-            recipientId,
-            content,
-            attachment,
-            timestamp: Date.now()
-        });
-
-        // Notify recipient if online
-        if (onlineUsers.has(recipientId)) {
-            io.to(onlineUsers.get(recipientId)).emit('notification:new', {
-                type: 'message',
-                from: senderId,
-                bookingId,
-                message: content || (attachment ? `Attachment: ${attachment.name}` : 'New message'),
-                timestamp: Date.now()
-            });
-        }
     });
 
     // Handle typing indicator

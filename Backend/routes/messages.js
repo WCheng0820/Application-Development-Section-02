@@ -31,6 +31,24 @@ router.get('/tutors', authenticateToken, async (req, res) => {
     }
 });
 
+// Get all students available for a tutor to chat with
+router.get('/students', authenticateToken, async (req, res) => {
+    try {
+        const students = await query(
+            `SELECT s.studentId, u.username as name, u.email
+             FROM student s
+             JOIN users u ON s.user_id = u.id
+             WHERE s.studentId IS NOT NULL
+             ORDER BY u.username ASC`
+        );
+
+        res.json({ success: true, data: students });
+    } catch (err) {
+        console.error('Error fetching students:', err);
+        res.status(500).json({ success: false, error: err.message });
+    }
+});
+
 // Get conversations for a user (with optional tutors they haven't booked)
 router.get('/conversations/:userId', authenticateToken, async (req, res) => {
     try {
@@ -106,50 +124,88 @@ router.get('/conversations/:userId', authenticateToken, async (req, res) => {
 
         const conversations = Array.from(conversationMap.values());
 
-        // 2. If user is a student, also show all tutors they can chat with (not just booked ones)
-        const studentCheck = await query(
-            `SELECT studentId FROM student WHERE studentId = ?`,
-            [userId]
+        // 2. Fetch active direct conversations (no booking)
+        // Find messages where user is sender or recipient, and bookingId is NULL
+        const directMessages = await query(
+            `SELECT DISTINCT 
+                CASE WHEN senderId = ? THEN recipientId ELSE senderId END as otherId
+             FROM message 
+             WHERE bookingId IS NULL AND (senderId = ? OR recipientId = ?)`,
+            [userId, userId, userId]
         );
 
-        if (studentCheck.length > 0) {
-            const tutors = await query(
-                `SELECT t.tutorId, t.name, t.price, t.specialization, t.rating
-                 FROM tutor t
-                 WHERE t.tutorId IS NOT NULL
-                 ORDER BY t.name ASC`
-            );
+        for (const dm of directMessages) {
+            const otherId = dm.otherId;
+            
+            // Skip if we already have a conversation with this person (e.g. via booking)
+            // Note: We might want to show both if they are distinct contexts, but usually we merge by person
+            if (conversationMap.has(otherId)) continue;
 
-            for (const tutor of tutors) {
-                // Check if this tutor is already in conversations via booking
-                const alreadyExists = conversations.some(c => c.otherParticipantId === tutor.tutorId);
-                if (!alreadyExists) {
-                    // Count unread messages from this tutor (non-booked chats)
-                    const unreadFromTutor = await query(
-                        `SELECT COUNT(*) as count FROM message 
-                         WHERE bookingId IS NULL AND senderId = ? AND recipientId = ? AND JSON_CONTAINS(readBy_json, ?, '$[*].userId') = 0`,
-                        [tutor.tutorId, userId, JSON.stringify(userId)]
-                    );
-                    const unreadCount = unreadFromTutor[0]?.count || 0;
+            // Fetch other user details
+            // Try tutor table first, then student/users
+            let otherName = 'Unknown User';
+            let tutorInfo = null;
 
-                    conversations.push({
-                        bookingId: null,  // No booking yet
-                        title: `Chat with ${tutor.name}`,
-                        otherParticipantId: tutor.tutorId,
-                        otherParticipantName: tutor.name,
-                        snippet: 'No messages yet',
-                        timestamp: null,
-                        unread: false,
-                        unreadCount,
-                        hasBooking: false,
-                        tutorInfo: {
-                            price: tutor.price,
-                            specialization: tutor.specialization,
-                            rating: tutor.rating
-                        }
-                    });
+            const tutorRes = await query('SELECT name, price, specialization, rating FROM tutor WHERE tutorId = ?', [otherId]);
+            if (tutorRes.length > 0) {
+                otherName = tutorRes[0].name;
+                tutorInfo = {
+                    price: tutorRes[0].price,
+                    specialization: tutorRes[0].specialization,
+                    rating: tutorRes[0].rating
+                };
+            } else {
+                // Try student
+                const studentRes = await query(
+                    `SELECT u.username 
+                     FROM student s 
+                     JOIN users u ON s.user_id = u.id 
+                     WHERE s.studentId = ?`, 
+                    [otherId]
+                );
+                if (studentRes.length > 0) {
+                    otherName = studentRes[0].username;
                 }
             }
+
+            // Get latest message
+            const latestMsg = await query(
+                `SELECT * FROM message 
+                 WHERE bookingId IS NULL 
+                 AND ((senderId = ? AND recipientId = ?) OR (senderId = ? AND recipientId = ?))
+                 ORDER BY created_at DESC
+                 LIMIT 1`,
+                [userId, otherId, otherId, userId]
+            );
+
+            // Count unread
+            const unreadFromUser = await query(
+                `SELECT COUNT(*) as count FROM message 
+                 WHERE bookingId IS NULL AND senderId = ? AND recipientId = ? AND JSON_CONTAINS(readBy_json, ?, '$[*].userId') = 0`,
+                [otherId, userId, JSON.stringify(userId)]
+            );
+            const unreadCount = unreadFromUser[0]?.count || 0;
+
+            const latest = latestMsg[0];
+            const snippet = latest
+                ? latest.content || (latest.attachment_name ? `Attachment: ${latest.attachment_name}` : 'No messages yet')
+                : 'No messages yet';
+            
+            let readBy = latest && latest.readBy_json ? JSON.parse(latest.readBy_json) : [];
+            const unread = latest && !readBy.some(r => r.userId === userId);
+
+            conversations.push({
+                bookingId: null,
+                title: `Chat with ${otherName}`,
+                otherParticipantId: otherId,
+                otherParticipantName: otherName,
+                snippet,
+                timestamp: latest ? new Date(latest.created_at).getTime() : null,
+                unread,
+                unreadCount,
+                hasBooking: false,
+                tutorInfo
+            });
         }
 
         // Sort by timestamp desc
@@ -254,9 +310,39 @@ router.post('/messages', authenticateToken, async (req, res) => {
         let attachmentSize = null;
 
         if (attachment && attachment.dataUrl) {
+            // Validate size
+            // Max 5MB
+            const MAX_SIZE = 5 * 1024 * 1024; // 5MB
+            
+            // Base64 string length * 0.75 is approx file size in bytes
+            if (attachment.dataUrl.length * 0.75 > MAX_SIZE) {
+                 return res.status(400).json({ 
+                     success: false, 
+                     error: 'File too large. Max 5MB.' 
+                 });
+            }
+
             const matches = attachment.dataUrl.match(/^data:([^;]+);base64,(.+)$/);
             if (matches) {
                 attachmentType = matches[1];
+                
+                // Validate file type
+                const allowedTypes = [
+                    'image/jpeg', 'image/png', 'image/gif', 
+                    'application/pdf', 
+                    'audio/mpeg', 'audio/wav', 'audio/mp3',
+                    'application/vnd.openxmlformats-officedocument.presentationml.presentation', // pptx
+                    'application/vnd.ms-powerpoint', // ppt
+                    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', // xlsx
+                    'application/vnd.ms-excel', // xls
+                    'application/msword', // doc
+                    'application/vnd.openxmlformats-officedocument.wordprocessingml.document' // docx
+                ];
+                
+                if (!allowedTypes.includes(attachmentType)) {
+                    return res.status(400).json({ success: false, error: 'Invalid file type. Allowed: Images, PDF, Audio, Office Docs.' });
+                }
+
                 attachmentData = Buffer.from(matches[2], 'base64');
                 attachmentName = attachment.name;
                 attachmentSize = attachment.size;
@@ -280,6 +366,35 @@ router.post('/messages', authenticateToken, async (req, res) => {
              VALUES (?, ?, ?, ?, ?, 'message')`,
             [recipientId, senderId, bookingId || null, messageId, content || (attachmentName ? `Attachment: ${attachmentName}` : 'Attachment')]
         );
+
+        // Emit socket events for real-time updates
+        const conversationId = (bookingId && bookingId !== 'null') ? bookingId : [senderId, recipientId].sort().join('-');
+        
+        if (req.io) {
+            // Broadcast message to conversation room
+            req.io.to(`conversation:${conversationId}`).emit('message:received', {
+                id: messageId,
+                bookingId: bookingId || null,
+                senderId,
+                recipientId,
+                content: content || '',
+                attachment: attachment || null,
+                timestamp: Date.now(),
+                readBy: [{ userId: senderId, readAt: new Date().toISOString() }],
+                status: 'sent'
+            });
+
+            // Notify recipient if online
+            if (req.onlineUsers && req.onlineUsers.has(recipientId)) {
+                req.io.to(req.onlineUsers.get(recipientId)).emit('notification:new', {
+                    type: 'message',
+                    from: senderId,
+                    bookingId,
+                    message: content || (attachmentName ? `Attachment: ${attachmentName}` : 'New message'),
+                    timestamp: Date.now()
+                });
+            }
+        }
 
         res.json({ 
             success: true, 
@@ -341,6 +456,27 @@ router.post('/messages/:messageId/read', authenticateToken, async (req, res) => 
             `UPDATE message SET readBy_json = ?, status = ? WHERE id = ?`,
             [JSON.stringify(readBy), status, messageId]
         );
+
+        // Also mark corresponding notification as read
+        await query(
+            `UPDATE notification SET is_read = TRUE WHERE messageId = ? AND recipientId = ?`,
+            [messageId, userId]
+        );
+
+        // Emit socket event for read receipt
+        const msgDetails = await query('SELECT bookingId, senderId, recipientId FROM message WHERE id = ?', [messageId]);
+        if (msgDetails.length > 0) {
+            const m = msgDetails[0];
+            const conversationId = (m.bookingId && m.bookingId !== 'null') ? m.bookingId : [m.senderId, m.recipientId].sort().join('-');
+            
+            if (req.io) {
+                req.io.to(`conversation:${conversationId}`).emit('message:read', {
+                    messageId: parseInt(messageId),
+                    userId,
+                    readAt: new Date().toISOString()
+                });
+            }
+        }
 
         res.json({ success: true, status, readBy });
     } catch (err) {

@@ -26,6 +26,18 @@ export async function fetchAvailableTutors() {
   }
 }
 
+// Get all available students for tutor to chat with
+export async function fetchAvailableStudents() {
+  try {
+    const config = getAxiosConfig();
+    const res = await axios.get(`${MESSAGES_URL}/students`, config);
+    return res.data.success ? res.data.data : [];
+  } catch (err) {
+    console.error('Error fetching students:', err);
+    return [];
+  }
+}
+
 // Fetch conversations for a user (includes booked tutors and available tutors)
 export async function fetchConversations(userId) {
   try {

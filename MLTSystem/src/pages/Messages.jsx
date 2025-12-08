@@ -18,6 +18,10 @@ import {
   Card,
   CardContent,
   Grid,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  InputAdornment,
 } from "@mui/material";
 import AttachFileIcon from "@mui/icons-material/AttachFile";
 import SendIcon from "@mui/icons-material/Send";
@@ -25,6 +29,8 @@ import CloseIcon from "@mui/icons-material/Close";
 import CalendarTodayIcon from "@mui/icons-material/CalendarToday";
 import AccessTimeIcon from "@mui/icons-material/AccessTime";
 import StarIcon from "@mui/icons-material/Star";
+import AddCommentIcon from "@mui/icons-material/AddComment";
+import SearchIcon from "@mui/icons-material/Search";
 
 import * as MessagesController from "../controllers/MessagesController";
 import { useAuth } from "../context/AuthContext";
@@ -41,6 +47,32 @@ export default function Messages() {
   const [loading, setLoading] = useState(false);
   const [onlineUsers, setOnlineUsers] = useState([]);
   const [typingUsers, setTypingUsers] = useState(new Set());
+  const messagesEndRef = React.useRef(null);
+  const selectedConversationRef = React.useRef(selectedConversation);
+  
+  // New Chat Dialog State
+  const [openNewChat, setOpenNewChat] = useState(false);
+  const [availableUsers, setAvailableUsers] = useState([]); // Tutors or Students
+  const [searchTerm, setSearchTerm] = useState("");
+
+  // Keep ref in sync with state
+  useEffect(() => {
+    selectedConversationRef.current = selectedConversation;
+  }, [selectedConversation]);
+
+  // Helper to format file size
+  const formatFileSize = (bytes) => {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+  };
+
+  // Auto-scroll to bottom when messages change
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [threadMessages]);
 
   // Load conversations on mount and when currentUser changes
   useEffect(() => {
@@ -64,13 +96,61 @@ export default function Messages() {
 
     // Listen for incoming messages
     socketService.onMessageReceived((data) => {
-      setThreadMessages(prev => [...prev, {
-        id: Math.random(),
-        ...data,
-        timestamp: data.timestamp || Date.now(),
-        readBy: [],
-        status: 'delivered'
-      }]);
+      const currentSelected = selectedConversationRef.current;
+      const currentUserId = currentUser.studentId || currentUser.tutorId;
+
+      // 1. Update thread messages if viewing this conversation
+      const isCurrentConversation = currentSelected && (
+        (data.bookingId && data.bookingId === currentSelected.bookingId) ||
+        (!data.bookingId && (data.senderId === currentSelected.otherParticipantId || data.recipientId === currentSelected.otherParticipantId))
+      );
+
+      if (isCurrentConversation) {
+        setThreadMessages(prev => {
+          if (prev.some(m => m.id === data.id)) return prev;
+          return [...prev, {
+            ...data,
+            id: data.id || Date.now(),
+            timestamp: data.timestamp || Date.now(),
+            readBy: data.readBy || [],
+            status: data.status || 'delivered'
+          }];
+        });
+
+        // If message is from other person, mark as read immediately
+        if (data.senderId !== currentUserId) {
+           MessagesController.markRead(data.id, currentUserId);
+           // Send read receipt
+           const conversationId = data.bookingId || 
+             `${[currentUserId, data.senderId].sort().join('-')}`;
+           socketService.sendReadReceipt(conversationId, data.id, currentUserId);
+        }
+      }
+
+      // 2. Update conversations list (unread count, snippet, timestamp)
+      setConversations(prev => {
+        const updated = prev.map(c => {
+          const isForThisConvo = (data.bookingId && data.bookingId === c.bookingId) ||
+                                 (!data.bookingId && (data.senderId === c.otherParticipantId || data.recipientId === c.otherParticipantId));
+          
+          if (isForThisConvo) {
+            // If we are currently viewing this conversation, unread count stays 0 (since we read it)
+            // Otherwise, increment it
+            const newUnreadCount = isCurrentConversation ? 0 : (c.unreadCount || 0) + 1;
+            
+            return {
+              ...c,
+              snippet: data.content || (data.attachment ? `Attachment: ${data.attachment.name}` : 'New message'),
+              timestamp: data.timestamp || Date.now(),
+              unreadCount: newUnreadCount,
+              unread: newUnreadCount > 0
+            };
+          }
+          return c;
+        });
+        // Sort by timestamp desc
+        return updated.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+      });
     });
 
     // Listen for read receipts - update message status in real-time
@@ -220,7 +300,9 @@ export default function Messages() {
       setFileObj(null);
       return;
     }
-    if (f.size > 5 * 1024 * 1024) {
+    // Max 5MB
+    const MAX_SIZE = 5 * 1024 * 1024;
+    if (f.size > MAX_SIZE) {
       setSnack({ severity: "error", message: "File too large (max 5MB)" });
       return;
     }
@@ -299,10 +381,7 @@ export default function Messages() {
         attachment: fileObj,
       };
 
-      // Try to send via socket first (real-time), fallback to HTTP
-      const socketSent = socketService.sendMessage(messageData);
-      
-      // Always also send via HTTP to ensure persistence in database
+      // Send via HTTP (Backend will handle socket broadcast)
       await MessagesController.sendMessage(messageData);
       
       setText("");
@@ -325,6 +404,57 @@ export default function Messages() {
     }
   }
 
+  // Handle opening new chat dialog
+  const handleOpenNewChat = async () => {
+    setOpenNewChat(true);
+    setAvailableUsers([]);
+    try {
+      if (currentUser?.studentId) {
+        const tutors = await MessagesController.fetchAvailableTutors();
+        setAvailableUsers(tutors);
+      } else if (currentUser?.tutorId) {
+        const students = await MessagesController.fetchAvailableStudents();
+        setAvailableUsers(students);
+      }
+    } catch (err) {
+      console.error("Failed to fetch users", err);
+    }
+  };
+
+  const handleStartChat = (user) => {
+    // Determine other participant ID based on current user role
+    const otherId = currentUser?.studentId ? user.tutorId : user.studentId;
+    
+    // Check if conversation already exists
+    const existing = conversations.find(c => c.otherParticipantId === otherId);
+    
+    if (existing) {
+      setSelectedConversation(existing);
+    } else {
+      // Create temporary conversation object
+      const newConvo = {
+        bookingId: null,
+        title: `Chat with ${user.name}`,
+        otherParticipantId: otherId,
+        otherParticipantName: user.name,
+        snippet: 'Start a new conversation',
+        timestamp: Date.now(),
+        unread: false,
+        unreadCount: 0,
+        hasBooking: false,
+        // Only add tutorInfo if we are a student viewing a tutor
+        tutorInfo: currentUser?.studentId ? {
+          price: user.price,
+          specialization: user.specialization,
+          rating: user.rating
+        } : null
+      };
+      setConversations([newConvo, ...conversations]);
+      setSelectedConversation(newConvo);
+    }
+    setOpenNewChat(false);
+  };
+
   if (!currentUser) {
     return (
       <Box sx={{ mt: 10, px: 4 }}>
@@ -345,13 +475,18 @@ export default function Messages() {
       <Box sx={{ display: "flex", gap: 3 }}>
         {/* Left column: conversations list */}
         <Paper sx={{ width: 320, p: 2, maxHeight: 700, overflowY: "auto" }}>
-          <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 2 }}>
-            <Typography variant="h6" fontWeight="600">
-              Conversations
-            </Typography>
-            {conversations.some(c => c.unread) && (
-              <Badge badgeContent={conversations.filter(c => c.unread).length} color="error" />
-            )}
+          <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 2 }}>
+            <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+              <Typography variant="h6" fontWeight="600">
+                Conversations
+              </Typography>
+              {conversations.some(c => c.unread) && (
+                <Badge badgeContent={conversations.filter(c => c.unread).length} color="error" />
+              )}
+            </Box>
+            <IconButton onClick={handleOpenNewChat} color="primary" title="New Chat">
+              <AddCommentIcon />
+            </IconButton>
           </Box>
 
           <List sx={{ p: 0 }}>
@@ -380,16 +515,29 @@ export default function Messages() {
                       <Typography fontWeight={c.unread ? 700 : 500} sx={{ flex: 1 }}>
                         {c.otherParticipantName}
                       </Typography>
-                      {c.unreadCount && c.unreadCount > 0 && (
-                        <Box sx={{ display: "flex", alignItems: "center", ml: 1 }}>
-                          <Badge badgeContent={c.unreadCount} color="error" overlap="circular" />
+                      {c.unreadCount > 0 && (
+                        <Box sx={{ 
+                          ml: 1,
+                          bgcolor: "error.main",
+                          color: "white",
+                          width: 22,
+                          height: 22,
+                          borderRadius: "50%",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          fontSize: "0.75rem",
+                          fontWeight: "bold",
+                          boxShadow: 1
+                        }}>
+                          {c.unreadCount}
                         </Box>
                       )}
                     </Box>
                   }
                   secondary={
                     <Box>
-                      <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+                      <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                         {c.snippet}
                       </Typography>
                       {c.timestamp && (
@@ -405,6 +553,9 @@ export default function Messages() {
             {conversations.length === 0 && (
               <Box sx={{ p: 2, textAlign: "center" }}>
                 <Typography color="text.secondary">No conversations yet</Typography>
+                <Button variant="outlined" startIcon={<AddCommentIcon />} onClick={handleOpenNewChat} sx={{ mt: 2 }}>
+                  Start New Chat
+                </Button>
               </Box>
             )}
           </List>
@@ -511,31 +662,71 @@ export default function Messages() {
                           </Avatar>
                           <Box sx={{ flex: 1, maxWidth: "70%" }}>
                             <Box sx={{
-                              bgcolor: isCurrentUser ? "#c8e6c9" : "#e3f2fd",
-                              p: 1.5,
-                              borderRadius: 2,
+                              bgcolor: isCurrentUser ? "#e3f2fd" : "#f5f5f5",
+                              color: isCurrentUser ? "#0d47a1" : "text.primary",
+                              p: 2,
+                              borderRadius: isCurrentUser ? "20px 20px 4px 20px" : "20px 20px 20px 4px",
+                              boxShadow: 1,
                               wordBreak: "break-word"
                             }}>
                               {m.content && (
-                                <Typography variant="body2" sx={{ whiteSpace: "pre-wrap" }}>
+                                <Typography variant="body2" sx={{ whiteSpace: "pre-wrap", fontSize: "0.95rem" }}>
                                   {m.content}
                                 </Typography>
                               )}
                               {m.attachment && m.attachment.dataUrl && (
                                 <Box sx={{ mt: m.content ? 1 : 0 }}>
                                   {m.attachment.type.startsWith("image/") && (
-                                    <img
-                                      src={m.attachment.dataUrl}
-                                      alt="attachment"
-                                      style={{ maxWidth: 250, borderRadius: 4 }}
-                                    />
+                                    <Box>
+                                      <img
+                                        src={m.attachment.dataUrl}
+                                        alt="attachment"
+                                        style={{ maxWidth: 250, borderRadius: 4 }}
+                                      />
+                                      {m.attachment.size && (
+                                        <Typography variant="caption" display="block" color="text.secondary" sx={{ mt: 0.5 }}>
+                                          {formatFileSize(m.attachment.size)}
+                                        </Typography>
+                                      )}
+                                    </Box>
                                   )}
                                   {m.attachment.type.startsWith("audio/") && (
-                                    <audio controls src={m.attachment.dataUrl} style={{ maxWidth: 250 }} />
+                                    <Box>
+                                      <audio controls src={m.attachment.dataUrl} style={{ maxWidth: 250 }} />
+                                      {m.attachment.size && (
+                                        <Typography variant="caption" display="block" color="text.secondary" sx={{ mt: 0.5 }}>
+                                          {formatFileSize(m.attachment.size)}
+                                        </Typography>
+                                      )}
+                                    </Box>
                                   )}
-                                  {m.attachment.type === "application/pdf" && (
-                                    <a href={m.attachment.dataUrl} target="_blank" rel="noreferrer">
-                                      📄 {m.attachment.name}
+                                  {/* Generic handler for documents including PDF, Office files */}
+                                  {!m.attachment.type.startsWith("image/") && !m.attachment.type.startsWith("audio/") && (
+                                    <a 
+                                      href={m.attachment.dataUrl} 
+                                      download={m.attachment.name}
+                                      target="_blank" 
+                                      rel="noreferrer"
+                                      style={{ display: 'flex', alignItems: 'center', gap: '5px', textDecoration: 'none', color: 'inherit' }}
+                                    >
+                                      <Box sx={{ p: 1, bgcolor: 'rgba(0,0,0,0.05)', borderRadius: 1, display: 'flex', alignItems: 'center', gap: 1 }}>
+                                        <Typography variant="body2">
+                                          {m.attachment.type.includes('pdf') ? '📄' : 
+                                           m.attachment.type.includes('sheet') || m.attachment.type.includes('excel') ? '📊' :
+                                           m.attachment.type.includes('presentation') || m.attachment.type.includes('powerpoint') ? '📽️' :
+                                           m.attachment.type.includes('word') ? '📝' : '📎'}
+                                        </Typography>
+                                        <Box>
+                                          <Typography variant="body2" sx={{ textDecoration: 'underline' }}>
+                                            {m.attachment.name}
+                                          </Typography>
+                                          {m.attachment.size && (
+                                            <Typography variant="caption" color="text.secondary">
+                                              {formatFileSize(m.attachment.size)}
+                                            </Typography>
+                                          )}
+                                        </Box>
+                                      </Box>
                                     </a>
                                   )}
                                 </Box>
@@ -568,6 +759,7 @@ export default function Messages() {
                       );
                     })
                   )}
+                  <div ref={messagesEndRef} />
                 </Box>
 
                 {/* Typing indicator */}
@@ -596,11 +788,17 @@ export default function Messages() {
                   <Box sx={{ mb: 2, p: 1.5, bgcolor: "#f0f0f0", borderRadius: 1, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                     <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
                       <Typography variant="body2">📎 Draft:</Typography>
-                      <Chip
-                        label={fileObj.name}
-                        size="small"
-                        variant="outlined"
-                      />
+                      <Box>
+                        <Chip
+                          label={fileObj.name}
+                          size="small"
+                          variant="outlined"
+                          sx={{ mr: 1 }}
+                        />
+                        <Typography variant="caption" color="text.secondary">
+                          {formatFileSize(fileObj.size)}
+                        </Typography>
+                      </Box>
                     </Box>
                     <IconButton size="small" onClick={handleRemoveFile}>
                       <CloseIcon fontSize="small" />
@@ -648,6 +846,59 @@ export default function Messages() {
           </Alert>
         ) : null}
       </Snackbar>
+
+      {/* New Chat Dialog */}
+      <Dialog open={openNewChat} onClose={() => setOpenNewChat(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>Start New Conversation</DialogTitle>
+        <DialogContent>
+          <TextField
+            fullWidth
+            placeholder={currentUser?.studentId ? "Search tutors..." : "Search students..."}
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            InputProps={{
+              startAdornment: (
+                <InputAdornment position="start">
+                  <SearchIcon />
+                </InputAdornment>
+              ),
+            }}
+            sx={{ mb: 2, mt: 1 }}
+          />
+          <List>
+            {availableUsers
+              .filter(u => u.name.toLowerCase().includes(searchTerm.toLowerCase()))
+              .map((user) => (
+                <ListItem 
+                  key={user.tutorId || user.studentId} 
+                  button 
+                  onClick={() => handleStartChat(user)}
+                  sx={{ borderRadius: 1, mb: 0.5, '&:hover': { bgcolor: '#f5f5f5' } }}
+                >
+                  <ListItemAvatar>
+                    <Avatar sx={{ bgcolor: "#1976d2" }}>
+                      {user.name.charAt(0).toUpperCase()}
+                    </Avatar>
+                  </ListItemAvatar>
+                  <ListItemText 
+                    primary={user.name} 
+                    secondary={
+                      currentUser?.studentId 
+                        ? `${user.specialization} • RM${user.price}/hr`
+                        : user.email
+                    } 
+                  />
+                </ListItem>
+              ))}
+            {availableUsers.length === 0 && (
+              <Typography color="text.secondary" align="center" sx={{ py: 2 }}>
+                No users found
+              </Typography>
+            )}
+          </List>
+        </DialogContent>
+      </Dialog>
     </Box>
   );
 }
+
