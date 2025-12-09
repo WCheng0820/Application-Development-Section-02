@@ -1,0 +1,185 @@
+// src/Dashboard.jsx
+import React from "react";
+import {
+  Box,
+  Card,
+  CardContent,
+  Grid,
+  List,
+  ListItem,
+  ListItemIcon,
+  ListItemText,
+  Typography,
+  Chip,
+} from "@mui/material";
+import CalendarMonthIcon from "@mui/icons-material/CalendarMonth";
+import AccessTimeIcon from "@mui/icons-material/AccessTime";
+import CheckCircleIcon from "@mui/icons-material/CheckCircle";
+import ChatBubbleOutlineIcon from "@mui/icons-material/ChatBubbleOutline";
+import SearchIcon from "@mui/icons-material/Search";
+import FolderIcon from "@mui/icons-material/Folder";
+import MessageIcon from "@mui/icons-material/Message";
+import ScheduleIcon from "@mui/icons-material/Schedule";
+import { useAuth } from "../context/AuthContext";
+
+export default function Dashboard() {
+  const { currentUser } = useAuth();
+
+  return (
+    <Box sx={{ bgcolor: "#f8f9fb", minHeight: "100vh", pt: 10 }}>
+      {/* Main Content */}
+      <Box sx={{ p: 4 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+          <Typography variant="h5" sx={{ fontWeight: "bold", mr: 2 }}>
+            Welcome back, {currentUser?.username}!
+          </Typography>
+          <Chip
+            label={currentUser?.role.charAt(0).toUpperCase() + currentUser?.role.slice(1)}
+            color={currentUser?.role === 'admin' ? 'secondary' : currentUser?.role === 'tutor' ? 'primary' : 'default'}
+            size="small"
+          />
+        </Box>
+        {currentUser?.profile.bio && (
+          <Typography variant="body1" color="text.secondary" sx={{ mb: 2, fontStyle: 'italic' }}>
+            "{currentUser.profile.bio}"
+          </Typography>
+        )}
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+          Here's what's happening with your Mandarin learning journey
+        </Typography>
+
+        {/* Summary Cards */}
+        <Grid container spacing={2} sx={{ mb: 4 }}>
+          <Grid item xs={12} sm={6} md={3}>
+            <Card>
+              <CardContent>
+                <Typography variant="subtitle2" color="text.secondary">
+                  Upcoming Sessions
+                </Typography>
+                <Box display="flex" alignItems="center" justifyContent="space-between">
+                  <Typography variant="h5" fontWeight="bold">3</Typography>
+                  <CalendarMonthIcon color="primary" />
+                </Box>
+              </CardContent>
+            </Card>
+          </Grid>
+
+          <Grid item xs={12} sm={6} md={3}>
+            <Card>
+              <CardContent>
+                <Typography variant="subtitle2" color="text.secondary">
+                  Learning Hours
+                </Typography>
+                <Box display="flex" alignItems="center" justifyContent="space-between">
+                  <Typography variant="h5" fontWeight="bold">24</Typography>
+                  <AccessTimeIcon color="success" />
+                </Box>
+              </CardContent>
+            </Card>
+          </Grid>
+
+          <Grid item xs={12} sm={6} md={3}>
+            <Card>
+              <CardContent>
+                <Typography variant="subtitle2" color="text.secondary">
+                  Completed Lessons
+                </Typography>
+                <Box display="flex" alignItems="center" justifyContent="space-between">
+                  <Typography variant="h5" fontWeight="bold">12</Typography>
+                  <CheckCircleIcon color="secondary" />
+                </Box>
+              </CardContent>
+            </Card>
+          </Grid>
+
+          <Grid item xs={12} sm={6} md={3}>
+            <Card>
+              <CardContent>
+                <Typography variant="subtitle2" color="text.secondary">
+                  Unread Messages
+                </Typography>
+                <Box display="flex" alignItems="center" justifyContent="space-between">
+                  <Typography variant="h5" fontWeight="bold">2</Typography>
+                  <ChatBubbleOutlineIcon color="warning" />
+                </Box>
+              </CardContent>
+            </Card>
+          </Grid>
+        </Grid>
+
+        {/* Bottom Sections */}
+        <Grid container spacing={3}>
+          {/* Upcoming Sessions */}
+          <Grid item xs={12} md={6}>
+            <Card sx={{ height: "100%" }}>
+              <CardContent>
+                <Typography variant="h6" sx={{ mb: 2 }}>
+                  Upcoming Sessions
+                </Typography>
+                {[
+                  { title: "Conversational Practice", tutor: "Li Ming", time: "Today, 2:00 PM" },
+                  { title: "Grammar Fundamentals", tutor: "Zhang Wei", time: "Tomorrow, 10:00 AM" },
+                  { title: "Business Mandarin", tutor: "Li Ming", time: "Nov 7, 3:00 PM" },
+                ].map((s, i) => (
+                  <Box
+                    key={i}
+                    sx={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                      p: 2,
+                      mb: 1,
+                      bgcolor: "#f9fafb",
+                      borderRadius: 2,
+                    }}
+                  >
+                    <Box>
+                      <Typography fontWeight="bold">{s.title}</Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        with {s.tutor}
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        {s.time}
+                      </Typography>
+                    </Box>
+                    <Button variant="outlined" size="small">
+                      View
+                    </Button>
+                  </Box>
+                ))}
+
+                <Button variant="text" fullWidth sx={{ mt: 2 }}>
+                  View All Bookings
+                </Button>
+              </CardContent>
+            </Card>
+          </Grid>
+
+          {/* Quick Actions */}
+          <Grid item xs={12} md={6}>
+            <Card sx={{ height: "100%" }}>
+              <CardContent>
+                <Typography variant="h6" sx={{ mb: 2 }}>
+                  Quick Actions
+                </Typography>
+                <List>
+                  {[
+                    { text: "Find a Tutor", icon: <SearchIcon /> },
+                    { text: "Browse Learning Materials", icon: <FolderIcon /> },
+                    { text: "Messages", icon: <MessageIcon /> },
+                    { text: "Manage Schedule", icon: <ScheduleIcon /> },
+                  ].map((item, i) => (
+                    <ListItem key={i} button>
+                      <ListItemIcon>{item.icon}</ListItemIcon>
+                      <ListItemText primary={item.text} />
+                    </ListItem>
+                  ))}
+                </List>
+              </CardContent>
+            </Card>
+          </Grid>
+        </Grid>
+      </Box>
+    </Box>
+  );
+}
