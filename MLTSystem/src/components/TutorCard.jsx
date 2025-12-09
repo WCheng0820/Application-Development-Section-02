@@ -2,8 +2,6 @@ import React, { useState } from "react";
 import {
   Card,
   CardContent,
-  CardActions,
-  Button,
   Typography,
   Box,
   Chip,
@@ -20,6 +18,7 @@ import {
   ListItemButton,
   Divider,
   Paper,
+  Button,
 } from "@mui/material";
 import SchoolIcon from "@mui/icons-material/School";
 import StarIcon from "@mui/icons-material/Star";
@@ -88,12 +87,14 @@ export default function TutorCard({ tutor, onBook }) {
   return (
     <>
       <Card
+        onClick={handleOpenProfile}
         sx={{
           borderRadius: 2,
           boxShadow: 2,
           "&:hover": {
             boxShadow: 6,
             transform: "translateY(-4px)",
+            cursor: "pointer",
           },
           transition: "all 0.3s ease",
           height: "100%",
@@ -105,10 +106,11 @@ export default function TutorCard({ tutor, onBook }) {
           {/* Tutor Avatar and Name */}
           <Box sx={{ display: "flex", alignItems: "center", mb: 2 }}>
             <Avatar
-              src={tutor.imageUrl}
-              sx={{ width: 56, height: 56, mr: 2 }}
+              sx={{ width: 56, height: 56, mr: 2, bgcolor: "#1976d2", fontWeight: "bold" }}
               alt={tutor.name}
-            />
+            >
+              {(tutor.name || "?").charAt(0).toUpperCase()}
+            </Avatar>
             <Box sx={{ flexGrow: 1 }}>
               <Typography variant="h6" fontWeight="bold">
                 {tutor.name}
@@ -192,26 +194,6 @@ export default function TutorCard({ tutor, onBook }) {
             </Box>
           )}
         </CardContent>
-
-        <CardActions sx={{ pt: 0 }}>
-          <Button
-            size="small"
-            onClick={handleOpenProfile}
-            sx={{ color: "primary.main" }}
-          >
-            View Profile
-          </Button>
-          <Button
-            size="small"
-            variant="contained"
-            color="primary"
-            onClick={handleBook}
-            sx={{ ml: "auto" }}
-            disabled={availableSlots.length === 0}
-          >
-            Book Now
-          </Button>
-        </CardActions>
       </Card>
 
       {/* Profile Dialog */}
@@ -224,10 +206,11 @@ export default function TutorCard({ tutor, onBook }) {
         <DialogTitle sx={{ pb: 1 }}>
           <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
             <Avatar
-              src={tutor.imageUrl}
-              sx={{ width: 48, height: 48 }}
+              sx={{ width: 48, height: 48, bgcolor: "#1976d2", fontWeight: "bold" }}
               alt={tutor.name}
-            />
+            >
+              {(tutor.name || "?").charAt(0).toUpperCase()}
+            </Avatar>
             <Box>
               <Typography variant="h6" fontWeight="bold">
                 {tutor.name}

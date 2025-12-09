@@ -227,6 +227,7 @@ const initDatabase = async () => {
                 tutorId VARCHAR(255) NOT NULL,
                 rating TINYINT NOT NULL CHECK (rating BETWEEN 1 AND 5),
                 comment TEXT,
+                is_anonymous TINYINT DEFAULT 0,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY (bookingId) REFERENCES booking(bookingId) ON DELETE CASCADE,
                 FOREIGN KEY (studentId) REFERENCES student(studentId) ON DELETE CASCADE,

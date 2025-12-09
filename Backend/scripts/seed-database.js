@@ -266,6 +266,56 @@ async function seed() {
             }
         }
 
+        // Seed feedback for some bookings
+        console.log('\n📝 Seeding feedback...');
+        const feedbackData = [
+            {
+                bookingId: 1,
+                rating: 4,
+                comment: 'Great teacher! Very helpful and patient.',
+                is_anonymous: 0
+            },
+            {
+                bookingId: 1,
+                rating: 5,
+                comment: 'Excellent session, learned a lot!',
+                is_anonymous: 1
+            }
+        ];
+
+        for (const feedback of feedbackData) {
+            try {
+                // Get the booking to get tutorId and studentId
+                const bookingRow = await query(
+                    'SELECT tutorId, studentId FROM booking WHERE bookingId = ?',
+                    [feedback.bookingId]
+                );
+
+                if (bookingRow.length > 0) {
+                    const { tutorId, studentId } = bookingRow[0];
+
+                    // Check if feedback already exists
+                    const feedbackExists = await query(
+                        'SELECT id FROM feedback WHERE bookingId = ?',
+                        [feedback.bookingId]
+                    );
+
+                    if (feedbackExists.length === 0) {
+                        await query(
+                            `INSERT INTO feedback (bookingId, studentId, tutorId, rating, comment, is_anonymous)
+                             VALUES (?, ?, ?, ?, ?, ?)`,
+                            [feedback.bookingId, studentId, tutorId, feedback.rating, feedback.comment, feedback.is_anonymous]
+                        );
+                        console.log(`✅ Inserted feedback for booking ${feedback.bookingId}`);
+                    } else {
+                        console.log(`⚠️  Feedback already exists for booking ${feedback.bookingId}`);
+                    }
+                }
+            } catch (err) {
+                console.error('Feedback error:', err.message);
+            }
+        }
+
         console.log('✨ Seeding complete ✨');
         process.exit(0);
 
