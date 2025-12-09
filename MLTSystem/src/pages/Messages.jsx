@@ -646,6 +646,11 @@ export default function Messages() {
                     threadMessages.map((m) => {
                       const currentUserId = currentUser.studentId || currentUser.tutorId;
                       const isCurrentUser = m.senderId === currentUserId;
+                      
+                      // Use name initials instead of ID initials
+                      const myInitial = (currentUser?.username || currentUser?.email || "?").charAt(0).toUpperCase();
+                      const otherInitial = (selectedConversation?.otherParticipantName || "?").charAt(0).toUpperCase();
+                      
                       return (
                         <Box
                           key={m.id}
@@ -658,7 +663,7 @@ export default function Messages() {
                           }}
                         >
                           <Avatar sx={{ bgcolor: isCurrentUser ? "#4caf50" : "#1976d2", width: 32, height: 32 }}>
-                            {(m.senderId || "?").charAt(0).toUpperCase()}
+                            {isCurrentUser ? myInitial : otherInitial}
                           </Avatar>
                           <Box sx={{ flex: 1, maxWidth: "70%" }}>
                             <Box sx={{

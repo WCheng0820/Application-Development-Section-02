@@ -60,6 +60,11 @@ export async function fetchBookings(filters = {}) {
         time,
         // include per-booking rating so frontend can detect if booking was already rated
         rating: (r.rating !== undefined && r.rating !== null) ? parseInt(r.rating, 10) : null,
+        feedback: r.feedback_rating ? {
+            rating: r.feedback_rating,
+            comment: r.feedback_comment,
+            isAnonymous: r.feedback_anonymous
+        } : null,
         subject: r.subject,
         status: r.status ? (r.status.charAt(0).toUpperCase() + r.status.slice(1)) : 'Pending',
         studentContact: { email: studentEmail, phone: studentPhone },
@@ -76,10 +81,11 @@ export async function fetchBookings(filters = {}) {
 export async function cancelBooking(id) {
   try {
     const config = getAxiosConfig();
-    const res = await axios.delete(`${BOOKINGS_URL}/${id}`, config);
+    // Use PUT to update status to 'cancelled' instead of DELETE, so we keep history
+    const res = await axios.put(`${BOOKINGS_URL}/${id}`, { status: 'cancelled' }, config);
     return res.data.success ? res.data : null;
   } catch (err) {
-    console.error('Error deleting booking:', err);
+    console.error('Error cancelling booking:', err);
     throw err;
   }
 }
@@ -103,5 +109,38 @@ export async function updateBooking(id, booking) {
   } catch (err) {
     console.error('Error updating booking:', err);
     throw err;
+  }
+}
+
+export async function deleteBooking(id) {
+  try {
+    const config = getAxiosConfig();
+    const res = await axios.delete(`${BOOKINGS_URL}/${id}`, config);
+    return res.data.success;
+  } catch (err) {
+    console.error('Error deleting booking:', err);
+    throw err;
+  }
+}
+
+export async function submitFeedback(bookingId, rating, comment, isAnonymous) {
+  try {
+    const config = getAxiosConfig();
+    const res = await axios.post(`${BOOKINGS_URL}/${bookingId}/feedback`, { rating, comment, isAnonymous }, config);
+    return res.data;
+  } catch (err) {
+    console.error('Error submitting feedback:', err);
+    throw err;
+  }
+}
+
+export async function getFeedback(bookingId) {
+  try {
+    const config = getAxiosConfig();
+    const res = await axios.get(`${BOOKINGS_URL}/${bookingId}/feedback`, config);
+    return res.data.success ? res.data.data : null;
+  } catch (err) {
+    console.error('Error fetching feedback:', err);
+    return null;
   }
 }

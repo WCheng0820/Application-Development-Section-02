@@ -93,4 +93,24 @@ router.delete('/:id', async (req, res, next) => {
     }
 });
 
+// Get reviews for a tutor
+router.get('/:id/reviews', async (req, res, next) => {
+    const id = req.params.id;
+    try {
+        const reviews = await query(
+            `SELECT f.*, 
+                    CASE WHEN f.is_anonymous = 1 THEN 'Anonymous' ELSE u.username END as student_name 
+             FROM feedback f
+             JOIN student s ON f.studentId = s.studentId
+             JOIN users u ON s.user_id = u.id
+             WHERE f.tutorId = ?
+             ORDER BY f.created_at DESC`,
+            [id]
+        );
+        res.json({ success: true, data: reviews });
+    } catch (err) {
+        next(err);
+    }
+});
+
 module.exports = router;

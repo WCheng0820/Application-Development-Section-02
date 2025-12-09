@@ -125,3 +125,13 @@ export function getTutorById(id) {
   const sid = String(id);
   return tutorsCache.find((t) => String(t.id) === sid);
 }
+
+export async function getTutorReviews(tutorId) {
+  try {
+    const response = await axios.get(`${API_URL}/${tutorId}/reviews`);
+    return response.data.success ? response.data.data : [];
+  } catch (error) {
+    console.error("Error fetching tutor reviews:", error);
+    return [];
+  }
+}

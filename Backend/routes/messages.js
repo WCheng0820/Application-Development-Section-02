@@ -360,11 +360,37 @@ router.post('/messages', authenticateToken, async (req, res) => {
 
         const messageId = result.insertId;
 
+        // Fetch sender name for notification
+        let senderName = 'Someone';
+        try {
+            // Check if sender is tutor
+            const tutors = await query('SELECT name FROM tutor WHERE tutorId = ?', [senderId]);
+            if (tutors.length > 0) {
+                senderName = tutors[0].name;
+            } else {
+                // Check if sender is student
+                const students = await query(
+                    `SELECT u.username 
+                     FROM student s 
+                     JOIN users u ON s.user_id = u.id 
+                     WHERE s.studentId = ?`, 
+                    [senderId]
+                );
+                if (students.length > 0) {
+                    senderName = students[0].username;
+                }
+            }
+        } catch (e) {
+            console.error('Error fetching sender name for notification:', e);
+        }
+
+        const notifText = `New message from ${senderName}: ${content ? (content.length > 30 ? content.substring(0, 30) + '...' : content) : (attachmentName ? 'Sent an attachment' : 'Sent a message')}`;
+
         // Create notification for recipient
         await query(
             `INSERT INTO notification (recipientId, senderId, bookingId, messageId, text, type)
              VALUES (?, ?, ?, ?, ?, 'message')`,
-            [recipientId, senderId, bookingId || null, messageId, content || (attachmentName ? `Attachment: ${attachmentName}` : 'Attachment')]
+            [recipientId, senderId, bookingId || null, messageId, notifText]
         );
 
         // Emit socket events for real-time updates
@@ -486,6 +512,28 @@ router.post('/messages/:messageId/read', authenticateToken, async (req, res) => 
 });
 
 // Get unread message count for a user
+router.get('/unread-messages-count/:userId', authenticateToken, async (req, res) => {
+    try {
+        const { userId } = req.params;
+        
+        const result = await query(
+            `SELECT COUNT(*) as count 
+             FROM message m
+             JOIN booking b ON m.bookingId = b.bookingId
+             WHERE (b.studentId = ? OR b.tutorId = ?)
+               AND m.senderId != ?
+               AND (m.readBy_json IS NULL OR JSON_CONTAINS(m.readBy_json, ?, '$[*].userId') = 0)`,
+            [userId, userId, userId, JSON.stringify(userId)]
+        );
+        
+        res.json({ success: true, data: { unreadCount: result[0]?.count || 0 } });
+    } catch (err) {
+        console.error('Error getting unread message count:', err);
+        res.status(500).json({ success: false, error: err.message });
+    }
+});
+
+// Get unread notification count for a user
 router.get('/unread-count/:userId', authenticateToken, async (req, res) => {
     try {
         const { userId } = req.params;

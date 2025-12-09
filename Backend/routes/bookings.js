@@ -92,12 +92,14 @@ router.get('/', optionalAuth, async (req, res, next) => {
         // Join booking -> tutor -> tutor.user -> student -> student.user to include contact details
         let sql = `SELECT b.*, 
             t.name AS tutor_name, ut.username AS tutor_username, ut.nophone AS tutor_phone, ut.email AS tutor_email, 
-            s.studentId AS student_id, us.username AS student_username, us.nophone AS student_phone, us.email AS student_email
+            s.studentId AS student_id, us.username AS student_username, us.nophone AS student_phone, us.email AS student_email,
+            f.rating as feedback_rating, f.comment as feedback_comment, f.is_anonymous as feedback_anonymous
             FROM booking b
             LEFT JOIN tutor t ON b.tutorId = t.tutorId
             LEFT JOIN users ut ON t.user_id = ut.id
             LEFT JOIN student s ON b.studentId = s.studentId
             LEFT JOIN users us ON s.user_id = us.id
+            LEFT JOIN feedback f ON b.bookingId = f.bookingId
             WHERE 1=1`;
         const params = [];
 
@@ -201,7 +203,7 @@ router.post('/', async (req, res, next) => {
 });
 
 // Update booking (supports status change and rating updates)
-router.put('/:id', async (req, res, next) => {
+router.put('/:id', verifyToken, async (req, res, next) => {
     const id = req.params.id;
     const data = req.body;
     const conn = await pool.getConnection();
@@ -307,6 +309,34 @@ router.put('/:id', async (req, res, next) => {
         // If status changed to completed, free the associated tutor_schedule slot
         if (data && Object.prototype.hasOwnProperty.call(data, 'status')) {
             const newStatus = ('' + data.status).toLowerCase();
+
+            // Notification logic
+            if (newStatus === 'completed' || newStatus === 'cancelled') {
+                 try {
+                     const [bRows] = await conn.execute(`
+                        SELECT b.studentId, b.tutorId, b.subject, b.booking_date, b.start_time, t.name as tutor_name 
+                        FROM booking b
+                        JOIN tutor t ON b.tutorId = t.tutorId
+                        WHERE b.bookingId = ?`, [id]);
+
+                     if (bRows.length > 0) {
+                         const b = bRows[0];
+                         // Notify student if tutor performed the action
+                         if (req.user && req.user.role === 'tutor') {
+                             const dateStr = new Date(b.booking_date).toDateString();
+                             const msg = `Your booking with ${b.tutor_name} on ${dateStr} at ${b.start_time} has been marked as ${newStatus}.`;
+                             await conn.execute(
+                                `INSERT INTO notification (recipientId, senderId, bookingId, text, type)
+                                 VALUES (?, ?, ?, ?, 'booking')`,
+                                [b.studentId, b.tutorId, id, msg]
+                             );
+                         }
+                     }
+                 } catch (e) {
+                     console.error('Failed to send notification:', e);
+                 }
+            }
+
             if (newStatus === 'completed' || newStatus === 'complete') {
                 try {
                     console.log('[bookings.put] booking marked completed, freeing schedule slot for booking', id);
@@ -423,6 +453,117 @@ router.delete('/:id', verifyToken, async (req, res, next) => {
         }
     } catch (err) {
         next(err);
+    }
+});
+
+// Submit feedback for a completed booking
+router.post('/:bookingId/feedback', verifyToken, async (req, res, next) => {
+    const { bookingId } = req.params;
+    const { rating, comment } = req.body;
+    const { role, id: userId } = req.user;
+
+    if (role !== 'student') {
+        return res.status(403).json({ success: false, message: 'Only students can submit feedback' });
+    }
+
+    if (!rating || rating < 1 || rating > 5) {
+        return res.status(400).json({ success: false, message: 'Rating must be between 1 and 5' });
+    }
+
+    const conn = await pool.getConnection();
+    try {
+        await conn.beginTransaction();
+
+        // 1. Verify booking exists, belongs to student, and is completed
+        const [bookings] = await conn.query(
+            `SELECT b.*, s.user_id as student_user_id, u.username as student_name
+             FROM booking b
+             JOIN student s ON b.studentId = s.studentId
+             JOIN users u ON s.user_id = u.id
+             WHERE b.bookingId = ?`,
+            [bookingId]
+        );
+
+        if (bookings.length === 0) {
+            throw new Error('Booking not found');
+        }
+
+        const booking = bookings[0];
+
+        if (booking.student_user_id !== userId) {
+            return res.status(403).json({ success: false, message: 'Unauthorized: You are not the student for this booking' });
+        }
+
+        if (booking.status !== 'completed') {
+            return res.status(400).json({ success: false, message: 'Feedback can only be submitted for completed sessions' });
+        }
+
+        // 2. Check if feedback already exists
+        const [existingFeedback] = await conn.query(
+            'SELECT id FROM feedback WHERE bookingId = ?',
+            [bookingId]
+        );
+
+        if (existingFeedback.length > 0) {
+            return res.status(400).json({ success: false, message: 'Feedback already submitted for this session' });
+        }
+
+        // 3. Insert feedback
+        await conn.query(
+            `INSERT INTO feedback (bookingId, studentId, tutorId, rating, comment, is_anonymous)
+             VALUES (?, ?, ?, ?, ?, ?)`,
+            [bookingId, booking.studentId, booking.tutorId, rating, comment || null, req.body.isAnonymous ? 1 : 0]
+        );
+
+        // 4. Update tutor's average rating
+        // Fetch current stats
+        const [tutorStats] = await conn.query(
+            'SELECT rating, rating_count FROM tutor WHERE tutorId = ? FOR UPDATE',
+            [booking.tutorId]
+        );
+
+        const currentRating = parseFloat(tutorStats[0].rating || 0);
+        const currentCount = parseInt(tutorStats[0].rating_count || 0);
+
+        const newCount = currentCount + 1;
+        const newRating = ((currentRating * currentCount) + parseInt(rating)) / newCount;
+
+        await conn.query(
+            'UPDATE tutor SET rating = ?, rating_count = ? WHERE tutorId = ?',
+            [newRating, newCount, booking.tutorId]
+        );
+
+        // 5. Create notification for tutor
+        const isAnonymous = req.body.isAnonymous;
+        const senderName = isAnonymous ? 'Anonymous Student' : (booking.student_name || 'Student');
+        const notificationText = `New ${rating}-star rating received from ${senderName}!`;
+
+        await conn.query(
+            `INSERT INTO notification (recipientId, senderId, bookingId, text, type)
+             VALUES (?, ?, ?, ?, 'feedback')`,
+            [booking.tutorId, booking.studentId, bookingId, notificationText]
+        );
+
+        await conn.commit();
+        res.json({ success: true, message: 'Feedback submitted successfully' });
+
+    } catch (err) {
+        await conn.rollback();
+        console.error('Feedback submission error:', err);
+        res.status(500).json({ success: false, message: err.message || 'Internal server error' });
+    } finally {
+        conn.release();
+    }
+});
+
+// Get feedback for a specific booking (to check if submitted)
+router.get('/:bookingId/feedback', verifyToken, async (req, res) => {
+    try {
+        const { bookingId } = req.params;
+        const feedback = await query('SELECT * FROM feedback WHERE bookingId = ?', [bookingId]);
+        res.json({ success: true, data: feedback[0] || null });
+    } catch (err) {
+        res.status(500).json({ success: false, error: err.message });
     }
 });
 

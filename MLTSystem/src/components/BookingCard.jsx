@@ -22,7 +22,7 @@ import { useAuth } from "../context/AuthContext";
 export default function BookingCards(props) {
   // Expect props: tutor, date, time, status, id, onCancel, studentContact, tutorContact, onMarkCompleted, onRate, studentUsername, studentName, tutorUsername,
   // tutorNameOriginal, studentNameOriginal
-  const { tutor, date, time, status, id, onCancel, studentContact, tutorContact, onMarkCompleted, onRate, studentUsername, studentName, tutorUsername, tutorNameOriginal, studentNameOriginal, tutorId, studentId, rating } = props;
+  const { tutor, date, time, status, id, onCancel, studentContact, tutorContact, onMarkCompleted, onRate, studentUsername, studentName, tutorUsername, tutorNameOriginal, studentNameOriginal, tutorId, studentId, rating, feedback } = props;
   const [openRate, setOpenRate] = useState(false);
   const [ratingValue, setRatingValue] = useState(rating || 5);
   const [loadingComplete, setLoadingComplete] = useState(false);
@@ -165,34 +165,22 @@ export default function BookingCards(props) {
             )}
 
             {/* Student: rate after completed */}
-            {role.toLowerCase() === 'student' && status === 'Completed' && (
-              <>
-                <Button
-                  variant="contained"
-                  color="secondary"
-                  size="small"
-                  onClick={() => setOpenRate(true)}
-                  disabled={rating !== null && rating !== undefined}
-                >
-                  {rating !== null && rating !== undefined ? 'Already Rated' : 'Rate Tutor'}
-                </Button>
-                <Dialog open={openRate} onClose={() => setOpenRate(false)}>
-                  <DialogTitle>Rate Tutor</DialogTitle>
-                  <DialogContent>
-                    <Box display="flex" alignItems="center" gap={2} mt={1} mb={1}>
-                      <Rating
-                        name="rating"
-                        value={ratingValue}
-                        onChange={(e, v) => setRatingValue(v)}
-                      />
-                    </Box>
-                  </DialogContent>
-                  <DialogActions>
-                    <Button onClick={() => setOpenRate(false)}>Cancel</Button>
-                    <Button onClick={() => { setOpenRate(false); onRate && onRate(id, ratingValue); }} variant="contained">Submit</Button>
-                  </DialogActions>
-                </Dialog>
-              </>
+            {role.toLowerCase() === 'student' && status && status.toLowerCase() === 'completed' && (
+              feedback ? (
+                 <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
+                    <Typography variant="caption" color="text.secondary">You rated:</Typography>
+                    <Rating value={feedback.rating} readOnly size="small" />
+                 </Box>
+              ) : (
+              <Button
+                variant="contained"
+                color="secondary"
+                size="small"
+                onClick={() => onRate && onRate(id)}
+              >
+                Give Feedback
+              </Button>
+              )
             )}
           </Box>
         </Box>

@@ -28,14 +28,22 @@ import CalendarTodayIcon from "@mui/icons-material/CalendarToday";
 import ReviewsIcon from "@mui/icons-material/Reviews";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 
+import * as TutorsController from "../controllers/TutorsController";
 import { formatMalaysiaDate, formatMalaysiaTime } from "../utils/dateUtils";
 
 export default function TutorCard({ tutor, onBook }) {
   const [openProfile, setOpenProfile] = useState(false);
   const [selectedSlot, setSelectedSlot] = useState(null);
+  const [reviews, setReviews] = useState([]);
 
-  const handleOpenProfile = () => {
+  const handleOpenProfile = async () => {
     setOpenProfile(true);
+    try {
+      const r = await TutorsController.getTutorReviews(tutor.id);
+      setReviews(r);
+    } catch (err) {
+      console.error("Failed to load reviews", err);
+    }
   };
 
   const handleCloseProfile = () => {
@@ -366,6 +374,53 @@ export default function TutorCard({ tutor, onBook }) {
                   </Box>
                 </Box>
               </Paper>
+            )}
+
+            <Divider sx={{ my: 2 }} />
+            
+            <Typography variant="h6" sx={{ mb: 1, display: 'flex', alignItems: 'center', gap: 1 }}>
+              <ReviewsIcon color="primary" /> Reviews ({reviews.length})
+            </Typography>
+            
+            {reviews.length === 0 ? (
+              <Typography variant="body2" color="text.secondary" fontStyle="italic">
+                No reviews yet.
+              </Typography>
+            ) : (
+              <List sx={{ maxHeight: 200, overflow: 'auto' }}>
+                {reviews.map((review) => (
+                  <React.Fragment key={review.id}>
+                    <ListItem alignItems="flex-start" sx={{ px: 0 }}>
+                      <ListItemText
+                        primary={
+                          <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                            <Typography variant="subtitle2" fontWeight="bold">
+                              {review.student_name || 'Student'}
+                            </Typography>
+                            <Rating value={review.rating} readOnly size="small" />
+                          </Box>
+                        }
+                        secondary={
+                          <React.Fragment>
+                            <Typography
+                              sx={{ display: 'inline' }}
+                              component="span"
+                              variant="body2"
+                              color="text.primary"
+                            >
+                              {review.comment}
+                            </Typography>
+                            <Typography variant="caption" display="block" color="text.secondary" sx={{ mt: 0.5 }}>
+                              {new Date(review.created_at).toLocaleDateString()}
+                            </Typography>
+                          </React.Fragment>
+                        }
+                      />
+                    </ListItem>
+                    <Divider component="li" />
+                  </React.Fragment>
+                ))}
+              </List>
             )}
           </Box>
         </DialogContent>

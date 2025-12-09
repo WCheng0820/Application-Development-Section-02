@@ -1,5 +1,6 @@
 // src/pages/TutorDashboard.jsx
 import React, { useEffect, useState } from "react";
+import { useLocation } from "react-router-dom";
 import {
   Box,
   Card,
@@ -12,6 +13,8 @@ import {
   Typography,
   Chip,
   Button,
+  Rating,
+  Divider,
 } from "@mui/material";
 import CalendarMonthIcon from "@mui/icons-material/CalendarMonth";
 import AccessTimeIcon from "@mui/icons-material/AccessTime";
@@ -29,6 +32,17 @@ import StarIcon from '@mui/icons-material/Star';
 export default function TutorDashboard() {
   const { currentUser } = useAuth();
   const [tutorInfo, setTutorInfo] = useState(null);
+  const [reviews, setReviews] = useState([]);
+  const location = useLocation();
+
+  useEffect(() => {
+    if (location.hash === '#recent-reviews') {
+      const element = document.getElementById('recent-reviews');
+      if (element) {
+        element.scrollIntoView({ behavior: 'smooth' });
+      }
+    }
+  }, [location, reviews]); // Re-run when reviews load so element exists
 
   useEffect(() => {
     let mounted = true;
@@ -37,7 +51,16 @@ export default function TutorDashboard() {
         // Ensure tutors cache is loaded then pick current tutor by id
         await TutorsController.fetchTutors();
         const t = TutorsController.getTutorById(currentUser?.tutorId);
-        if (mounted) setTutorInfo(t || null);
+        
+        let r = [];
+        if (currentUser?.tutorId) {
+          r = await TutorsController.getTutorReviews(currentUser.tutorId);
+        }
+
+        if (mounted) {
+          setTutorInfo(t || null);
+          setReviews(r);
+        }
       } catch (e) {
         console.error('Failed to load tutor info for dashboard', e);
       }
@@ -205,6 +228,55 @@ export default function TutorDashboard() {
                     </ListItem>
                   ))}
                 </List>
+              </CardContent>
+            </Card>
+          </Grid>
+
+          {/* Recent Reviews */}
+          <Grid item xs={12} id="recent-reviews">
+            <Card>
+              <CardContent>
+                <Typography variant="h6" sx={{ mb: 2 }}>
+                  Recent Reviews
+                </Typography>
+                {reviews.length === 0 ? (
+                  <Typography color="text.secondary">No reviews yet.</Typography>
+                ) : (
+                  <List>
+                    {reviews.map((review, index) => (
+                      <Box key={index}>
+                        <ListItem alignItems="flex-start">
+                          <ListItemText
+                            primary={
+                              <Box display="flex" alignItems="center" gap={1}>
+                                <Typography variant="subtitle1" fontWeight="bold">
+                                  {review.student_name || "Anonymous"}
+                                </Typography>
+                                <Rating value={parseFloat(review.rating)} readOnly size="small" />
+                              </Box>
+                            }
+                            secondary={
+                              <>
+                                <Typography
+                                  component="span"
+                                  variant="body2"
+                                  color="text.primary"
+                                >
+                                  {review.comment}
+                                </Typography>
+                                <br />
+                                <Typography variant="caption" color="text.secondary">
+                                  {new Date(review.created_at).toLocaleDateString()}
+                                </Typography>
+                              </>
+                            }
+                          />
+                        </ListItem>
+                        {index < reviews.length - 1 && <Divider variant="inset" component="li" />}
+                      </Box>
+                    ))}
+                  </List>
+                )}
               </CardContent>
             </Card>
           </Grid>

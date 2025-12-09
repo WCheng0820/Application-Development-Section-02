@@ -127,6 +127,18 @@ export async function getUnreadCount(userId) {
   }
 }
 
+// Get unread messages count for a user
+export async function getUnreadMessagesCount(userId) {
+  try {
+    const config = getAxiosConfig();
+    const res = await axios.get(`${MESSAGES_URL}/unread-messages-count/${userId}`, config);
+    return res.data.success ? res.data.data.unreadCount : 0;
+  } catch (err) {
+    console.error('Error getting unread messages count:', err);
+    return 0;
+  }
+}
+
 // Mark notification as read
 export async function markNotificationRead(notificationId) {
   try {

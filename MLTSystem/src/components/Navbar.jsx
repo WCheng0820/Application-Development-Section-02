@@ -14,6 +14,7 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { useState, useEffect } from "react";
 import AccountCircle from "@mui/icons-material/AccountCircle";
+import NotificationsIcon from '@mui/icons-material/Notifications';
 import * as MessagesController from "../controllers/MessagesController";
 import * as socketService from "../services/socketService";
 
@@ -22,7 +23,10 @@ const Navbar = () => {
   const navigate = useNavigate();
   const { currentUser, logout, isAuthenticated } = useAuth();
   const [anchorEl, setAnchorEl] = useState(null);
-  const [unreadCount, setUnreadCount] = useState(0);
+  const [notificationAnchorEl, setNotificationAnchorEl] = useState(null);
+  const [unreadNotifications, setUnreadNotifications] = useState(0);
+  const [unreadMessages, setUnreadMessages] = useState(0);
+  const [notifications, setNotifications] = useState([]);
 
   const navItems = [
     { label: "Dashboard", path: "/" },
@@ -38,6 +42,53 @@ const Navbar = () => {
 
   const handleClose = () => {
     setAnchorEl(null);
+  };
+
+  const handleNotificationClick = async (event) => {
+    setNotificationAnchorEl(event.currentTarget);
+    // Fetch latest notifications when opening the menu
+    if (currentUser) {
+        const userId = currentUser.studentId || currentUser.tutorId;
+        if (userId) {
+            try {
+                const notifs = await MessagesController.fetchNotifications(userId);
+                setNotifications(notifs);
+            } catch (err) {
+                console.error('Failed to fetch notifications', err);
+            }
+        }
+    }
+  };
+
+  const handleNotificationClose = () => {
+    setNotificationAnchorEl(null);
+  };
+
+  const handleNotificationItemClick = async (notification) => {
+    // Mark as read
+    if (!notification.is_read) {
+        await MessagesController.markNotificationRead(notification.id);
+        // Update local state to reflect read status immediately
+        setNotifications(prev => prev.map(n => n.id === notification.id ? { ...n, is_read: true } : n));
+        setUnreadNotifications(prev => Math.max(0, prev - 1));
+    }
+    
+    handleNotificationClose();
+
+    // Navigate based on type
+    if (notification.type === 'message') {
+        navigate('/messages');
+    } else if (notification.type === 'booking') {
+        navigate('/bookings');
+    } else if (notification.type === 'feedback') {
+        // If tutor receives feedback, go to dashboard or profile? 
+        // User requirement: "Tutor will receive a notification when new feedback receive"
+        // Dashboard seems appropriate as it has the "Recent Reviews" section now.
+        navigate('/#recent-reviews'); 
+    } else {
+        // Default fallback
+        navigate('/');
+    }
   };
 
   const handleLogout = () => {
@@ -62,7 +113,12 @@ const Navbar = () => {
     
     // Listen for new notifications via socket (user receives new message)
     const handleNotification = (notification) => {
-        setUnreadCount(prev => prev + 1);
+        // If type is message, increment messages, else notifications
+        if (notification.type === 'message') {
+            setUnreadMessages(prev => prev + 1);
+        } else {
+            setUnreadNotifications(prev => prev + 1);
+        }
     };
     socketService.onNotification(handleNotification);
     
@@ -80,8 +136,10 @@ const Navbar = () => {
   async function refreshUnreadCount(userId) {
     if (!userId) return;
     try {
-      const count = await MessagesController.getUnreadCount(userId);
-      setUnreadCount(count);
+      const msgs = await MessagesController.getUnreadMessagesCount(userId);
+      const notifs = await MessagesController.getUnreadCount(userId);
+      setUnreadMessages(msgs);
+      setUnreadNotifications(notifs);
     } catch (err) {
       console.error('Error fetching unread count:', err);
     }
@@ -138,8 +196,8 @@ const Navbar = () => {
                       position: 'relative'
                     }}
                   >
-                    {unreadCount > 0 ? (
-                      <Badge badgeContent={unreadCount} color="error">
+                    {unreadMessages > 0 ? (
+                      <Badge badgeContent={unreadMessages} color="error">
                         {item.label}
                       </Badge>
                     ) : (
@@ -183,6 +241,55 @@ const Navbar = () => {
 
         {isAuthenticated && currentUser ? (
           <Box display="flex" alignItems="center" gap={1}>
+            <IconButton color="inherit" onClick={handleNotificationClick}>
+              <Badge badgeContent={unreadNotifications} color="error">
+                <NotificationsIcon />
+              </Badge>
+            </IconButton>
+            <Menu
+              anchorEl={notificationAnchorEl}
+              open={Boolean(notificationAnchorEl)}
+              onClose={handleNotificationClose}
+              PaperProps={{
+                style: {
+                  maxHeight: 400,
+                  width: 350,
+                },
+              }}
+              transformOrigin={{ horizontal: 'right', vertical: 'top' }}
+              anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
+            >
+                {notifications.length === 0 ? (
+                    <MenuItem disabled>
+                        <Typography variant="body2">No notifications</Typography>
+                    </MenuItem>
+                ) : (
+                    notifications.map((notif) => (
+                        <MenuItem 
+                            key={notif.id} 
+                            onClick={() => handleNotificationItemClick(notif)}
+                            sx={{ 
+                                whiteSpace: 'normal', 
+                                backgroundColor: notif.is_read ? 'inherit' : 'action.hover',
+                                borderBottom: '1px solid #eee'
+                            }}
+                        >
+                            <Box>
+                                <Typography variant="subtitle2" fontWeight="bold">
+                                    {notif.type.charAt(0).toUpperCase() + notif.type.slice(1)}
+                                </Typography>
+                                <Typography variant="body2" color="text.secondary">
+                                    {notif.text}
+                                </Typography>
+                                <Typography variant="caption" color="text.disabled">
+                                    {new Date(notif.created_at).toLocaleString()}
+                                </Typography>
+                            </Box>
+                        </MenuItem>
+                    ))
+                )}
+            </Menu>
+
             <IconButton
               size="large"
               aria-label="account of current user"
