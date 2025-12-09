@@ -31,47 +31,40 @@ In this project,we decided to solve the problem and challenges that are faced by
 
 **Developer: Chu Cheng Qing**
 
-| Sprint | Module Name | Frontend Files | Backend Files | Database Tables |
-|--------|-------------|----------------|----------------|------------------|
-| **1** | **Search Tutor Module** | 
-- [FindTutors.jsx](MLTSystem/src/pages/FindTutors.jsx)  
-- [TutorCard.jsx](MLTSystem/src/components/TutorCard.jsx)  
-- [TutorsController.js](MLTSystem/src/controllers/TutorsController.js) | 
-- [tutors.js (app routes)](Backend/app/routes/tutors.js)  
-- [TutorsController.js (app controllers)](Backend/app/controllers/TutorsController.js)  
-- [tutors.js (root routes)](Backend/routes/tutors.js) | 
-- tutor  
-- tutor_schedule  
-- feedback |
-| **2** | **Schedule Availability Module** | 
-- [ManageSchedule.jsx](MLTSystem/src/pages/ManageSchedule.jsx)  
-- [TutorSetup.jsx](MLTSystem/src/pages/TutorSetup.jsx)  
-- [ScheduleManager.jsx](MLTSystem/src/components/ScheduleManager.jsx)  
-- [ScheduleController.js](MLTSystem/src/controllers/ScheduleController.js)  
-- [dateUtils.js](MLTSystem/src/utils/dateUtils.js) | 
-- [schedule.js (app routes)](Backend/app/routes/schedule.js)  
-- [ScheduleController.js (app controllers)](Backend/app/controllers/ScheduleController.js)  
-- [schedule.js (root routes)](Backend/routes/schedule.js) | 
-- tutor_schedule |
-| **3** | **Make Booking Module** | 
-- [Bookings.jsx](MLTSystem/src/pages/Bookings.jsx)  
-- [StudentDashboard.jsx](MLTSystem/src/pages/StudentDashboard.jsx)  
-- [BookingCard.jsx](MLTSystem/src/components/BookingCard.jsx)  
-- [RoleBasedDashboard.jsx](MLTSystem/src/components/RoleBasedDashboard.jsx)  
-- [BookingsController.js](MLTSystem/src/controllers/BookingsController.js) | 
-- [bookings.js (app routes)](Backend/app/routes/bookings.js)  
-- [BookingsController.js (app controllers)](Backend/app/controllers/BookingsController.js)  
-- [bookings.js (root routes)](Backend/routes/bookings.js) | 
-- booking  
-- student  
-- feedback  
-- sessions  
-- notification |
-| **4** | **Make Payment Module** | 
-- [Payment.jsx](MLTSystem/src/pages/Payment.jsx) | 
-- [payments.js (app routes)](Backend/app/routes/payments.js)  
-- [payments.js (root routes)](Backend/routes/payments.js)  
-- [BookingsController.js](Backend/app/controllers/BookingsController.js) | 
-- booking  
-- sessions |
+| Sprint | Module Name | Frontend | Backend | Database |
+|--------|-------------|----------|---------|----------|
+| **1** | Search Tutor Module | 
+[FindTutors.jsx](MLTSystem/src/pages/FindTutors.jsx)<br>
+[TutorCard.jsx](MLTSystem/src/components/TutorCard.jsx)<br>
+[TutorsController.js](MLTSystem/src/controllers/TutorsController.js) | 
+[app/routes/tutors.js](Backend/app/routes/tutors.js)<br>
+[app/controllers/TutorsController.js](Backend/app/controllers/TutorsController.js)<br>
+[routes/tutors.js](Backend/routes/tutors.js) | 
+tutor<br>tutor_schedule<br>feedback |
+| **2** | Schedule Availability Module |
+[ManageSchedule.jsx](MLTSystem/src/pages/ManageSchedule.jsx)<br>
+[TutorSetup.jsx](MLTSystem/src/pages/TutorSetup.jsx)<br>
+[ScheduleManager.jsx](MLTSystem/src/components/ScheduleManager.jsx)<br>
+[ScheduleController.js](MLTSystem/src/controllers/ScheduleController.js)<br>
+[dateUtils.js](MLTSystem/src/utils/dateUtils.js) |
+[app/routes/schedule.js](Backend/app/routes/schedule.js)<br>
+[app/controllers/ScheduleController.js](Backend/app/controllers/ScheduleController.js)<br>
+[routes/schedule.js](Backend/routes/schedule.js) |
+tutor_schedule |
+| **3** | Make Booking Module |
+[Bookings.jsx](MLTSystem/src/pages/Bookings.jsx)<br>
+[StudentDashboard.jsx](MLTSystem/src/pages/StudentDashboard.jsx)<br>
+[BookingCard.jsx](MLTSystem/src/components/BookingCard.jsx)<br>
+[RoleBasedDashboard.jsx](MLTSystem/src/components/RoleBasedDashboard.jsx)<br>
+[BookingsController.js](MLTSystem/src/controllers/BookingsController.js) |
+[app/routes/bookings.js](Backend/app/routes/bookings.js)<br>
+[app/controllers/BookingsController.js](Backend/app/controllers/BookingsController.js)<br>
+[routes/bookings.js](Backend/routes/bookings.js) |
+booking<br>student<br>feedback<br>sessions<br>notification |
+| **4** | Make Payment Module |
+[Payment.jsx](MLTSystem/src/pages/Payment.jsx) |
+[app/routes/payments.js](Backend/app/routes/payments.js)<br>
+[routes/payments.js](Backend/routes/payments.js)<br>
+[BookingsController.js](Backend/app/controllers/BookingsController.js) |
+booking<br>sessions |
 
