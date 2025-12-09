@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   Box,
   Typography,
@@ -39,6 +40,7 @@ import { useAuth } from "../context/AuthContext";
 import * as socketService from "../services/socketService";
 
 export default function Messages() {
+  const navigate = useNavigate();
   const { currentUser } = useAuth();
   const [conversations, setConversations] = useState([]);
   const [selectedConversation, setSelectedConversation] = useState(null);
@@ -82,6 +84,17 @@ export default function Messages() {
     if (currentUser?.studentId || currentUser?.tutorId) {
       refreshConversations();
     }
+  }, [currentUser?.studentId, currentUser?.tutorId]);
+
+  // Refresh conversations periodically to update booking status
+  useEffect(() => {
+    if (!currentUser?.studentId && !currentUser?.tutorId) return;
+    
+    const interval = setInterval(() => {
+      refreshConversations();
+    }, 10000); // Check every 10 seconds for status updates
+    
+    return () => clearInterval(interval);
   }, [currentUser?.studentId, currentUser?.tutorId]);
 
   // Initialize socket connection
@@ -276,8 +289,8 @@ export default function Messages() {
         setThreadMessages(updatedMsgs);
         
         // Refresh conversations to update unread badges
-        const convos = await MessagesController.fetchConversations(currentUserId);
-        setConversations(convos);
+        // const convos = await MessagesController.fetchConversations(currentUserId);
+        // setConversations(convos);
       } catch (err) {
         setSnack({ severity: "error", message: "Failed to load messages" });
       }
@@ -458,6 +471,14 @@ export default function Messages() {
     setOpenNewChat(false);
   };
 
+  const handleBookingClick = (bookingId) => {
+    navigate('/bookings', { state: { highlightBookingId: bookingId } });
+  };
+
+  const handleTutorClick = (tutorId) => {
+    navigate('/find-tutors', { state: { openTutorId: tutorId } });
+  };
+
   if (!currentUser) {
     return (
       <Box sx={{ mt: 10, px: 4 }}>
@@ -594,41 +615,78 @@ export default function Messages() {
               </Paper>
 
               {/* Booking Info Box (if applicable) */}
-              {selectedConversation.hasBooking && selectedConversation.bookingInfo && (
-                <Card sx={{ backgroundColor: "#e3f2fd" }}>
-                  <CardContent>
-                    <Typography variant="h6" fontWeight="600" sx={{ mb: 1 }}>
-                      📅 Booking Information
-                    </Typography>
-                    <Grid container spacing={2}>
-                      <Grid item xs={6}>
-                        <Typography variant="body2" color="text.secondary">Date</Typography>
-                        <Typography variant="body1" fontWeight="600">
-                          {new Date(selectedConversation.bookingInfo.date).toLocaleDateString()}
+              {selectedConversation.hasBooking && selectedConversation.bookings && selectedConversation.bookings.length > 0 && (
+                <Card 
+                    sx={{ 
+                        backgroundColor: "#e3f2fd", 
+                        cursor: 'pointer',
+                        transition: '0.2s',
+                        '&:hover': {
+                            backgroundColor: "#bbdefb",
+                            transform: 'translateY(-2px)',
+                            boxShadow: 2
+                        }
+                    }}
+                    onClick={() => handleBookingClick(selectedConversation.bookings[0].id)}
+                >
+                  <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+                        <Typography variant="subtitle1" fontWeight="600">
+                        📅 Latest Booking
                         </Typography>
-                      </Grid>
-                      <Grid item xs={6}>
-                        <Typography variant="body2" color="text.secondary">Time</Typography>
-                        <Typography variant="body1" fontWeight="600">
-                          {selectedConversation.bookingInfo.startTime} - {selectedConversation.bookingInfo.endTime}
-                        </Typography>
-                      </Grid>
-                      <Grid item xs={12}>
-                        <Typography variant="body2" color="text.secondary">Status</Typography>
-                        <Chip
-                          label={selectedConversation.bookingInfo.status}
-                          color={selectedConversation.bookingInfo.status === "confirmed" ? "success" : "warning"}
-                          size="small"
-                        />
-                      </Grid>
-                    </Grid>
+                        {selectedConversation.bookings.length > 1 && (
+                            <Chip label={`${selectedConversation.bookings.length} Bookings`} size="small" color="primary" variant="outlined" />
+                        )}
+                    </Box>
+                    
+                    {/* Show only the latest booking (first in array) */}
+                    {(() => {
+                        const latestBooking = selectedConversation.bookings[0];
+                        return (
+                            <Grid container spacing={1}>
+                                <Grid item xs={6}>
+                                    <Typography variant="caption" color="text.secondary">Date</Typography>
+                                    <Typography variant="body2" fontWeight="600">
+                                    {new Date(latestBooking.date).toLocaleDateString()}
+                                    </Typography>
+                                </Grid>
+                                <Grid item xs={6}>
+                                    <Typography variant="caption" color="text.secondary">Time</Typography>
+                                    <Typography variant="body2" fontWeight="600">
+                                    {latestBooking.startTime} - {latestBooking.endTime}
+                                    </Typography>
+                                </Grid>
+                                <Grid item xs={12} sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 0.5 }}>
+                                    <Typography variant="caption" color="text.secondary">Status:</Typography>
+                                    <Chip
+                                    label={latestBooking.status}
+                                    color={latestBooking.status === "confirmed" ? "success" : latestBooking.status === "cancelled" ? "error" : "warning"}
+                                    size="small"
+                                    sx={{ height: 20, fontSize: '0.7rem' }}
+                                    />
+                                </Grid>
+                            </Grid>
+                        );
+                    })()}
                   </CardContent>
                 </Card>
               )}
 
               {/* Tutor Info (if no booking) */}
               {!selectedConversation.hasBooking && selectedConversation.tutorInfo && (
-                <Card sx={{ backgroundColor: "#f3e5f5" }}>
+                <Card 
+                    sx={{ 
+                        backgroundColor: "#f3e5f5",
+                        cursor: 'pointer',
+                        transition: '0.2s',
+                        '&:hover': {
+                            backgroundColor: "#e1bee7",
+                            transform: 'translateY(-2px)',
+                            boxShadow: 2
+                        }
+                    }}
+                    onClick={() => handleTutorClick(selectedConversation.otherParticipantId)}
+                >
                   <CardContent>
                     <Typography variant="h6" fontWeight="600" sx={{ mb: 1 }}>
                       👨‍🏫 Tutor Information

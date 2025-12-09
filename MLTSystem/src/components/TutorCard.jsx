@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Card,
   CardContent,
@@ -30,10 +30,16 @@ import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import * as TutorsController from "../controllers/TutorsController";
 import { formatMalaysiaDate, formatMalaysiaTime } from "../utils/dateUtils";
 
-export default function TutorCard({ tutor, onBook }) {
+export default function TutorCard({ tutor, onBook, initiallyOpen = false }) {
   const [openProfile, setOpenProfile] = useState(false);
   const [selectedSlot, setSelectedSlot] = useState(null);
   const [reviews, setReviews] = useState([]);
+
+  useEffect(() => {
+    if (initiallyOpen) {
+      handleOpenProfile();
+    }
+  }, [initiallyOpen]);
 
   const handleOpenProfile = async () => {
     setOpenProfile(true);

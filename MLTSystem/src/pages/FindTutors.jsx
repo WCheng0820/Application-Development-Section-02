@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import {
   Container,
   Typography,
@@ -27,6 +27,7 @@ import { formatMalaysiaDate, formatMalaysiaTime } from "../utils/dateUtils";
 
 export default function FindTutors() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { currentUser } = useAuth();
 
   const [tutors, setTutors] = useState([]);
@@ -325,6 +326,7 @@ export default function FindTutors() {
                   tutor={tutor}
                   onBook={handleBooking}
                   isProcessing={isBooking}
+                  initiallyOpen={location.state?.openTutorId === tutor.id}
                 />
               </Grid>
             ))}

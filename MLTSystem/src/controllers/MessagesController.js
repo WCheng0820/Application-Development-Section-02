@@ -56,11 +56,10 @@ export async function fetchMessages(bookingId, senderId = null, recipientId = nu
     const config = getAxiosConfig();
     let url = `${MESSAGES_URL}/messages/${bookingId}`;
     
-    // Add participant IDs as query params for non-booked chats
-    if (!bookingId || bookingId === null || bookingId === 'null') {
-      if (senderId && recipientId) {
-        url += `?senderId=${senderId}&recipientId=${recipientId}`;
-      }
+    // Always add participant IDs as query params to ensure full history is fetched
+    if (senderId && recipientId) {
+      // Use '?' if no query params yet, else '&' (though here it's the first param)
+      url += `?senderId=${senderId}&recipientId=${recipientId}`;
     }
     
     const res = await axios.get(url, config);
