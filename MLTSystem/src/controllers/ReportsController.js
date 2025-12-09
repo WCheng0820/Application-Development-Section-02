@@ -15,7 +15,12 @@ export const createReport = async (reportData) => {
         body: JSON.stringify(reportData)
     });
     const result = await response.json();
-    if (!response.ok) throw new Error(result.error || 'Failed to create report');
+    if (!response.ok) {
+        if (response.status === 401) {
+            throw new Error('Invalid or expired token');
+        }
+        throw new Error(result.error || 'Failed to create report');
+    }
     return result;
 };
 
@@ -25,7 +30,12 @@ export const getReports = async () => {
         headers: getAuthHeader()
     });
     const result = await response.json();
-    if (!response.ok) throw new Error(result.error || 'Failed to fetch reports');
+    if (!response.ok) {
+        if (response.status === 401) {
+            throw new Error('Invalid or expired token');
+        }
+        throw new Error(result.error || 'Failed to fetch reports');
+    }
     return result.data;
 };
 
@@ -36,6 +46,11 @@ export const updateReport = async (id, status, adminNotes) => {
         body: JSON.stringify({ status, adminNotes })
     });
     const result = await response.json();
-    if (!response.ok) throw new Error(result.error || 'Failed to update report');
+    if (!response.ok) {
+        if (response.status === 401) {
+            throw new Error('Invalid or expired token');
+        }
+        throw new Error(result.error || 'Failed to update report');
+    }
     return result;
 };

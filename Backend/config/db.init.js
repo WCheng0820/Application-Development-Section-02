@@ -203,8 +203,9 @@ const initDatabase = async () => {
                 senderId VARCHAR(255) NOT NULL,
                 bookingId INT,
                 messageId INT,
+                reportId INT,
                 text TEXT,
-                type ENUM('message','booking','material','feedback') DEFAULT 'message',
+                type ENUM('message','booking','material','feedback','report') DEFAULT 'message',
                 is_read BOOLEAN DEFAULT FALSE,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -217,6 +218,32 @@ const initDatabase = async () => {
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
         `);
         console.log('✅ Notification table created');
+
+        // Create reports table for user reports
+        await connection.query(`
+            CREATE TABLE IF NOT EXISTS reports (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                reporter_id VARCHAR(255) NOT NULL,
+                reported_id VARCHAR(255),
+                target_type ENUM('user','tutor','content','behavior') NOT NULL,
+                target_id INT,
+                category VARCHAR(100) NOT NULL,
+                description TEXT NOT NULL,
+                evidence_url VARCHAR(500),
+                status ENUM('pending','investigating','resolved','dismissed') DEFAULT 'pending',
+                admin_notes TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                resolved_at TIMESTAMP NULL,
+                FOREIGN KEY (reporter_id) REFERENCES users(userId) ON DELETE CASCADE,
+                FOREIGN KEY (reported_id) REFERENCES users(userId) ON DELETE SET NULL,
+                INDEX idx_reporter_id (reporter_id),
+                INDEX idx_reported_id (reported_id),
+                INDEX idx_status (status),
+                INDEX idx_created_at (created_at)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        `);
+        console.log('✅ Reports table created');
 
         // Create feedback table
         await connection.query(`

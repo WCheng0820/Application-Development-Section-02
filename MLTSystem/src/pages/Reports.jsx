@@ -23,6 +23,8 @@ import {
   FormControl,
   Alert
 } from "@mui/material";
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 import * as ReportsController from "../controllers/ReportsController";
 
 export default function Reports() {
@@ -32,6 +34,8 @@ export default function Reports() {
   const [loading, setLoading] = useState(false);
   const [adminNote, setAdminNote] = useState('');
   const [error, setError] = useState('');
+  const navigate = useNavigate();
+  const { logout } = useAuth();
 
   useEffect(() => {
     fetchReports();
@@ -41,9 +45,16 @@ export default function Reports() {
       try {
           const data = await ReportsController.getReports();
           setReports(data);
+          setError('');
       } catch (err) {
           console.error('Failed to fetch reports', err);
-          setError('Failed to load reports');
+          if (err.message.includes('Invalid or expired token') || err.message.includes('Unauthorized')) {
+              // Session expired, redirect to login
+              logout();
+              navigate('/login', { state: { message: 'Your session has expired. Please login again.' } });
+          } else {
+              setError('Failed to load reports: ' + err.message);
+          }
       }
   };
 
@@ -62,7 +73,12 @@ export default function Reports() {
           fetchReports();
           // alert(`Report marked as ${status}`);
       } catch (err) {
-          alert('Failed to update report');
+          if (err.message.includes('Invalid or expired token') || err.message.includes('Unauthorized')) {
+              logout();
+              navigate('/login', { state: { message: 'Your session has expired. Please login again.' } });
+          } else {
+              alert('Failed to update report: ' + err.message);
+          }
       } finally {
           setLoading(false);
       }
@@ -114,8 +130,8 @@ export default function Reports() {
                             </TableCell>
                             <TableCell>
                                 <Chip 
-                                    label={report.status} 
-                                    color={report.status === 'pending' ? 'warning' : report.status === 'resolved' ? 'success' : 'default'} 
+                                    label={report.status === 'dismissed' ? 'Dismissed' : report.status === 'pending' ? 'Pending' : report.status === 'investigating' ? 'Investigating' : report.status === 'resolved' ? 'Resolved' : report.status} 
+                                    color={report.status === 'pending' ? 'warning' : report.status === 'dismissed' ? 'error' : report.status === 'investigating' ? 'info' : report.status === 'resolved' ? 'success' : 'default'} 
                                     size="small" 
                                 />
                             </TableCell>
@@ -212,7 +228,8 @@ export default function Reports() {
             </DialogContent>
             <DialogActions>
                 <Button onClick={() => setViewReportDialog(false)}>Close</Button>
-                <Button onClick={() => handleUpdateReportStatus('rejected')} color="error">Reject</Button>
+                <Button onClick={() => handleUpdateReportStatus('dismissed')} color="error">Dismiss</Button>
+                <Button onClick={() => handleUpdateReportStatus('investigating')} color="info" variant="outlined">Investigating</Button>
                 <Button onClick={() => handleUpdateReportStatus('resolved')} color="success" variant="contained">Resolve</Button>
             </DialogActions>
         </Dialog>

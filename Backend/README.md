@@ -2,11 +2,32 @@
 
 Backend API server for the Mandarin Language Tutoring System.
 
+**Architecture:** MVC (Model-View-Controller) Pattern
+
 ## Prerequisites
 
 - Node.js (v14 or higher)
 - MySQL Server (v5.7 or higher)
 - npm or yarn
+
+## Project Structure
+
+```
+Backend/
+├── app/                     # MVC Application (Main)
+│   ├── controllers/         # Business logic handlers
+│   ├── routes/             # API route definitions
+│   ├── middlewares/        # Custom middleware
+│   ├── models/             # Data models
+│   ├── utils/              # Utility functions
+│   └── views/              # Response templates
+├── config/                 # Configuration files
+├── database/               # Database migrations & seeders
+├── routes/                 # Legacy routes (deprecated)
+└── scripts/                # Utility scripts
+```
+
+See **MVC_ARCHITECTURE.md** for detailed architecture documentation.
 
 ## Setup Instructions
 
@@ -27,6 +48,7 @@ DB_PASSWORD=your_password
 DB_NAME=mlt_system
 PORT=5000
 NODE_ENV=development
+FRONTEND_URL=http://localhost:5173
 ```
 
 ### 3. Create MySQL Database
@@ -39,7 +61,7 @@ npm run init-db
 
 This will:
 - Create the `mlt_system` database if it doesn't exist
-- Create all necessary tables (users, sessions)
+- Create all necessary tables (users, sessions, tutors, bookings, etc.)
 - Insert a default admin user (email: `admin@mltsystem.com`, password: `admin123`)
 
 ### 4. Start the Server

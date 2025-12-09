@@ -57,13 +57,13 @@ app.get('/api/health', async (req, res) => {
     }
 });
 
-// Import routes
-const authRoutes = require('./routes/auth');
+// Import routes from app/routes (MVC structure)
+const authRoutes = require('./app/routes/auth');
 app.use('/api/auth', authRoutes);
 
 // Add admin routes
 try {
-    const adminRoutes = require('./routes/admin');
+    const adminRoutes = require('./app/routes/admin');
     app.use('/api/admin', adminRoutes);
 } catch (err) {
     console.warn('Could not load admin routes:', err.message);
@@ -71,21 +71,21 @@ try {
 
 // Add tutors and bookings routes
 try {
-    const tutorsRoutes = require('./routes/tutors');
+    const tutorsRoutes = require('./app/routes/tutors');
     app.use('/api/tutors', tutorsRoutes);
 } catch (err) {
     console.warn('Could not load tutors routes:', err.message);
 }
 
 try {
-    const bookingsRoutes = require('./routes/bookings');
+    const bookingsRoutes = require('./app/routes/bookings');
     app.use('/api/bookings', bookingsRoutes);
 } catch (err) {
     console.warn('Could not load bookings routes:', err.message);
 }
 
 try {
-    const scheduleRoutes = require('./routes/schedule');
+    const scheduleRoutes = require('./app/routes/schedule');
     app.use('/api/schedule', scheduleRoutes);
 } catch (err) {
     console.warn('Could not load schedule routes:', err.message);
@@ -93,14 +93,14 @@ try {
 
 // Add payments route (for handling cancellations / webhooks)
 try {
-    const paymentsRoutes = require('./routes/payments');
+    const paymentsRoutes = require('./app/routes/payments');
     app.use('/api/payments', paymentsRoutes);
 } catch (err) {
     console.warn('Could not load payments routes:', err.message);
 }
 
 try {
-    const reportsRoutes = require('./routes/reports');
+    const reportsRoutes = require('./app/routes/reports');
     app.use('/api/reports', reportsRoutes);
 } catch (err) {
     console.warn('Could not load reports routes:', err.message);
@@ -108,7 +108,7 @@ try {
 
 // Add messages and notifications routes
 try {
-    const messagesRoutes = require('./routes/messages');
+    const messagesRoutes = require('./app/routes/messages');
     app.use('/api/messages', messagesRoutes);
 } catch (err) {
     console.warn('Could not load messages routes:', err.message);

@@ -39,11 +39,11 @@ export default function EditProfile() {
   useEffect(() => {
     if (currentUser) {
       setFormData({
-        username: currentUser.username || currentUser.profile.username || '',
+        username: currentUser.username || currentUser.profile?.username || '',
         email: currentUser.email || '',
-        bio: currentUser.role === 'tutor' ? (currentUser.profile.bio || '') : '',
-        specialization: currentUser.role === 'tutor' ? (currentUser.profile.specialization || '') : '',
-        price: currentUser.role === 'tutor' ? (currentUser.profile.price ?? currentUser.price ?? '') : '',
+        bio: currentUser.role === 'tutor' ? (currentUser.profile?.bio || currentUser.bio || '') : '',
+        specialization: currentUser.role === 'tutor' ? (currentUser.profile?.specialization || currentUser.specialization || '') : '',
+        price: currentUser.role === 'tutor' ? (currentUser.profile?.price ?? currentUser.price ?? '') : '',
         password: ''
       });
     }
@@ -82,8 +82,14 @@ export default function EditProfile() {
     }
 
     try {
-      console.log('Updating profile with data:', formData);
-      const result = await updateProfile(formData);
+      // Only include specialization in update if it has a value
+      const updateData = { ...formData };
+      if (currentUser?.role === 'tutor' && !updateData.specialization) {
+        delete updateData.specialization;
+      }
+      
+      console.log('Updating profile with data:', updateData);
+      const result = await updateProfile(updateData);
       console.log('Update result:', result);
       if (result.success) {
         setSuccess('Profile updated successfully!');
@@ -212,7 +218,7 @@ export default function EditProfile() {
                     label="Specialization"
                     onChange={handleChange}
                   >
-                    <MenuItem value="">Select a specialization</MenuItem>
+                    <MenuItem value="">No change (keep current)</MenuItem>
                     <MenuItem value="HSK Test Prep">HSK Test Preparation</MenuItem>
                     <MenuItem value="Conversational">Conversational Mandarin</MenuItem>
                     <MenuItem value="Business">Business Mandarin</MenuItem>
@@ -220,7 +226,7 @@ export default function EditProfile() {
                     <MenuItem value="Advanced">Advanced Mandarin</MenuItem>
                     <MenuItem value="General">General Chinese</MenuItem>
                   </Select>
-                  <FormHelperText>Choose your primary teaching specialization</FormHelperText>
+                  <FormHelperText>Select only if you want to change your specialization</FormHelperText>
                 </FormControl>
               </>
             )}
