@@ -543,7 +543,7 @@ router.put('/profile', async (req, res) => {
         }
 
         // Update tutor-specific fields if provided
-        if (currentUser.role === 'tutor' && (bio !== undefined || specialization !== undefined)) {
+        if (currentUser.role === 'tutor' && (bio !== undefined || specialization !== undefined || req.body.price !== undefined)) {
             let tutorUpdateQuery = 'UPDATE tutor SET';
             const tutorUpdateParams = [];
             const updates = [];

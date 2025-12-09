@@ -45,6 +45,21 @@ const PrivateRoute = ({ children, requiredRole }) => {
     return <Navigate to="/" replace />;
   }
 
+  // Check if tutor needs setup (price is null or 0)
+  // Only enforce this if the user is approved (active)
+  if (currentUser.role === 'tutor' && currentUser.isApproved) {
+    const needsSetup = !currentUser.price || parseFloat(currentUser.price) <= 0;
+    const isSetupPage = location.pathname === '/tutor-setup';
+
+    if (needsSetup && !isSetupPage) {
+      return <Navigate to="/tutor-setup" replace />;
+    }
+
+    if (!needsSetup && isSetupPage) {
+      return <Navigate to="/" replace />;
+    }
+  }
+
   return children;
 };
 

@@ -17,6 +17,8 @@ export class User {
     this.studentId = null;
     this.tutorId = null;
     this.adminId = null;
+    // Tutor specific fields
+    this.price = null;
   }
 
   // Static method to create user from data
@@ -48,6 +50,9 @@ export class User {
     }
     if (data.adminId !== undefined) {
       user.adminId = data.adminId;
+    }
+    if (data.price !== undefined) {
+      user.price = data.price;
     }
     return user;
   }

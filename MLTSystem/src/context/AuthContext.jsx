@@ -140,6 +140,9 @@ export const AuthProvider = ({ children }) => {
       if (apiUser.adminId) {
         newUser.adminId = apiUser.adminId;
       }
+      if (apiUser.price !== undefined) {
+        newUser.price = apiUser.price;
+      }
 
       // Set approval status from API
       if (apiUser.isApproved !== undefined) {
@@ -178,7 +181,8 @@ export const AuthProvider = ({ children }) => {
           verificationDocuments: newUser.verificationDocuments,
           studentId: newUser.studentId,
           tutorId: newUser.tutorId,
-          adminId: newUser.adminId
+          adminId: newUser.adminId,
+          price: newUser.price
         };
         sessionStorage.setItem('mlt_session_user', JSON.stringify(sessionUserData));
 
@@ -264,6 +268,9 @@ export const AuthProvider = ({ children }) => {
       if (apiUser.adminId) {
         newUser.adminId = apiUser.adminId;
       }
+      if (apiUser.price !== undefined) {
+        newUser.price = apiUser.price;
+      }
 
       // Set approval status from API
       if (apiUser.isApproved !== undefined) {
@@ -297,7 +304,8 @@ export const AuthProvider = ({ children }) => {
           verificationDocuments: newUser.verificationDocuments,
           studentId: newUser.studentId,
           tutorId: newUser.tutorId,
-          adminId: newUser.adminId
+          adminId: newUser.adminId,
+          price: newUser.price
         };
         sessionStorage.setItem('mlt_session_user', JSON.stringify(sessionUserData));
         
@@ -416,6 +424,17 @@ export const AuthProvider = ({ children }) => {
         updatedUser.approvalStatus = result.user.status === 'active' ? 'approved' : result.user.status;
       }
 
+      // Restore role-specific IDs and fields
+      if (result.user.studentId) updatedUser.studentId = result.user.studentId;
+      if (result.user.tutorId) updatedUser.tutorId = result.user.tutorId;
+      if (result.user.adminId) updatedUser.adminId = result.user.adminId;
+      if (result.user.price !== undefined) updatedUser.price = result.user.price;
+      // Fallback to existing user data if not returned by API
+      if (!updatedUser.tutorId && currentUser.tutorId) updatedUser.tutorId = currentUser.tutorId;
+      if (!updatedUser.studentId && currentUser.studentId) updatedUser.studentId = currentUser.studentId;
+      if (!updatedUser.adminId && currentUser.adminId) updatedUser.adminId = currentUser.adminId;
+      if (updatedUser.price === undefined && currentUser.price !== undefined) updatedUser.price = currentUser.price;
+
       // Note: User list in admin dashboard will be fetched from server
       setCurrentUser(updatedUser);
 
@@ -432,7 +451,11 @@ export const AuthProvider = ({ children }) => {
           profile: updatedUser.profile,
           isApproved: updatedUser.isApproved,
           approvalStatus: updatedUser.approvalStatus,
-          verificationDocuments: updatedUser.verificationDocuments
+          verificationDocuments: updatedUser.verificationDocuments,
+          studentId: updatedUser.studentId,
+          tutorId: updatedUser.tutorId,
+          adminId: updatedUser.adminId,
+          price: updatedUser.price
         };
         sessionStorage.setItem('mlt_session_user', JSON.stringify(sessionUserData));
       }

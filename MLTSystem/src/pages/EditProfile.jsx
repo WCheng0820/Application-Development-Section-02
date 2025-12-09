@@ -184,15 +184,24 @@ export default function EditProfile() {
                   onChange={handleChange}
                   sx={{ mb: 2 }}
                 />
+                <Box sx={{ mb: 2, p: 2, bgcolor: 'background.default', borderRadius: 1, border: '1px solid', borderColor: 'divider' }}>
+                  <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+                    Current Hourly Rate
+                  </Typography>
+                  <Typography variant="h6" color="primary.main" fontWeight="bold">
+                    MYR {currentUser.price ? parseFloat(currentUser.price).toFixed(2) : '0.00'} / hour
+                  </Typography>
+                </Box>
                 <TextField
                   fullWidth
                   id="price"
-                  label="Tutoring Rate (MYR per hour)"
+                  label="Update Hourly Rate (MYR)"
                   name="price"
                   type="number"
-                  inputProps={{ step: '0.50', min: 0 }}
+                  inputProps={{ step: '1', min: 0 }}
                   value={formData.price}
                   onChange={handleChange}
+                  helperText="Enter a new amount to update your rate"
                   sx={{ mb: 2 }}
                 />
                 <FormControl fullWidth sx={{ mb: 2 }}>

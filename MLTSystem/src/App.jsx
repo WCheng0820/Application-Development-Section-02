@@ -14,6 +14,7 @@ import EditProfile from "./pages/EditProfile";
 import ManageSchedule from "./pages/ManageSchedule";
 import Payment from "./pages/Payment";
 import Reports from "./pages/Reports";
+import TutorSetup from "./pages/TutorSetup";
 
 export default function App() {
   return (
@@ -27,6 +28,14 @@ export default function App() {
           <Route path="/register" element={<Register />} />
 
           {/* Protected routes */}
+          <Route
+            path="/tutor-setup"
+            element={
+              <PrivateRoute>
+                <TutorSetup />
+              </PrivateRoute>
+            }
+          />
           <Route
             path="/"
             element={
