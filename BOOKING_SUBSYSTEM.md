@@ -52,84 +52,32 @@
 
 ---
 
-## 🗄️ Database Schema Reference
+## 🗄️ Comprehensive Database Schema
 
-### Core Tables for Booking Subsystem
+📖 **See [DATABASE_SCHEMA.md](DATABASE_SCHEMA.md) for complete documentation of all 11 tables with:**
+- Detailed attribute descriptions
+- Data types and constraints
+- Business rules and workflows
+- Entity relationships
+- Performance optimization notes
+- Query examples
+- Data integrity rules
 
-#### `tutor` Table
-```
-- tutorId (VARCHAR, PK)
-- user_id (INT, FK to users.id)
-- name (VARCHAR)
-- specialization (VARCHAR)
-- experience (INT)
-- hourly_rate (DECIMAL)
-- rating (FLOAT)
-- created_at (TIMESTAMP)
-- updated_at (TIMESTAMP)
-```
+### Quick Reference - Tables Used in Booking Subsystem
 
-#### `tutor_schedule` Table
-```
-- id (INT, PK)
-- tutorId (VARCHAR, FK to tutor.tutorId)
-- day_of_week (ENUM: Monday-Sunday)
-- start_time (TIME)
-- end_time (TIME)
-- status (ENUM: available, booked, unavailable)
-- created_at (TIMESTAMP)
-- updated_at (TIMESTAMP)
-```
-
-#### `booking` Table
-```
-- bookingId (INT, PK)
-- studentId (VARCHAR, FK to student.studentId)
-- tutorId (VARCHAR, FK to tutor.tutorId)
-- booking_date (DATE)
-- booking_time (TIME)
-- duration (INT)
-- status (ENUM: pending, confirmed, completed, cancelled)
-- payment_status (ENUM: unpaid, paid, refunded)
-- amount (DECIMAL)
-- created_at (TIMESTAMP)
-- updated_at (TIMESTAMP)
-```
-
-#### `student` Table
-```
-- studentId (VARCHAR, PK)
-- user_id (INT, FK to users.id)
-- name (VARCHAR)
-- level (VARCHAR)
-- goals (TEXT)
-- created_at (TIMESTAMP)
-- updated_at (TIMESTAMP)
-```
-
-#### `feedback` Table
-```
-- id (INT, PK)
-- bookingId (INT, FK to booking.bookingId)
-- studentId (VARCHAR, FK to student.studentId)
-- tutorId (VARCHAR, FK to tutor.tutorId)
-- rating (TINYINT: 1-5)
-- comment (TEXT)
-- is_anonymous (TINYINT)
-- created_at (TIMESTAMP)
-```
-
-#### `notification` Table
-```
-- id (INT, PK)
-- recipientId (VARCHAR, FK to users.userId)
-- senderId (VARCHAR, FK to users.userId)
-- bookingId (INT, FK to booking.bookingId)
-- text (TEXT)
-- type (ENUM: booking, payment, etc.)
-- is_read (BOOLEAN)
-- created_at (TIMESTAMP)
-```
+| Table | Attributes | Purpose |
+|-------|-----------|---------|
+| **users** | id, userId, username, email, password, role, status | Authentication & core user data |
+| **tutor** | tutorId, user_id, name, yearsOfExperience, rating, rating_count, price, specialization, bio | Tutor profiles & ratings |
+| **student** | studentId, user_id, yearOfStudy, programme, faculty | Student profiles |
+| **tutor_schedule** | schedule_id, tutorId, schedule_date, start_time, end_time, status (free/reserved/booked) | Availability slots with 3-state machine |
+| **booking** | bookingId, tutorId, studentId, booking_date, start_time, end_time, subject, status | Confirmed bookings |
+| **feedback** | id, bookingId, studentId, tutorId, rating (1-5), comment, is_anonymous | Student reviews (1:1 per booking) |
+| **message** | id, bookingId, senderId, recipientId, content, attachment_* | Direct messaging with file support |
+| **notification** | id, recipientId, senderId, type (message/booking/feedback/report), is_read | In-app notifications |
+| **sessions** | id, user_id, token, expires_at | Active session management |
+| **admin** | adminId, user_id, name | Admin accounts |
+| **reports** | id, reporter_id, reported_id, category, status | Incident reporting |
 
 ---
 

@@ -236,6 +236,7 @@ export const AuthProvider = ({ children }) => {
       const result = await response.json();
 
       if (!response.ok || !result.success) {
+        console.error('❌ Registration failed:', result.error);
         return { 
           success: false, 
           error: result.error || 'Registration failed' 
@@ -244,8 +245,12 @@ export const AuthProvider = ({ children }) => {
 
       // Convert API response to User object
       const apiUser = result.user;
+      
+      // Use both id and userId from backend (userId is the string identifier like "s000001")
+      const userId = apiUser.id || apiUser.userId;
+      
       const newUser = new User(
-        apiUser.id,
+        userId,
         apiUser.email,
         '', // Password not stored in frontend
         apiUser.role,
@@ -258,12 +263,14 @@ export const AuthProvider = ({ children }) => {
         apiUser.username // Include username from API response
       );
 
-      // Add role-specific IDs to the user object
+      // Add role-specific IDs to the user object - these are CRITICAL for API calls
       if (apiUser.studentId) {
         newUser.studentId = apiUser.studentId;
+        console.log('📚 Student ID set:', apiUser.studentId);
       }
       if (apiUser.tutorId) {
         newUser.tutorId = apiUser.tutorId;
+        console.log('👨‍🏫 Tutor ID set:', apiUser.tutorId);
       }
       if (apiUser.adminId) {
         newUser.adminId = apiUser.adminId;
@@ -273,25 +280,25 @@ export const AuthProvider = ({ children }) => {
       }
 
       // Set approval status from API
-      if (apiUser.isApproved !== undefined) {
-        newUser.isApproved = apiUser.isApproved;
-      }
-      if (apiUser.approvalStatus !== undefined) {
-        newUser.approvalStatus = apiUser.approvalStatus;
-      }
       if (apiUser.status) {
         newUser.isApproved = apiUser.status === 'active';
         newUser.approvalStatus = apiUser.status === 'active' ? 'approved' : apiUser.status;
       }
 
-      // Update users list (for admin dashboard)
-      // Note: With backend API, this would be fetched from server
-      
-      // Only set current user if session is provided (not pending tutors)
+      // Only set current user and store session if session is provided (not pending tutors)
       if (result.session && result.session.token) {
+        console.log('💾 Storing registration session', {
+          token: result.session.token.substring(0, 20) + '...',
+          expiresAt: new Date(result.session.expiresAt),
+          userId: newUser.id,
+          studentId: newUser.studentId,
+          email: newUser.email
+        });
+        
         // Store session token with consistent User object structure
         sessionStorage.setItem('mlt_session_token', result.session.token);
         sessionStorage.setItem('mlt_session_expiry', new Date(result.session.expiresAt).getTime().toString());
+        
         const sessionUserData = {
           id: newUser.id,
           email: newUser.email,
@@ -309,8 +316,6 @@ export const AuthProvider = ({ children }) => {
         };
         sessionStorage.setItem('mlt_session_user', JSON.stringify(sessionUserData));
         
-        // Create session
-        const session = createSession(newUser);
         setCurrentUser(newUser);
         
         return { 

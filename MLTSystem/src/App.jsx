@@ -6,7 +6,6 @@ import SessionTimeout from "./components/SessionTimeout";
 import RoleBasedDashboard from "./components/RoleBasedDashboard";
 import FindTutors from "./pages/FindTutors";
 import Bookings from "./pages/Bookings";
-import Materials from "./pages/Materials";
 import Messages from "./pages/Messages";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
@@ -73,14 +72,6 @@ export default function App() {
             element={
               <PrivateRoute>
                 <Bookings />
-              </PrivateRoute>
-            }
-          />
-          <Route
-            path="/materials"
-            element={
-              <PrivateRoute>
-                <Materials />
               </PrivateRoute>
             }
           />
