@@ -20,6 +20,19 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
+  Tabs,
+  Tab,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  TextField as MuiTextField,
+  Select,
+  MenuItem,
+  FormControl,
+  InputLabel
 } from "@mui/material";
 import PeopleIcon from "@mui/icons-material/People";
 import AccessTimeIcon from "@mui/icons-material/AccessTime";
@@ -34,7 +47,9 @@ import PendingActionsIcon from "@mui/icons-material/PendingActions";
 import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutline";
 import CancelIcon from "@mui/icons-material/Cancel";
 import DescriptionIcon from "@mui/icons-material/Description";
+import FlagIcon from "@mui/icons-material/Flag";
 import { useAuth } from "../context/AuthContext";
+import * as AdminController from "../controllers/AdminController";
 
 export default function AdminDashboard() {
   const { currentUser } = useAuth();
@@ -42,10 +57,22 @@ export default function AdminDashboard() {
   const [selectedTutor, setSelectedTutor] = useState(null);
   const [viewDocumentsDialog, setViewDocumentsDialog] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [stats, setStats] = useState(null);
 
   useEffect(() => {
     fetchPendingUsers();
+    fetchStats();
   }, []);
+
+  const fetchStats = async () => {
+    try {
+      const data = await AdminController.getDashboardStats();
+      console.log('Dashboard stats received:', data);
+      setStats(data);
+    } catch (err) {
+      console.error('Failed to fetch stats', err);
+    }
+  };
 
   const fetchPendingUsers = async () => {
     try {
@@ -178,7 +205,9 @@ export default function AdminDashboard() {
                   Total Users
                 </Typography>
                 <Box display="flex" alignItems="center" justifyContent="space-between">
-                  <Typography variant="h5" fontWeight="bold">156</Typography>
+                  <Typography variant="h5" fontWeight="bold">
+                    {stats ? (Number(stats.users?.totalStudents || 0) + Number(stats.users?.totalTutors || 0)) : '...'}
+                  </Typography>
                   <PeopleIcon color="primary" />
                 </Box>
               </CardContent>
@@ -189,10 +218,12 @@ export default function AdminDashboard() {
             <Card>
               <CardContent>
                 <Typography variant="subtitle2" color="text.secondary">
-                  Active Sessions
+                  Total Bookings
                 </Typography>
                 <Box display="flex" alignItems="center" justifyContent="space-between">
-                  <Typography variant="h5" fontWeight="bold">23</Typography>
+                  <Typography variant="h5" fontWeight="bold">
+                    {stats ? (stats.bookings?.totalBookings || 0) : '...'}
+                  </Typography>
                   <AccessTimeIcon color="success" />
                 </Box>
               </CardContent>
@@ -203,11 +234,13 @@ export default function AdminDashboard() {
             <Card>
               <CardContent>
                 <Typography variant="subtitle2" color="text.secondary">
-                  System Health
+                  Pending Reports
                 </Typography>
                 <Box display="flex" alignItems="center" justifyContent="space-between">
-                  <Typography variant="h5" fontWeight="bold">98%</Typography>
-                  <CheckCircleIcon color="secondary" />
+                  <Typography variant="h5" fontWeight="bold">
+                    {stats ? (stats.reports?.pendingReports || 0) : '...'}
+                  </Typography>
+                  <FlagIcon color="error" />
                 </Box>
               </CardContent>
             </Card>
@@ -228,9 +261,10 @@ export default function AdminDashboard() {
           </Grid>
         </Grid>
 
-        {/* Pending Tutor Approvals Section */}
-        {pendingTutors.length > 0 && (
-          <Card sx={{ mb: 4 }}>
+
+
+        {/* Pending Tutors Section */}
+        <Card sx={{ mb: 4 }}>
             <CardContent>
               <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
                 <PendingActionsIcon color="warning" sx={{ mr: 1 }} />
@@ -238,76 +272,85 @@ export default function AdminDashboard() {
                   Pending Tutor Approvals ({pendingTutors.length})
                 </Typography>
               </Box>
-              <Alert severity="info" sx={{ mb: 2 }}>
-                {pendingTutors.length} tutor{pendingTutors.length > 1 ? 's' : ''} {pendingTutors.length > 1 ? 'are' : 'is'} waiting for approval
-              </Alert>
-              {pendingTutors.map((tutor) => (
-                <Paper
-                  key={tutor.tutorId}
-                  elevation={1}
-                  sx={{ p: 2, mb: 2, bgcolor: '#f9fafb' }}
-                >
-                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                    <Box sx={{ flex: 1 }}>
-                      <Typography variant="subtitle1" fontWeight="bold">
-                        {tutor.name || 'Unknown Tutor'}
-                      </Typography>
-                      <Typography variant="body2" color="text.secondary">
-                        ID: {tutor.tutorId}
-                      </Typography>
-                      {tutor.availability && (
-                        <Typography variant="body2" sx={{ mt: 1 }}>
-                          Availability: {tutor.availability}
-                        </Typography>
-                      )}
-                      {tutor.yearsOfExperience && (
-                        <Typography variant="body2" sx={{ mt: 0.5 }}>
-                          Experience: {tutor.yearsOfExperience} year{tutor.yearsOfExperience > 1 ? 's' : ''}
-                        </Typography>
-                      )}
-                      <Box sx={{ mt: 1, display: 'flex', alignItems: 'center', gap: 1 }}>
-                        <Chip
-                          label={`${tutor.verificationDocuments?.length || 0} document(s) uploaded`}
-                          size="small"
-                          icon={<DescriptionIcon />}
-                        />
-                        {tutor.verificationDocuments && tutor.verificationDocuments.length > 0 && (
+              {pendingTutors.length === 0 ? (
+                  <Alert severity="info">No pending tutor approvals.</Alert>
+              ) : (
+                  <>
+                  <Alert severity="info" sx={{ mb: 2 }}>
+                    {pendingTutors.length} tutor{pendingTutors.length > 1 ? 's' : ''} {pendingTutors.length > 1 ? 'are' : 'is'} waiting for approval
+                  </Alert>
+                  {pendingTutors.map((tutor) => (
+                    <Paper
+                      key={tutor.tutorId}
+                      elevation={1}
+                      sx={{ p: 2, mb: 2, bgcolor: '#f9fafb' }}
+                    >
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                        <Box sx={{ flex: 1 }}>
+                          <Typography variant="subtitle1" fontWeight="bold">
+                            {tutor.name || 'Unknown Tutor'}
+                          </Typography>
+                          <Typography variant="body2" color="text.secondary">
+                            ID: {tutor.tutorId}
+                          </Typography>
+                          {tutor.availability && (
+                            <Typography variant="body2" sx={{ mt: 1 }}>
+                              Availability: {tutor.availability}
+                            </Typography>
+                          )}
+                          {tutor.yearsOfExperience && (
+                            <Typography variant="body2" sx={{ mt: 0.5 }}>
+                              Experience: {tutor.yearsOfExperience} year{tutor.yearsOfExperience > 1 ? 's' : ''}
+                            </Typography>
+                          )}
+                          <Box sx={{ mt: 1, display: 'flex', alignItems: 'center', gap: 1 }}>
+                            <Chip
+                              label={`${tutor.verificationDocuments?.length || 0} document(s) uploaded`}
+                              size="small"
+                              icon={<DescriptionIcon />}
+                            />
+                            {tutor.verificationDocuments && tutor.verificationDocuments.length > 0 && (
+                              <Button
+                                size="small"
+                                variant="outlined"
+                                onClick={() => handleViewDocuments(tutor)}
+                              >
+                                View Documents
+                              </Button>
+                            )}
+                          </Box>
+                        </Box>
+                        <Box sx={{ display: 'flex', gap: 1 }}>
                           <Button
-                            size="small"
-                            variant="outlined"
-                            onClick={() => handleViewDocuments(tutor)}
+                            variant="contained"
+                            color="success"
+                            startIcon={<CheckCircleOutlineIcon />}
+                            onClick={() => handleApprove(tutor.tutorId)}
+                            disabled={loading}
                           >
-                            View Documents
+                            Approve
                           </Button>
-                        )}
+                          <Button
+                            variant="outlined"
+                            color="error"
+                            startIcon={<CancelIcon />}
+                            onClick={() => handleReject(tutor.tutorId)}
+                            disabled={loading}
+                          >
+                            Reject
+                          </Button>
+                        </Box>
                       </Box>
-                    </Box>
-                    <Box sx={{ display: 'flex', gap: 1 }}>
-                      <Button
-                        variant="contained"
-                        color="success"
-                        startIcon={<CheckCircleOutlineIcon />}
-                        onClick={() => handleApprove(tutor.tutorId)}
-                        disabled={loading}
-                      >
-                        Approve
-                      </Button>
-                      <Button
-                        variant="outlined"
-                        color="error"
-                        startIcon={<CancelIcon />}
-                        onClick={() => handleReject(tutor.tutorId)}
-                        disabled={loading}
-                      >
-                        Reject
-                      </Button>
-                    </Box>
-                  </Box>
-                </Paper>
-              ))}
+                    </Paper>
+                  ))}
+                  </>
+              )}
             </CardContent>
           </Card>
-        )}
+
+
+
+
 
         {/* View Documents Dialog */}
         <Dialog
@@ -373,10 +416,10 @@ export default function AdminDashboard() {
                   System Overview
                 </Typography>
                 {[
-                  { title: "User Registrations", value: "12 new today", status: "up" },
-                  { title: "Active Tutors", value: "28 online", status: "stable" },
-                  { title: "Completed Sessions", value: "45 this week", status: "up" },
-                  { title: "System Uptime", value: "99.9%", status: "stable" },
+                  { title: "New Registrations", value: stats ? `${stats.newRegistrations || 0} today` : '...', status: "up" },
+                  { title: "Active Tutors", value: stats ? `${stats.users?.activeTutors || 0} active` : '...', status: "stable" },
+                  { title: "Completed Sessions", value: stats ? `${stats.bookings?.completedBookings || 0} total` : '...', status: "up" },
+                  { title: "Total Reports", value: stats ? `${stats.reports?.totalReports || 0} filed` : '...', status: "stable" },
                 ].map((item, i) => (
                   <Box
                     key={i}
@@ -402,7 +445,7 @@ export default function AdminDashboard() {
                   </Box>
                 ))}
 
-                <Button variant="text" fullWidth sx={{ mt: 2 }}>
+                <Button variant="text" fullWidth sx={{ mt: 2 }} href="/reports">
                   View Detailed Reports
                 </Button>
               </CardContent>
@@ -420,7 +463,7 @@ export default function AdminDashboard() {
                   {[
                     { text: "Manage Users", icon: <PeopleIcon />, path: "/admin/users" },
                     { text: "System Settings", icon: <SettingsIcon />, path: "/admin/settings" },
-                    { text: "View Reports", icon: <FolderIcon />, path: "/admin/reports" },
+                    { text: "View Reports", icon: <FolderIcon />, path: "/reports" },
                     { text: "Monitor Sessions", icon: <ScheduleIcon />, path: "/admin/sessions" },
                   ].map((item, i) => (
                     <ListItem key={i} button component="a" href={item.path}>

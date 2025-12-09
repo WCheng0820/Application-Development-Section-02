@@ -16,6 +16,8 @@ import Dialog from '@mui/material/Dialog';
 import DialogTitle from '@mui/material/DialogTitle';
 import DialogContent from '@mui/material/DialogContent';
 import DialogActions from '@mui/material/DialogActions';
+import FlagIcon from "@mui/icons-material/Flag";
+import ReportDialog from "./ReportDialog";
 // Comments removed from rating dialog per requirements
 import { useAuth } from "../context/AuthContext";
 
@@ -26,6 +28,7 @@ export default function BookingCards(props) {
   const [openRate, setOpenRate] = useState(false);
   const [ratingValue, setRatingValue] = useState(rating || 5);
   const [loadingComplete, setLoadingComplete] = useState(false);
+  const [reportDialogOpen, setReportDialogOpen] = useState(false);
   const { currentUser } = useAuth();
   const role = currentUser?.role || '';
 
@@ -125,6 +128,17 @@ export default function BookingCards(props) {
           </Stack>
 
           <Box display="flex" justifyContent="flex-end" mt={2} gap={1}>
+            {/* Report Button */}
+            <Button
+                variant="text"
+                color="error"
+                size="small"
+                startIcon={<FlagIcon />}
+                onClick={() => setReportDialogOpen(true)}
+            >
+                Report
+            </Button>
+
             {/* Only tutors or admins can cancel bookings */}
             {(role.toLowerCase() === 'tutor' || role.toLowerCase() === 'admin') && (
               <Button
@@ -185,6 +199,14 @@ export default function BookingCards(props) {
           </Box>
         </Box>
       </Box>
+      <ReportDialog 
+        open={reportDialogOpen}
+        onClose={() => setReportDialogOpen(false)}
+        targetType="booking"
+        targetId={id}
+        reportedId={role.toLowerCase() === 'tutor' ? studentId : tutorId}
+        defaultCategory="other"
+      />
     </CardContent>
   );
 }

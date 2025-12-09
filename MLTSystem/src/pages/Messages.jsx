@@ -31,6 +31,8 @@ import AccessTimeIcon from "@mui/icons-material/AccessTime";
 import StarIcon from "@mui/icons-material/Star";
 import AddCommentIcon from "@mui/icons-material/AddComment";
 import SearchIcon from "@mui/icons-material/Search";
+import FlagIcon from "@mui/icons-material/Flag";
+import ReportDialog from "../components/ReportDialog";
 
 import * as MessagesController from "../controllers/MessagesController";
 import { useAuth } from "../context/AuthContext";
@@ -54,6 +56,7 @@ export default function Messages() {
   const [openNewChat, setOpenNewChat] = useState(false);
   const [availableUsers, setAvailableUsers] = useState([]); // Tutors or Students
   const [searchTerm, setSearchTerm] = useState("");
+  const [reportDialogOpen, setReportDialogOpen] = useState(false);
 
   // Keep ref in sync with state
   useEffect(() => {
@@ -569,6 +572,27 @@ export default function Messages() {
             </Paper>
           ) : (
             <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
+              {/* Chat Header with Report Button */}
+              <Paper sx={{ p: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <Box display="flex" alignItems="center" gap={2}>
+                      <Avatar sx={{ bgcolor: "#1976d2" }}>
+                          {(selectedConversation.otherParticipantName || "?").charAt(0).toUpperCase()}
+                      </Avatar>
+                      <Typography variant="h6">
+                          {selectedConversation.otherParticipantName}
+                      </Typography>
+                  </Box>
+                  <Button 
+                      variant="outlined" 
+                      color="error" 
+                      startIcon={<FlagIcon />}
+                      onClick={() => setReportDialogOpen(true)}
+                      size="small"
+                  >
+                      Report
+                  </Button>
+              </Paper>
+
               {/* Booking Info Box (if applicable) */}
               {selectedConversation.hasBooking && selectedConversation.bookingInfo && (
                 <Card sx={{ backgroundColor: "#e3f2fd" }}>
@@ -903,6 +927,14 @@ export default function Messages() {
           </List>
         </DialogContent>
       </Dialog>
+      <ReportDialog 
+        open={reportDialogOpen}
+        onClose={() => setReportDialogOpen(false)}
+        targetType="message"
+        targetId={selectedConversation?.bookingId ? `booking-${selectedConversation.bookingId}` : `chat-${selectedConversation?.otherParticipantId}`}
+        reportedId={selectedConversation?.otherParticipantId}
+        defaultCategory="harassment"
+      />
     </Box>
   );
 }

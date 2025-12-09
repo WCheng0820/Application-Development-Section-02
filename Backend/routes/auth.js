@@ -133,6 +133,18 @@ router.post('/register', async (req, res) => {
                     ]
                 );
                 console.log(`✅ Tutor record created: ${roleId} (status: ${status})`);
+
+                // Notify admins if tutor is pending
+                if (status === 'pending') {
+                    const admins = await query("SELECT userId FROM users WHERE role = 'admin'");
+                    for (const admin of admins) {
+                        await query(
+                            `INSERT INTO notification (recipientId, senderId, text, type)
+                             VALUES (?, ?, ?, 'tutor_approval')`,
+                            [admin.userId, roleId, `New tutor registration pending approval: ${username}`]
+                        );
+                    }
+                }
             } else if (role === 'student') {
                 await query(
                     'INSERT INTO student (studentId, user_id, yearOfStudy, programme, faculty) VALUES (?, ?, ?, ?, ?)',

@@ -99,6 +99,13 @@ try {
     console.warn('Could not load payments routes:', err.message);
 }
 
+try {
+    const reportsRoutes = require('./routes/reports');
+    app.use('/api/reports', reportsRoutes);
+} catch (err) {
+    console.warn('Could not load reports routes:', err.message);
+}
+
 // Add messages and notifications routes
 try {
     const messagesRoutes = require('./routes/messages');

@@ -158,4 +158,56 @@ router.post('/reject-user/:userId', isAdmin, async (req, res) => {
   }
 });
 
+// Get dashboard stats
+router.get('/stats', isAdmin, async (req, res) => {
+  try {
+    // 1. Total Users (Students, Tutors)
+    const [userCounts] = await query(`
+      SELECT 
+        SUM(CASE WHEN role = 'student' THEN 1 ELSE 0 END) as totalStudents,
+        SUM(CASE WHEN role = 'tutor' THEN 1 ELSE 0 END) as totalTutors,
+        SUM(CASE WHEN role = 'tutor' AND status = 'active' THEN 1 ELSE 0 END) as activeTutors,
+        SUM(CASE WHEN role = 'tutor' AND status = 'pending' THEN 1 ELSE 0 END) as pendingTutors
+      FROM users
+    `);
+
+    // 2. Bookings Stats
+    const [bookingCounts] = await query(`
+      SELECT 
+        COUNT(*) as totalBookings,
+        SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) as completedBookings,
+        SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END) as pendingBookings
+      FROM booking
+    `);
+
+    // 3. Reports Stats
+    const [reportCounts] = await query(`
+      SELECT 
+        COUNT(*) as totalReports,
+        SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END) as pendingReports
+      FROM reports
+    `);
+
+    // 4. New Registrations (Today)
+    const [newRegistrations] = await query(`
+      SELECT COUNT(*) as newToday 
+      FROM users 
+      WHERE DATE(created_at) = CURDATE()
+    `);
+
+    res.json({
+      success: true,
+      data: {
+        users: userCounts,
+        bookings: bookingCounts,
+        reports: reportCounts,
+        newRegistrations: newRegistrations.newToday
+      }
+    });
+  } catch (err) {
+    console.error('Error fetching admin stats:', err);
+    res.status(500).json({ success: false, error: 'Error fetching stats' });
+  }
+});
+
 module.exports = router;

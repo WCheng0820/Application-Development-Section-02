@@ -13,6 +13,7 @@ import Register from "./pages/Register";
 import EditProfile from "./pages/EditProfile";
 import ManageSchedule from "./pages/ManageSchedule";
 import Payment from "./pages/Payment";
+import Reports from "./pages/Reports";
 
 export default function App() {
   return (
@@ -47,6 +48,14 @@ export default function App() {
             element={
               <PrivateRoute>
                 <Payment />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/reports"
+            element={
+              <PrivateRoute>
+                <Reports />
               </PrivateRoute>
             }
           />

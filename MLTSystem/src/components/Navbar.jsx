@@ -36,6 +36,10 @@ const Navbar = () => {
     { label: "Messages", path: "/messages" },
   ];
 
+  if (currentUser?.role === 'admin') {
+    navItems.push({ label: "Reports", path: "/reports" });
+  }
+
   const handleMenu = (event) => {
     setAnchorEl(event.currentTarget);
   };
@@ -48,7 +52,7 @@ const Navbar = () => {
     setNotificationAnchorEl(event.currentTarget);
     // Fetch latest notifications when opening the menu
     if (currentUser) {
-        const userId = currentUser.studentId || currentUser.tutorId;
+        const userId = currentUser.studentId || currentUser.tutorId || currentUser.adminId || currentUser.id;
         if (userId) {
             try {
                 const notifs = await MessagesController.fetchNotifications(userId);
@@ -85,6 +89,15 @@ const Navbar = () => {
         // User requirement: "Tutor will receive a notification when new feedback receive"
         // Dashboard seems appropriate as it has the "Recent Reviews" section now.
         navigate('/#recent-reviews'); 
+    } else if (notification.type === 'report') {
+        if (currentUser.role === 'admin') {
+            navigate('/reports');
+        }
+        // For reporter, just stay on current page (notification cleared)
+    } else if (notification.type === 'tutor_approval') {
+        if (currentUser.role === 'admin') {
+            navigate('/');
+        }
     } else {
         // Default fallback
         navigate('/');
