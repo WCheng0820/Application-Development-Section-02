@@ -438,7 +438,13 @@ export const AuthProvider = ({ children }) => {
       if (!updatedUser.tutorId && currentUser.tutorId) updatedUser.tutorId = currentUser.tutorId;
       if (!updatedUser.studentId && currentUser.studentId) updatedUser.studentId = currentUser.studentId;
       if (!updatedUser.adminId && currentUser.adminId) updatedUser.adminId = currentUser.adminId;
-      if (updatedUser.price === undefined && currentUser.price !== undefined) updatedUser.price = currentUser.price;
+      if (updatedUser.price === undefined && currentUser.price !== undefined) {
+        updatedUser.price = currentUser.price;
+      }
+      // If API omits price, persist the value the tutor just submitted
+      if (updatedUser.price === undefined && profileData.price !== undefined) {
+        updatedUser.price = profileData.price;
+      }
 
       // Note: User list in admin dashboard will be fetched from server
       setCurrentUser(updatedUser);

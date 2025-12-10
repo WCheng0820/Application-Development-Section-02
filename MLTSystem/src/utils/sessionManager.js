@@ -81,12 +81,19 @@ export const createSession = (user) => {
   sessionStorage.setItem(SESSION_TOKEN_KEY, token);
   sessionStorage.setItem(SESSION_EXPIRY_KEY, expiryTime.toString());
   sessionStorage.setItem(SESSION_USER_KEY, JSON.stringify({
-    id: user.userId,
+    id: user.id || user.userId,
+    userId: user.userId || user.id,
     email: user.email,
     role: user.role,
+    username: user.username,
     profile: user.profile,
     isApproved: user.isApproved,
-    approvalStatus: user.approvalStatus
+    approvalStatus: user.approvalStatus,
+    verificationDocuments: user.verificationDocuments,
+    studentId: user.studentId,
+    tutorId: user.tutorId,
+    adminId: user.adminId,
+    price: user.price
   }));
 
   return {
@@ -165,12 +172,19 @@ export const refreshSession = (user) => {
   
   // Update user data in case it changed
   sessionStorage.setItem(SESSION_USER_KEY, JSON.stringify({
-    id: user.userId,
+    id: user.id || user.userId,
+    userId: user.userId || user.id,
     email: user.email,
     role: user.role,
+    username: user.username,
     profile: user.profile,
     isApproved: user.isApproved,
-    approvalStatus: user.approvalStatus
+    approvalStatus: user.approvalStatus,
+    verificationDocuments: user.verificationDocuments,
+    studentId: user.studentId,
+    tutorId: user.tutorId,
+    adminId: user.adminId,
+    price: user.price
   }));
 
   return {
