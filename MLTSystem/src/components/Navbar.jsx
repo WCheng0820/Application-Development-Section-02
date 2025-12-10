@@ -83,7 +83,7 @@ const Navbar = () => {
     if (notification.type === 'message') {
         navigate('/messages');
     } else if (notification.type === 'booking') {
-        navigate('/bookings');
+        navigate('/bookings', { state: { highlightBookingId: notification.bookingId } });
     } else if (notification.type === 'feedback') {
         // If tutor receives feedback, go to dashboard or profile? 
         // User requirement: "Tutor will receive a notification when new feedback receive"

@@ -56,6 +56,7 @@ router.get('/conversations/:userId', authenticateToken, async (req, res) => {
         const conversationMap = new Map(); // Use map to consolidate by participant
 
         // 1. Get bookings where user is student or tutor - fetch related messages
+        // Order by booking_date DESC to get the latest booking info first
         const bookings = await query(
             `SELECT b.*, 
                     t.name as tutor_name, 
@@ -64,29 +65,34 @@ router.get('/conversations/:userId', authenticateToken, async (req, res) => {
              LEFT JOIN tutor t ON b.tutorId = t.tutorId
              LEFT JOIN student s ON b.studentId = s.studentId
              LEFT JOIN users u_student ON s.user_id = u_student.id
-             WHERE b.tutorId = ? OR b.studentId = ?`,
+             WHERE b.tutorId = ? OR b.studentId = ?
+             ORDER BY b.booking_date DESC, b.start_time DESC`,
             [userId, userId]
         );
 
         for (const booking of bookings) {
-            const latestMsg = await query(
-                `SELECT * FROM message 
-                 WHERE bookingId = ?
-                 ORDER BY created_at DESC
-                 LIMIT 1`,
-                [booking.bookingId]
-            );
-
-            // Count unread messages in this conversation
-            const unreadMsgs = await query(
-                `SELECT COUNT(*) as count FROM message 
-                 WHERE bookingId = ? AND senderId != ? AND JSON_CONTAINS(readBy_json, ?, '$[*].userId') = 0`,
-                [booking.bookingId, userId, JSON.stringify(userId)]
-            );
-            const unreadCount = unreadMsgs[0]?.count || 0;
-
             const otherParticipantId = booking.tutorId === userId ? booking.studentId : booking.tutorId;
             const otherParticipantName = booking.tutorId === userId ? booking.student_name : booking.tutor_name;
+            
+            // Fetch ALL messages between these two participants, regardless of bookingId
+            // This ensures chat history persists across bookings
+            const latestMsg = await query(
+                `SELECT * FROM message 
+                 WHERE ((senderId = ? AND recipientId = ?) OR (senderId = ? AND recipientId = ?))
+                 ORDER BY created_at DESC
+                 LIMIT 1`,
+                [userId, otherParticipantId, otherParticipantId, userId]
+            );
+
+            // Count unread messages in this conversation (participant-based)
+            const unreadMsgs = await query(
+                `SELECT COUNT(*) as count FROM message 
+                 WHERE ((senderId = ? AND recipientId = ?) OR (senderId = ? AND recipientId = ?))
+                 AND senderId != ? 
+                 AND JSON_CONTAINS(readBy_json, ?, '$[*].userId') = 0`,
+                [userId, otherParticipantId, otherParticipantId, userId, userId, JSON.stringify(userId)]
+            );
+            const unreadCount = unreadMsgs[0]?.count || 0;
 
             const latest = latestMsg[0];
             const snippet = latest
@@ -98,28 +104,33 @@ router.get('/conversations/:userId', authenticateToken, async (req, res) => {
             const unread = latest && !readBy.some(r => r.userId === userId);
 
             const conversationKey = otherParticipantId;
-            const newConversation = {
-                bookingId: booking.bookingId,
-                title: `Session with ${otherParticipantName}`,
-                otherParticipantId,
-                otherParticipantName,
-                snippet,
-                timestamp: latest ? new Date(latest.created_at).getTime() : null,
-                unread,
-                unreadCount,
-                hasBooking: true,
-                bookingInfo: {
-                    date: booking.booking_date,
-                    startTime: booking.start_time,
-                    endTime: booking.end_time,
-                    status: booking.status
-                }
-            };
-
-            // If participant already exists, keep the one with the most recent message
-            if (!conversationMap.has(conversationKey) || (newConversation.timestamp > (conversationMap.get(conversationKey).timestamp || 0))) {
-                conversationMap.set(conversationKey, newConversation);
+            
+            let conversation = conversationMap.get(conversationKey);
+            
+            if (!conversation) {
+                conversation = {
+                    bookingId: booking.bookingId, // Default to latest
+                    title: `Session with ${otherParticipantName}`,
+                    otherParticipantId,
+                    otherParticipantName,
+                    snippet,
+                    timestamp: latest ? new Date(latest.created_at).getTime() : null,
+                    unread,
+                    unreadCount,
+                    hasBooking: true,
+                    bookings: [] // Initialize array
+                };
+                conversationMap.set(conversationKey, conversation);
             }
+            
+            // Add this booking to the list
+            conversation.bookings.push({
+                id: booking.bookingId,
+                date: booking.booking_date,
+                startTime: booking.start_time,
+                endTime: booking.end_time,
+                status: booking.status
+            });
         }
 
         const conversations = Array.from(conversationMap.values());
@@ -138,7 +149,6 @@ router.get('/conversations/:userId', authenticateToken, async (req, res) => {
             const otherId = dm.otherId;
             
             // Skip if we already have a conversation with this person (e.g. via booking)
-            // Note: We might want to show both if they are distinct contexts, but usually we merge by person
             if (conversationMap.has(otherId)) continue;
 
             // Fetch other user details
@@ -168,11 +178,10 @@ router.get('/conversations/:userId', authenticateToken, async (req, res) => {
                 }
             }
 
-            // Get latest message
+            // Get latest message (participant-based)
             const latestMsg = await query(
                 `SELECT * FROM message 
-                 WHERE bookingId IS NULL 
-                 AND ((senderId = ? AND recipientId = ?) OR (senderId = ? AND recipientId = ?))
+                 WHERE ((senderId = ? AND recipientId = ?) OR (senderId = ? AND recipientId = ?))
                  ORDER BY created_at DESC
                  LIMIT 1`,
                 [userId, otherId, otherId, userId]
@@ -181,8 +190,10 @@ router.get('/conversations/:userId', authenticateToken, async (req, res) => {
             // Count unread
             const unreadFromUser = await query(
                 `SELECT COUNT(*) as count FROM message 
-                 WHERE bookingId IS NULL AND senderId = ? AND recipientId = ? AND JSON_CONTAINS(readBy_json, ?, '$[*].userId') = 0`,
-                [otherId, userId, JSON.stringify(userId)]
+                 WHERE ((senderId = ? AND recipientId = ?) OR (senderId = ? AND recipientId = ?))
+                 AND senderId != ? 
+                 AND JSON_CONTAINS(readBy_json, ?, '$[*].userId') = 0`,
+                [userId, otherId, otherId, userId, userId, JSON.stringify(userId)]
             );
             const unreadCount = unreadFromUser[0]?.count || 0;
 
@@ -226,22 +237,21 @@ router.get('/messages/:bookingId', authenticateToken, async (req, res) => {
 
         let messages;
         
-        if (bookingId && bookingId !== 'null') {
-            // Booking-based chat
+        // Always fetch by participants if provided, to show full history regardless of booking status
+        if (senderId && recipientId) {
+            messages = await query(
+                `SELECT * FROM message 
+                 WHERE ((senderId = ? AND recipientId = ?) OR (senderId = ? AND recipientId = ?))
+                 ORDER BY created_at ASC`,
+                [senderId, recipientId, recipientId, senderId]
+            );
+        } else if (bookingId && bookingId !== 'null') {
+            // Fallback to bookingId if participants not provided (legacy support)
             messages = await query(
                 `SELECT * FROM message 
                  WHERE bookingId = ?
                  ORDER BY created_at ASC`,
                 [bookingId]
-            );
-        } else if (senderId && recipientId) {
-            // Direct tutor chat (no booking) - filter by participants
-            messages = await query(
-                `SELECT * FROM message 
-                 WHERE bookingId IS NULL 
-                 AND ((senderId = ? AND recipientId = ?) OR (senderId = ? AND recipientId = ?))
-                 ORDER BY created_at ASC`,
-                [senderId, recipientId, recipientId, senderId]
             );
         } else {
             // No booking and no participants specified

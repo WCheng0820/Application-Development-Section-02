@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from "react";
+import { useLocation } from "react-router-dom";
 import { Container, Typography, Card, Grid, Tabs, Tab, Box, Dialog, DialogTitle, DialogContent, DialogActions, Button, TextField, Rating, FormControlLabel, Checkbox } from "@mui/material";
 import BookingCards from "../components/BookingCard";
 import * as BookingsController from "../controllers/BookingsController";
 import { useAuth } from "../context/AuthContext";
 
 export default function Bookings() {
+  const location = useLocation();
   // View: keeps its own UI state but delegates data ops to Controller
   const [bookings, setBookings] = useState([]);
   const [tabValue, setTabValue] = useState(0);
@@ -29,6 +31,40 @@ export default function Bookings() {
     }
     return () => { mounted = false; };
   }, [currentUser]);
+
+  // Handle navigation from Messages
+  useEffect(() => {
+    if (bookings.length > 0 && location.state?.highlightBookingId) {
+      const targetId = location.state.highlightBookingId;
+      const targetBooking = bookings.find(b => b.bookingId === targetId);
+      
+      if (targetBooking) {
+        // Determine which tab this booking belongs to
+        const isCompleted = targetBooking.status && targetBooking.status.toLowerCase() === 'completed';
+        const isCancelled = targetBooking.status && targetBooking.status.toLowerCase() === 'cancelled';
+        
+        if (isCompleted || isCancelled) {
+          setTabValue(1); // History tab
+        } else {
+          setTabValue(0); // Upcoming tab
+        }
+        
+        // Scroll to the booking card after a short delay to allow rendering
+        setTimeout(() => {
+          const element = document.getElementById(`booking-${targetId}`);
+          if (element) {
+            element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            // Optional: Add a highlight effect
+            element.style.transition = 'background-color 0.5s';
+            element.style.backgroundColor = '#e3f2fd';
+            setTimeout(() => {
+              element.style.backgroundColor = '';
+            }, 2000);
+          }
+        }, 100);
+      }
+    }
+  }, [bookings, location.state]);
 
   const handleTabChange = (event, newValue) => {
     setTabValue(newValue);
@@ -125,7 +161,7 @@ export default function Bookings() {
               heading = isTutor ? (booking.studentUsername || booking.student) : booking.tutor;
             }
             return (
-              <Grid item xs={12} sm={6} md={6} key={booking.id}>
+              <Grid item xs={12} sm={6} md={6} key={booking.id} id={`booking-${booking.id}`}>
                   <Card
                     sx={{
                       borderRadius: 3,

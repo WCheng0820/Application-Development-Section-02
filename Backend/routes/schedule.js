@@ -290,6 +290,35 @@ router.post('/:tutorId/:scheduleId/book', async (req, res, next) => {
                 [tutorId, studentId, slot.schedule_date, slot.start_time, slot.end_time, subject || null, 'confirmed', `payment:${paymentMethod || 'unknown'}`]
             );
 
+            // Create notification for tutor
+            try {
+                // Get tutor's userId
+                const [tutorRows] = await conn.execute(
+                    'SELECT u.userId FROM tutor t JOIN users u ON t.user_id = u.id WHERE t.tutorId = ?',
+                    [tutorId]
+                );
+                
+                // Get student's userId and name
+                const [studentRows] = await conn.execute(
+                    'SELECT u.userId, u.username FROM student s JOIN users u ON s.user_id = u.id WHERE s.studentId = ?',
+                    [studentId]
+                );
+
+                if (tutorRows.length > 0 && studentRows.length > 0) {
+                    const tutorUserId = tutorRows[0].userId;
+                    const studentUserId = studentRows[0].userId;
+                    const studentName = studentRows[0].username;
+
+                    await conn.execute(
+                        'INSERT INTO notification (recipientId, senderId, bookingId, text, type) VALUES (?, ?, ?, ?, ?)',
+                        [tutorUserId, studentUserId, bookingRes.insertId, `New booking request from ${studentName}`, 'booking']
+                    );
+                }
+            } catch (notifyErr) {
+                console.error('Failed to create booking notification:', notifyErr);
+                // Don't fail the booking if notification fails
+            }
+
             await conn.commit();
             conn.release();
 
