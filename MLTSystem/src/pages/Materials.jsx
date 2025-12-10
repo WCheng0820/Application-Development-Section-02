@@ -13,6 +13,7 @@ import {
 
 export default function TutorUploadMaterial() {
   const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
   const [category, setCategory] = useState("Beginner");
   const [file, setFile] = useState(null);
   
@@ -46,6 +47,7 @@ export default function TutorUploadMaterial() {
 
     const formData = new FormData();
     formData.append("title", title);
+    formData.append("description", description);
     formData.append("category", category);
     formData.append("file", file);
 
@@ -61,6 +63,7 @@ export default function TutorUploadMaterial() {
       if (data.success) {
         alert("Material uploaded successfully to Drive!");
         setTitle("");
+        setDescription("");
         setFile(null);
         fetchMaterials();
       } else {
@@ -122,6 +125,17 @@ export default function TutorUploadMaterial() {
         />
 
         <TextField
+          label="Description"
+          fullWidth
+          multiline
+          rows={3}
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+          sx={{ mb: 3 }}
+          placeholder="Brief description of the material..."
+        />
+
+        <TextField
           select
           fullWidth
           label="Category"
@@ -175,6 +189,22 @@ export default function TutorUploadMaterial() {
                 <Typography variant="h6" fontWeight="bold" noWrap>
                   {item.title}
                 </Typography>
+                {item.description && (
+                  <Typography 
+                    variant="body2" 
+                    color="text.secondary" 
+                    sx={{ 
+                      mb: 1,
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      display: '-webkit-box',
+                      WebkitLineClamp: 2,
+                      WebkitBoxOrient: 'vertical',
+                    }}
+                  >
+                    {item.description}
+                  </Typography>
+                )}
                 <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
                   Category: {item.category}
                 </Typography>

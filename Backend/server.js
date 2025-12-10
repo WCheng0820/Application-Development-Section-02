@@ -123,6 +123,14 @@ try {
     console.warn('Could not load materials upload routes:', err.message);
 }
 
+// Add material reports route
+try {
+    const materialReportsRoutes = require('./app/routes/material-reports');
+    app.use('/api/material-reports', materialReportsRoutes);
+} catch (err) {
+    console.warn('Could not load material reports routes:', err.message);
+}
+
 // Add messages and notifications routes
 try {
     const messagesRoutes = require('./app/routes/messages');

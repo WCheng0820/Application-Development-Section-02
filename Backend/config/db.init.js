@@ -264,6 +264,23 @@ const initDatabase = async () => {
         `);
         console.log('✅ Feedback table created');
 
+        // Create materials table for uploaded learning materials
+        await connection.query(`
+            CREATE TABLE IF NOT EXISTS materials (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                title VARCHAR(255) NOT NULL,
+                description TEXT,
+                category ENUM('Beginner','Intermediate','Advanced') NOT NULL,
+                drive_file_id VARCHAR(255) NOT NULL,
+                web_view_link VARCHAR(500),
+                web_content_link VARCHAR(500),
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                INDEX idx_category (category),
+                INDEX idx_created_at (created_at)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        `);
+        console.log('✅ Materials table created');
+
         // Insert default admin user if not exists
         const [existingAdmin] = await connection.query(
             'SELECT id FROM users WHERE email = ? OR username = ?',

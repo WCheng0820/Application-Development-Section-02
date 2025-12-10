@@ -40,7 +40,7 @@ router.post('/upload', upload.single('file'), async (req, res) => {
             return res.status(400).json({ success: false, error: 'No file uploaded' });
         }
 
-        const { title, category } = req.body;
+        const { title, category, description } = req.body;
         const MLT_FOLDER_ID = process.env.GOOGLE_MLT_FOLDER_ID; // Add this to .env
 
         if (!MLT_FOLDER_ID) {
@@ -84,9 +84,9 @@ router.post('/upload', upload.single('file'), async (req, res) => {
         const { webViewLink, webContentLink } = result.data;
 
         // Save metadata to database
-        const sql = `INSERT INTO materials (title, category, drive_file_id, web_view_link, web_content_link) VALUES (?, ?, ?, ?, ?)`;
+        const sql = `INSERT INTO materials (title, description, category, drive_file_id, web_view_link, web_content_link) VALUES (?, ?, ?, ?, ?, ?)`;
         
-        db.query(sql, [title, category, fileId, webViewLink, webContentLink], (err, dbResult) => {
+        db.query(sql, [title, description || null, category, fileId, webViewLink, webContentLink], (err, dbResult) => {
             if (err) {
                 console.error('DB error:', err);
                 return res.status(500).json({ success: false, error: err.message });

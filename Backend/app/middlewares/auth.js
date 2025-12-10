@@ -30,7 +30,7 @@ const verifyToken = async (req, res, next) => {
 
         // Get user
         const users = await query(
-            'SELECT id, username, email, role FROM users WHERE id = ?',
+            'SELECT id, userId, username, email, role FROM users WHERE id = ?',
             [session.user_id]
         );
 
@@ -66,7 +66,7 @@ const optionalAuth = async (req, res, next) => {
             if (sessions.length > 0) {
                 const session = sessions[0];
                 const users = await query(
-                    'SELECT id, username, email, role FROM users WHERE id = ?',
+                    'SELECT id, userId, username, email, role FROM users WHERE id = ?',
                     [session.user_id]
                 );
 

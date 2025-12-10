@@ -1,5 +1,9 @@
 import React, { useState, useEffect } from "react";
-import { Box, Button, Grid, Typography } from "@mui/material";
+import { 
+  Box, Button, Grid, Typography, IconButton, Tooltip,
+  Dialog, DialogTitle, DialogContent, DialogActions, TextField
+} from "@mui/material";
+import FlagIcon from "@mui/icons-material/Flag";
 
 // Keep your image import exactly as it was
 import pngtreeImage from "../assets/—Pngtree—thank you in different languages_9057022.jpg"; 
@@ -7,6 +11,10 @@ import pngtreeImage from "../assets/—Pngtree—thank you in different language
 export default function StudentMaterials() {
   const [materials, setMaterials] = useState([]); // Store data from DB
   const [category, setCategory] = useState("All Materials");
+  const [reportDialogOpen, setReportDialogOpen] = useState(false);
+  const [selectedMaterial, setSelectedMaterial] = useState(null);
+  const [reportReason, setReportReason] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // 1. Fetch materials from Backend on load
   useEffect(() => {
@@ -44,6 +52,68 @@ export default function StudentMaterials() {
 
   const handleCategoryChange = (selectedCategory) => {
     setCategory(selectedCategory);
+  };
+
+  const handleReportClick = (material) => {
+    setSelectedMaterial(material);
+    setReportReason("");
+    setReportDialogOpen(true);
+  };
+
+  const handleCloseDialog = () => {
+    setReportDialogOpen(false);
+    setSelectedMaterial(null);
+    setReportReason("");
+  };
+
+  const handleSubmitReport = async () => {
+    if (!reportReason.trim()) {
+      alert("Please enter a reason for this report.");
+      return;
+    }
+
+    if (!selectedMaterial.web_view_link) {
+      alert("Material link is missing. Cannot submit report.");
+      handleCloseDialog();
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
+      const token = sessionStorage.getItem('mlt_session_token');
+      if (!token) {
+        alert("Session expired. Please log in again.");
+        setIsSubmitting(false);
+        return;
+      }
+      const response = await fetch(`${API_URL}/api/material-reports`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          materialLink: selectedMaterial.web_view_link,
+          materialTitle: selectedMaterial.title,
+          reason: reportReason.trim()
+        })
+      });
+
+      const data = await response.json();
+      
+      if (response.ok && data.success) {
+        alert('Material reported successfully. Admins will review it shortly.');
+        handleCloseDialog();
+      } else {
+        alert(`Error: ${data.error || 'Failed to report material'}`);
+      }
+    } catch (error) {
+      console.error('Report submission error:', error);
+      alert('Failed to submit report. Please try again.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   // 2. Filter logic based on the real data
@@ -116,7 +186,7 @@ export default function StudentMaterials() {
                 borderRadius: "8px",
                 padding: 2,
                 textAlign: "center",
-                height: "140px",
+                height: "200px",
                 display: "flex",
                 flexDirection: "column",
                 justifyContent: "space-between",
@@ -140,10 +210,49 @@ export default function StudentMaterials() {
                 {material.category}
               </Box>
 
+              {/* Report Flag Button (Top Left) */}
+              <Tooltip title="Report this material">
+                <IconButton
+                  size="small"
+                  onClick={() => handleReportClick(material)}
+                  sx={{
+                    position: "absolute",
+                    top: 8,
+                    left: 8,
+                    color: "#d32f2f",
+                    "&:hover": {
+                      backgroundColor: "rgba(211, 47, 47, 0.1)",
+                    },
+                  }}
+                >
+                  <FlagIcon fontSize="small" />
+                </IconButton>
+              </Tooltip>
+
               {/* Material Title (Changed from .name to .title to match DB) */}
-              <Typography variant="h6" fontWeight="bold" sx={{ mb: 1, mt: 3, fontSize: '1rem' }}>
+              <Typography variant="h6" fontWeight="bold" sx={{ mb: 0.5, mt: 3, fontSize: '1rem' }}>
                 {material.title}
               </Typography>
+
+              {/* Material Description */}
+              {material.description && (
+                <Typography 
+                  variant="body2" 
+                  color="text.secondary" 
+                  sx={{ 
+                    mb: 1, 
+                    fontSize: '0.85rem',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    display: '-webkit-box',
+                    WebkitLineClamp: 3,
+                    WebkitBoxOrient: 'vertical',
+                    lineHeight: 1.4,
+                  }}
+                >
+                  {material.description}
+                </Typography>
+              )}
 
               {/* View Button */}
               <Button
@@ -165,6 +274,45 @@ export default function StudentMaterials() {
               No materials found in this category.
           </Typography>
       )}
+
+      {/* Report Dialog Form */}
+      <Dialog open={reportDialogOpen} onClose={handleCloseDialog} maxWidth="sm" fullWidth>
+        <DialogTitle sx={{ fontWeight: 'bold' }}>
+          Report Material: {selectedMaterial?.title}
+        </DialogTitle>
+        <DialogContent sx={{ pt: 2 }}>
+          <Typography variant="body2" sx={{ mb: 2, color: '#666' }}>
+            Please provide a reason for reporting this material. Our admins will review it shortly.
+          </Typography>
+          <TextField
+            fullWidth
+            multiline
+            rows={4}
+            label="Report Reason"
+            placeholder="Explain why you're reporting this material..."
+            value={reportReason}
+            onChange={(e) => setReportReason(e.target.value)}
+            variant="outlined"
+            disabled={isSubmitting}
+          />
+        </DialogContent>
+        <DialogActions sx={{ p: 2 }}>
+          <Button 
+            onClick={handleCloseDialog}
+            disabled={isSubmitting}
+          >
+            Cancel
+          </Button>
+          <Button
+            onClick={handleSubmitReport}
+            variant="contained"
+            color="error"
+            disabled={isSubmitting || !reportReason.trim()}
+          >
+            {isSubmitting ? 'Submitting...' : 'Submit Report'}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 }
