@@ -21,10 +21,7 @@ const upload = multer({
 
 // 2. Google Drive Setup
 // REPLACE THESE WITH YOUR ACTUAL KEYS from Step 2
-const CLIENT_ID = '116953367190-rooavfth92mb9isfj09uog2ek1stok53.apps.googleusercontent.com';
-const CLIENT_SECRET = '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';
-const REDIRECT_URI = 'https://developers.google.com/oauthplayground';
-const REFRESH_TOKEN = '1//04FO8raUDDjGsCgYIARAAGAQSNwF-L9IrVpjU1usY6nO9OhSzGz9oGSuOTjzXKETAWV6VZWiMXEp9Xz-Xtr9fwga1yH21cPAWpFY';
+
 
 const oauth2Client = new google.auth.OAuth2(CLIENT_ID, CLIENT_SECRET, REDIRECT_URI);
 oauth2Client.setCredentials({ refresh_token: REFRESH_TOKEN });
