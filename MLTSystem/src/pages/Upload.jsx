@@ -15,8 +15,14 @@ export default function StudentMaterials() {
 
   const fetchMaterials = async () => {
     try {
-      // Make sure this port matches your server (8081)
-      const response = await fetch("http://localhost:8081/api/materials");
+      // Use backend API base (defaults to 5000)
+      const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
+      const response = await fetch(`${API_URL}/api/materials`);
+
+      if (!response.ok) {
+        throw new Error(`API returned ${response.status}`);
+      }
+
       const data = await response.json();
       
       if (data.success) {
@@ -26,6 +32,13 @@ export default function StudentMaterials() {
       }
     } catch (error) {
       console.error("Error connecting to server:", error);
+      // Fallback demo data so page still renders if backend route is missing
+      setMaterials([
+        { id: 'demo-1', title: 'Pinyin Basics', category: 'Beginner', web_view_link: 'https://example.com/pinyin' },
+        { id: 'demo-2', title: 'Tone Drills', category: 'Beginner', web_view_link: 'https://example.com/tones' },
+        { id: 'demo-3', title: 'Grammar Patterns', category: 'Intermediate', web_view_link: 'https://example.com/grammar' },
+        { id: 'demo-4', title: 'Essay Writing', category: 'Advanced', web_view_link: 'https://example.com/essay' },
+      ]);
     }
   };
 

@@ -1,157 +1,217 @@
 import React, { useState, useEffect } from "react";
-import { Box, Button, Grid, Typography } from "@mui/material";
+import {
+  Box,
+  Button,
+  Grid,
+  Typography,
+  TextField,
+  MenuItem,
+  Paper,
+  Link,
+  Stack // Added Stack for button alignment
+} from "@mui/material";
 
-// Keep your image import exactly as it was
-import pngtreeImage from "../assets/—Pngtree—thank you in different languages_9057022.jpg"; 
+export default function TutorUploadMaterial() {
+  const [title, setTitle] = useState("");
+  const [category, setCategory] = useState("Beginner");
+  const [file, setFile] = useState(null);
+  
+  const [uploaded, setUploaded] = useState([]);
+  const [uploading, setUploading] = useState(false);
 
-export default function StudentMaterials() {
-  const [materials, setMaterials] = useState([]); // Store data from DB
-  const [category, setCategory] = useState("All Materials");
-
-  // 1. Fetch materials from Backend on load
   useEffect(() => {
     fetchMaterials();
   }, []);
 
   const fetchMaterials = async () => {
     try {
-      // Make sure this port matches your server (8081)
-      const response = await fetch("http://localhost:8081/api/materials");
+      const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
+      const response = await fetch(`${API_URL}/api/materials`);
       const data = await response.json();
-      
       if (data.success) {
-        setMaterials(data.data);
-      } else {
-        console.error("Failed to fetch materials");
+        setUploaded(data.data);
       }
     } catch (error) {
-      console.error("Error connecting to server:", error);
+      console.error("Error fetching materials:", error);
     }
   };
 
-  const handleCategoryChange = (selectedCategory) => {
-    setCategory(selectedCategory);
+  const handleUpload = async () => {
+    if (!title || !file) {
+      alert("Please enter a title and select a file!");
+      return;
+    }
+
+    setUploading(true);
+
+    const formData = new FormData();
+    formData.append("title", title);
+    formData.append("category", category);
+    formData.append("file", file);
+
+    try {
+      const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
+      const response = await fetch(`${API_URL}/api/materials/upload`, {
+        method: "POST",
+        body: formData,
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        alert("Material uploaded successfully to Drive!");
+        setTitle("");
+        setFile(null);
+        fetchMaterials();
+      } else {
+        alert("Upload failed: " + data.error);
+      }
+    } catch (error) {
+      console.error("Error uploading:", error);
+      alert("Error uploading file.");
+    } finally {
+      setUploading(false);
+    }
   };
 
-  // 2. Filter logic based on the real data
-  const filteredMaterials =
-    category === "All Materials"
-      ? materials
-      : materials.filter((material) => material.category === category);
+  // --- NEW: Handle Delete Function ---
+  const handleDelete = async (id) => {
+    // 1. Confirm with the user
+    if (!window.confirm("Are you sure you want to delete this material? This cannot be undone.")) {
+      return;
+    }
 
-  // 3. Open Google Drive Link
-  const handleView = (link) => {
-    if (link) {
-        window.open(link, "_blank"); // Opens in new tab
-    } else {
-        alert("Link not available");
+    try {
+      // 2. Call the backend
+      const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
+      const response = await fetch(`${API_URL}/api/materials/${id}`, {
+        method: "DELETE",
+      });
+      const data = await response.json();
+
+      if (data.success) {
+        alert("Material deleted!");
+        // 3. Refresh the list
+        fetchMaterials();
+      } else {
+        alert("Delete failed: " + data.error);
+      }
+    } catch (error) {
+      console.error("Error deleting:", error);
+      alert("Error deleting material.");
     }
   };
 
   return (
     <Box sx={{ mt: 10, px: 5 }}>
-      {/* Title */}
-      <Typography variant="h4" fontWeight="bold" sx={{ textAlign: "left" }}>
-        Learning Material
+      <Typography variant="h4" fontWeight="bold" sx={{ mb: 2 }}>
+        Upload Study Material
       </Typography>
 
-      {/* Subtitle */}
-      <Typography variant="h6" sx={{ textAlign: "left", mb: 3 }}>
-        Browse and download study resources
+      <Typography variant="h6" sx={{ mb: 5 }}>
+        Tutors can upload learning resources for students
       </Typography>
 
-      {/* PNGTree Image */}
-      <Box sx={{ textAlign: "center", mb: 5 }}>
-        <img
-          src={pngtreeImage}
-          alt="Thank you in different languages"
-          style={{
-            maxWidth: "100%", 
-            height: "auto", 
-          }}
+      <Paper sx={{ p: 4, mb: 6 }}>
+        <TextField
+          label="Material Title"
+          fullWidth
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          sx={{ mb: 3 }}
         />
-      </Box>
 
-      {/* Category Selection Bar */}
-      <Box sx={{ display: "flex", justifyContent: "center", mb: 5 }}>
-        {['All Materials', 'Beginner', 'Intermediate', 'Advanced'].map((cat) => (
-            <Button
-                key={cat}
-                variant={category === cat ? "contained" : "outlined"}
-                onClick={() => handleCategoryChange(cat)}
-                sx={{ mx: 1 }}
-            >
-                {cat}
-            </Button>
-        ))}
-      </Box>
+        <TextField
+          select
+          fullWidth
+          label="Category"
+          value={category}
+          onChange={(e) => setCategory(e.target.value)}
+          sx={{ mb: 3 }}
+        >
+          <MenuItem value="Beginner">Beginner</MenuItem>
+          <MenuItem value="Intermediate">Intermediate</MenuItem>
+          <MenuItem value="Advanced">Advanced</MenuItem>
+        </TextField>
 
-      {/* Materials Grid */}
+        <Box sx={{ mb: 3 }}>
+          <Button variant="outlined" component="label">
+            Select File
+            <input
+              type="file"
+              hidden
+              onChange={(e) => setFile(e.target.files[0])}
+            />
+          </Button>
+        </Box>
+
+        {file && (
+          <Box sx={{ mb: 3 }}>
+            <Typography variant="body1">
+              Selected: <strong>{file.name}</strong>
+            </Typography>
+          </Box>
+        )}
+        <Button
+          variant="contained"
+          color="primary"
+          onClick={handleUpload}
+          disabled={uploading}
+          sx={{ mt: 2 }}
+        >
+          {uploading ? "Uploading..." : "Upload Material"}
+        </Button>
+      </Paper>
+
+      <Typography variant="h5" fontWeight="bold" sx={{ mb: 3 }}>
+        Recently Uploaded
+      </Typography>
+
       <Grid container spacing={3}>
-        {filteredMaterials.map((material, index) => (
-          <Grid
-            item
-            xs={12}
-            sm={6}
-            md={4}
-            lg={2.4} 
-            key={material.id || index} // Use DB ID if available
-          >
-            <Box
-              sx={{
-                border: "1px solid #ccc",
-                borderRadius: "8px",
-                padding: 2,
-                textAlign: "center",
-                height: "140px",
-                display: "flex",
-                flexDirection: "column",
-                justifyContent: "space-between",
-                position: "relative",
-              }}
-            >
-              {/* Category Label */}
-              <Box
-                sx={{
-                  position: "absolute",
-                  top: 8,
-                  right: 8,
-                  backgroundColor: "#f0f0f0",
-                  padding: "2px 8px",
-                  borderRadius: "4px",
-                  fontSize: "12px",
-                  fontWeight: "bold",
-                  color: "#555",
-                }}
-              >
-                {material.category}
+        {uploaded.map((item, idx) => (
+          <Grid item xs={12} sm={6} md={4} key={item.id || idx}>
+            <Paper sx={{ p: 2, height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+              <Box>
+                <Typography variant="h6" fontWeight="bold" noWrap>
+                  {item.title}
+                </Typography>
+                <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                  Category: {item.category}
+                </Typography>
               </Box>
+              
+              {/* Buttons Area */}
+              <Stack direction="row" spacing={1} sx={{ mt: 1 }}>
+                {/* View Button */}
+                {item.web_view_link && (
+                  <Button 
+                    component={Link} 
+                    href={item.web_view_link} 
+                    target="_blank" 
+                    variant="outlined" 
+                    size="small"
+                    fullWidth
+                  >
+                    View
+                  </Button>
+                )}
 
-              {/* Material Title (Changed from .name to .title to match DB) */}
-              <Typography variant="h6" fontWeight="bold" sx={{ mb: 1, mt: 3, fontSize: '1rem' }}>
-                {material.title}
-              </Typography>
+                {/* --- NEW: Delete Button --- */}
+                <Button 
+                  variant="contained" 
+                  color="error" // Red color
+                  size="small"
+                  onClick={() => handleDelete(item.id)}
+                  fullWidth
+                >
+                  Delete
+                </Button>
+              </Stack>
 
-              {/* View Button */}
-              <Button
-                variant="contained"
-                color="primary"
-                // Uses the web_view_link from Google Drive
-                onClick={() => handleView(material.web_view_link)}
-              >
-                View
-              </Button>
-            </Box>
+            </Paper>
           </Grid>
         ))}
       </Grid>
-      
-      {/* Helper message if no files found */}
-      {filteredMaterials.length === 0 && (
-          <Typography sx={{ textAlign: 'center', mt: 4, width: '100%' }}>
-              No materials found in this category.
-          </Typography>
-      )}
     </Box>
   );
 }

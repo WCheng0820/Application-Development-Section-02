@@ -39,7 +39,7 @@ const db = mysql.createPool({
     host: 'localhost',
     user: 'root',
     password: '',
-    database: 'mlts'
+    database: 'mlt_system' // Changed from 'mlts' to match main backend
 });
 
 // Initialize models with database connection
@@ -583,11 +583,14 @@ app.post('/api/upload', upload.single('file'), async (req, res) => {
         const bufferStream = new stream.PassThrough();
         bufferStream.end(req.file.buffer);
 
-        // 3. Upload to Google Drive
+        // 3. Upload to Google Drive (into Materials folder if specified)
+        // If you want files in a specific folder, create a folder in Drive, get its ID,
+        // and add it here. For now, we'll keep files organized by using title as name.
         const driveResponse = await drive.files.create({
             requestBody: {
-                name: req.file.originalname, // Or use title
+                name: title || req.file.originalname, // Use title for better organization
                 mimeType: req.file.mimetype,
+                // To upload to specific folder, add: parents: ['YOUR_FOLDER_ID_HERE']
             },
             media: {
                 mimeType: req.file.mimetype,

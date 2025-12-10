@@ -1,3 +1,4 @@
+require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const { query } = require('./config/database');
@@ -104,6 +105,22 @@ try {
     app.use('/api/reports', reportsRoutes);
 } catch (err) {
     console.warn('Could not load reports routes:', err.message);
+}
+
+// Add materials routes (GET listing)
+try {
+    const materialsRoutes = require('./app/routes/materials');
+    app.use('/api/materials', materialsRoutes);
+} catch (err) {
+    console.warn('Could not load materials routes:', err.message);
+}
+
+// Add materials upload/delete routes (POST upload, DELETE)
+try {
+    const materialsUploadRoutes = require('./app/routes/materials-upload');
+    app.use('/api/materials', materialsUploadRoutes);
+} catch (err) {
+    console.warn('Could not load materials upload routes:', err.message);
 }
 
 // Add messages and notifications routes

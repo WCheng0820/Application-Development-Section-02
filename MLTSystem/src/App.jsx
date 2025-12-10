@@ -14,6 +14,20 @@ import ManageSchedule from "./pages/ManageSchedule";
 import Payment from "./pages/Payment";
 import Reports from "./pages/Reports";
 import TutorSetup from "./pages/TutorSetup";
+import Upload from "./pages/Upload";
+import Materials from "./pages/Materials";
+import { useAuth } from "./context/AuthContext";
+
+// Role-based materials view
+function MaterialsRoute() {
+  const { currentUser } = useAuth();
+  
+  // Students see Upload.jsx (can upload), Tutors/Admins see Materials.jsx (view only)
+  if (currentUser?.role === 'student') {
+    return <Upload />;
+  }
+  return <Materials />;
+}
 
 export default function App() {
   return (
@@ -80,6 +94,15 @@ export default function App() {
             element={
               <PrivateRoute>
                 <Messages />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/materials"
+            element={
+              <PrivateRoute>
+                {/* Students see Upload.jsx (with upload form), Tutors/Admins see Materials.jsx (view only) */}
+                <MaterialsRoute />
               </PrivateRoute>
             }
           />
