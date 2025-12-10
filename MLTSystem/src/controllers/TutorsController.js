@@ -1,35 +1,46 @@
 // TutorsController.js
 import axios from "axios";
 
-// URL of your backend API
-const API_URL = "http://localhost:8081/api/tutors";
+// Backend base URL - use Vite env or default to backend server
+const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:5000";
+const API_URL = `${API_BASE}/api/tutors`;
+
+console.log("TutorsController - API_BASE:", API_BASE);
+console.log("TutorsController - API_URL:", API_URL);
 
 // In-memory cache for tutors
 let tutorsCache = [];
 
 /**
- * Fetch tutors from the backend API
+ * Fetch tutors from the backend API and their schedules
  */
 export async function fetchTutors() {
   try {
     const response = await axios.get(API_URL);
+    console.log("API Response:", response.data);
     if (response.data.success && Array.isArray(response.data.data)) {
       // Map backend data to our frontend model
-      tutorsCache = response.data.data.map((tutor) => ({
-        id: tutor.tutor_id,
-        name: tutor.name,
-        subject: tutor.languages ? JSON.parse(tutor.languages).join(", ") : "",
-        experience: tutor.experience_years,
-        ratePerHour: tutor.hourly_rate,
-        bio: tutor.bio,
-        rating: tutor.rating,
-        schedule: tutor.availability ? Object.entries(JSON.parse(tutor.availability)).map(([day, time]) => `${day} ${time}`) : [],
-        email: tutor.email,
-        phone: tutor.phone,
-        createdAt: tutor.created_at,
-        updatedAt: tutor.updated_at,
-        imageUrl: `https://api.dicebear.com/7.x/avataaars/svg?seed=${tutor.name.replace(/\s/g, "")}`,
-      }));
+      tutorsCache = response.data.data.map((tutor) => {
+        return {
+          id: tutor.tutorId,
+          name: tutor.name,
+          experience: tutor.yearsOfExperience,
+          ratePerHour: parseFloat(tutor.price) || 0,
+          bio: tutor.bio || "",
+          subject: tutor.specialization || "",
+          // Preserve null when backend doesn't provide a rating so the UI
+          // can show a placeholder (e.g. '—') instead of 0.0
+          rating: tutor.rating != null ? parseFloat(tutor.rating) : null,
+          ratingCount: tutor.rating_count != null ? parseInt(tutor.rating_count, 10) : 0,
+          schedule: tutor.schedule || [],
+          createdAt: tutor.created_at,
+          updatedAt: tutor.updated_at,
+          imageUrl: `https://api.dicebear.com/7.x/avataaars/svg?seed=${tutor.name.replace(/\s/g, "")}`,
+        };
+      });
+      console.log("Mapped tutors cache:", tutorsCache);
+    } else {
+      console.warn("Unexpected response structure:", response.data);
     }
   } catch (error) {
     console.error("Error fetching tutors:", error);
@@ -110,5 +121,17 @@ export function getMaxExperience() {
  * Get a single tutor by ID
  */
 export function getTutorById(id) {
-  return tutorsCache.find((t) => t.id === id);
+  if (id == null) return null;
+  const sid = String(id);
+  return tutorsCache.find((t) => String(t.id) === sid);
+}
+
+export async function getTutorReviews(tutorId) {
+  try {
+    const response = await axios.get(`${API_URL}/${tutorId}/reviews`);
+    return response.data.success ? response.data.data : [];
+  } catch (error) {
+    console.error("Error fetching tutor reviews:", error);
+    return [];
+  }
 }

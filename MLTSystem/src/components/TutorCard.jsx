@@ -1,9 +1,7 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Card,
   CardContent,
-  CardActions,
-  Button,
   Typography,
   Box,
   Chip,
@@ -17,40 +15,92 @@ import {
   List,
   ListItem,
   ListItemText,
+  ListItemButton,
+  Divider,
+  Paper,
+  Button,
 } from "@mui/material";
 import SchoolIcon from "@mui/icons-material/School";
 import StarIcon from "@mui/icons-material/Star";
 import AttachMoneyIcon from "@mui/icons-material/AttachMoney";
 import CalendarTodayIcon from "@mui/icons-material/CalendarToday";
 import ReviewsIcon from "@mui/icons-material/Reviews";
+import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 
-export default function TutorCard({ tutor, onBook }) {
+import * as TutorsController from "../controllers/TutorsController";
+import { formatMalaysiaDate, formatMalaysiaTime } from "../utils/dateUtils";
+
+export default function TutorCard({ tutor, onBook, initiallyOpen = false }) {
   const [openProfile, setOpenProfile] = useState(false);
+  const [selectedSlot, setSelectedSlot] = useState(null);
+  const [reviews, setReviews] = useState([]);
 
-  const handleOpenProfile = () => {
+  useEffect(() => {
+    if (initiallyOpen) {
+      handleOpenProfile();
+    }
+  }, [initiallyOpen]);
+
+  const handleOpenProfile = async () => {
     setOpenProfile(true);
+    try {
+      const r = await TutorsController.getTutorReviews(tutor.id);
+      setReviews(r);
+    } catch (err) {
+      console.error("Failed to load reviews", err);
+    }
   };
 
   const handleCloseProfile = () => {
     setOpenProfile(false);
+    setSelectedSlot(null);
+  };
+
+  // Filter for free/available slots
+  const getAvailableSlots = () => {
+    if (!tutor.schedule || !Array.isArray(tutor.schedule)) return [];
+    return tutor.schedule.filter((slot) => slot.status === "free");
+  };
+
+  const availableSlots = getAvailableSlots();
+
+  const handleSelectSlot = (slot) => {
+    setSelectedSlot(slot);
   };
 
   const handleBook = () => {
     if (onBook) {
-      onBook(tutor);
+      onBook(tutor, selectedSlot);
     }
     handleCloseProfile();
   };
 
+  // Format slot info for display
+  const formatSlot = (slot) => {
+    if (typeof slot === "string") {
+      return slot;
+    }
+    if (slot && typeof slot === "object") {
+      const date = slot.schedule_date ? formatMalaysiaDate(slot.schedule_date, { year: "numeric", month: "short", day: "numeric" }) : "";
+      const time = slot.start_time && slot.end_time ? `${formatMalaysiaTime(slot.start_time, { hour: '2-digit', minute: '2-digit' })} - ${formatMalaysiaTime(slot.end_time, { hour: '2-digit', minute: '2-digit' })}` : "";
+      return `${date} ${time}`.trim() || "Slot";
+    }
+    return "Slot";
+  };
+
+  const previewSlots = availableSlots.slice(0, 3);
+
   return (
     <>
       <Card
+        onClick={handleOpenProfile}
         sx={{
           borderRadius: 2,
           boxShadow: 2,
           "&:hover": {
             boxShadow: 6,
             transform: "translateY(-4px)",
+            cursor: "pointer",
           },
           transition: "all 0.3s ease",
           height: "100%",
@@ -62,10 +112,11 @@ export default function TutorCard({ tutor, onBook }) {
           {/* Tutor Avatar and Name */}
           <Box sx={{ display: "flex", alignItems: "center", mb: 2 }}>
             <Avatar
-              src={tutor.imageUrl}
-              sx={{ width: 56, height: 56, mr: 2 }}
+              sx={{ width: 56, height: 56, mr: 2, bgcolor: "#1976d2", fontWeight: "bold" }}
               alt={tutor.name}
-            />
+            >
+              {(tutor.name || "?").charAt(0).toUpperCase()}
+            </Avatar>
             <Box sx={{ flexGrow: 1 }}>
               <Typography variant="h6" fontWeight="bold">
                 {tutor.name}
@@ -78,12 +129,12 @@ export default function TutorCard({ tutor, onBook }) {
 
           {/* Rating and Reviews */}
           <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 2 }}>
-            <Rating value={tutor.rating} readOnly size="small" precision={0.1} />
+            <Rating value={Number(tutor.rating) || 0} readOnly size="small" precision={0.1} />
             <Typography variant="body2" fontWeight="bold">
-              {tutor.rating}
+              {Number(tutor.rating || 0).toFixed(1)}
             </Typography>
             <Typography variant="body2" color="text.secondary">
-              ({tutor.reviews} reviews)
+              ({(tutor.ratingCount || 0)} review{(tutor.ratingCount || 0) === 1 ? '' : 's'})
             </Typography>
           </Box>
 
@@ -121,26 +172,34 @@ export default function TutorCard({ tutor, onBook }) {
           >
             {tutor.bio}
           </Typography>
-        </CardContent>
 
-        <CardActions sx={{ pt: 0 }}>
-          <Button
-            size="small"
-            onClick={handleOpenProfile}
-            sx={{ color: "primary.main" }}
-          >
-            View Profile
-          </Button>
-          <Button
-            size="small"
-            variant="contained"
-            color="primary"
-            onClick={handleBook}
-            sx={{ ml: "auto" }}
-          >
-            Book Now
-          </Button>
-        </CardActions>
+          {/* Available Slots Preview */}
+          {availableSlots.length > 0 && (
+            <Box sx={{ mb: 2 }}>
+              <Typography variant="caption" fontWeight="bold" color="success.main" sx={{ display: "block", mb: 1 }}>
+                📅 {availableSlots.length} slots available
+              </Typography>
+              <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
+                {previewSlots.map((slot, idx) => (
+                  <Chip
+                    key={idx}
+                    label={formatSlot(slot)}
+                    size="small"
+                    variant="outlined"
+                    color="primary"
+                  />
+                ))}
+                {availableSlots.length > 3 && (
+                  <Chip
+                    label={`+${availableSlots.length - 3} more`}
+                    size="small"
+                    variant="outlined"
+                  />
+                )}
+              </Box>
+            </Box>
+          )}
+        </CardContent>
       </Card>
 
       {/* Profile Dialog */}
@@ -153,10 +212,11 @@ export default function TutorCard({ tutor, onBook }) {
         <DialogTitle sx={{ pb: 1 }}>
           <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
             <Avatar
-              src={tutor.imageUrl}
-              sx={{ width: 48, height: 48 }}
+              sx={{ width: 48, height: 48, bgcolor: "#1976d2", fontWeight: "bold" }}
               alt={tutor.name}
-            />
+            >
+              {(tutor.name || "?").charAt(0).toUpperCase()}
+            </Avatar>
             <Box>
               <Typography variant="h6" fontWeight="bold">
                 {tutor.name}
@@ -178,12 +238,12 @@ export default function TutorCard({ tutor, onBook }) {
               </Typography>
             </Box>
             <Box sx={{ display: "flex", alignItems: "center", gap: 1, ml: 3 }}>
-              <Rating value={tutor.rating} readOnly precision={0.1} />
+              <Rating value={Number(tutor.rating) || 0} readOnly precision={0.1} />
               <Typography variant="body2" fontWeight="bold">
-                {tutor.rating}/5
+                {Number(tutor.rating || 0).toFixed(1)}/5
               </Typography>
               <Typography variant="body2" color="text.secondary">
-                ({tutor.reviews} reviews)
+                ({(tutor.ratingCount || 0)} review{(tutor.ratingCount || 0) === 1 ? '' : 's'})
               </Typography>
             </Box>
           </Box>
@@ -226,24 +286,131 @@ export default function TutorCard({ tutor, onBook }) {
             </Typography>
           </Box>
 
-          {/* Schedule */}
+          {/* Available Slots for Booking */}
           <Box sx={{ mb: 2 }}>
-            <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1 }}>
+            <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 2 }}>
               <CalendarTodayIcon sx={{ color: "info.main", fontSize: 20 }} />
               <Typography variant="subtitle2" fontWeight="bold">
-                Available Schedule
+                Available Slots ({availableSlots.length})
               </Typography>
             </Box>
-            <List dense sx={{ ml: 1 }}>
-              {tutor.schedule.map((slot, index) => (
-                <ListItem key={index} disableGutters>
-                  <ListItemText
-                    primary={slot}
-                    primaryTypographyProps={{ variant: "body2" }}
-                  />
-                </ListItem>
-              ))}
-            </List>
+
+            {availableSlots.length === 0 ? (
+              <Typography variant="body2" color="text.secondary" sx={{ ml: 1, fontStyle: "italic" }}>
+                No available slots at the moment. Please check back later.
+              </Typography>
+            ) : (
+              <List
+                sx={{
+                  ml: 1,
+                  maxHeight: 300,
+                  overflow: "auto",
+                  border: "1px solid",
+                  borderColor: "divider",
+                  borderRadius: 1,
+                }}
+              >
+                {availableSlots.map((slot, index) => (
+                  <ListItemButton
+                    key={index}
+                    selected={selectedSlot && selectedSlot.schedule_id === slot.schedule_id}
+                    onClick={() => handleSelectSlot(slot)}
+                    sx={{
+                      py: 1.5,
+                      "&.Mui-selected": {
+                        bgcolor: "primary.lighter",
+                        "&:hover": { bgcolor: "primary.lighter" },
+                      },
+                    }}
+                  >
+                    <Box sx={{ display: "flex", alignItems: "center", width: "100%", gap: 1 }}>
+                      <Box sx={{ flex: 1 }}>
+                        <Typography variant="body2" fontWeight="bold">
+                          {formatSlot(slot)}
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary">
+                          Free slot
+                        </Typography>
+                      </Box>
+                      {selectedSlot && selectedSlot.schedule_id === slot.schedule_id && (
+                        <CheckCircleIcon sx={{ color: "success.main", fontSize: 20 }} />
+                      )}
+                    </Box>
+                  </ListItemButton>
+                ))}
+              </List>
+            )}
+
+            {selectedSlot && (
+              <Paper
+                sx={{
+                  mt: 2,
+                  p: 1.5,
+                  bgcolor: "success.lighter",
+                  border: "1px solid",
+                  borderColor: "success.main",
+                }}
+              >
+                <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                  <CheckCircleIcon sx={{ color: "success.main" }} />
+                  <Box>
+                    <Typography variant="caption" fontWeight="bold" color="success.main">
+                      Selected Slot
+                    </Typography>
+                    <Typography variant="body2" fontWeight="bold">
+                      {formatSlot(selectedSlot)}
+                    </Typography>
+                  </Box>
+                </Box>
+              </Paper>
+            )}
+
+            <Divider sx={{ my: 2 }} />
+            
+            <Typography variant="h6" sx={{ mb: 1, display: 'flex', alignItems: 'center', gap: 1 }}>
+              <ReviewsIcon color="primary" /> Reviews ({reviews.length})
+            </Typography>
+            
+            {reviews.length === 0 ? (
+              <Typography variant="body2" color="text.secondary" fontStyle="italic">
+                No reviews yet.
+              </Typography>
+            ) : (
+              <List sx={{ maxHeight: 200, overflow: 'auto' }}>
+                {reviews.map((review) => (
+                  <React.Fragment key={review.id}>
+                    <ListItem alignItems="flex-start" sx={{ px: 0 }}>
+                      <ListItemText
+                        primary={
+                          <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                            <Typography variant="subtitle2" fontWeight="bold">
+                              {review.student_name || 'Student'}
+                            </Typography>
+                            <Rating value={review.rating} readOnly size="small" />
+                          </Box>
+                        }
+                        secondary={
+                          <React.Fragment>
+                            <Typography
+                              sx={{ display: 'inline' }}
+                              component="span"
+                              variant="body2"
+                              color="text.primary"
+                            >
+                              {review.comment}
+                            </Typography>
+                            <Typography variant="caption" display="block" color="text.secondary" sx={{ mt: 0.5 }}>
+                              {new Date(review.created_at).toLocaleDateString()}
+                            </Typography>
+                          </React.Fragment>
+                        }
+                      />
+                    </ListItem>
+                    <Divider component="li" />
+                  </React.Fragment>
+                ))}
+              </List>
+            )}
           </Box>
         </DialogContent>
 
@@ -256,8 +423,9 @@ export default function TutorCard({ tutor, onBook }) {
             variant="contained"
             color="primary"
             size="small"
+            disabled={!selectedSlot || availableSlots.length === 0}
           >
-            Book This Tutor
+            Proceed to Payment
           </Button>
         </DialogActions>
       </Dialog>

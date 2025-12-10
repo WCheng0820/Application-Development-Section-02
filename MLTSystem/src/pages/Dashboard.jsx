@@ -1,20 +1,16 @@
 // src/Dashboard.jsx
 import React from "react";
 import {
-  AppBar,
-  Toolbar,
-  Typography,
-  Button,
   Box,
   Card,
   CardContent,
   Grid,
-  IconButton,
-  Avatar,
   List,
   ListItem,
   ListItemIcon,
   ListItemText,
+  Typography,
+  Chip,
 } from "@mui/material";
 import CalendarMonthIcon from "@mui/icons-material/CalendarMonth";
 import AccessTimeIcon from "@mui/icons-material/AccessTime";
@@ -24,45 +20,30 @@ import SearchIcon from "@mui/icons-material/Search";
 import FolderIcon from "@mui/icons-material/Folder";
 import MessageIcon from "@mui/icons-material/Message";
 import ScheduleIcon from "@mui/icons-material/Schedule";
-import GridLayout from "react-grid-layout";
+import { useAuth } from "../context/AuthContext";
 
 export default function Dashboard() {
-  const layout = [
-    { i: "a", x: 0, y: 0, w: 1, h: 2, },
-    { i: "b", x: 1, y: 0, w: 3, h: 2, minW: 2, maxW: 4 },
-    { i: "c", x: 4, y: 0, w: 1, h: 2 }
-  ];
-  
+  const { currentUser } = useAuth();
+
   return (
-    <Box sx={{ bgcolor: "#f8f9fb", minHeight: "100vh" }}>
-      {/* Top AppBar */}
-      <AppBar position="static" color="inherit" elevation={1}>
-        <Toolbar>
-          <Typography
-            variant="h6"
-            sx={{ flexGrow: 1, fontWeight: "bold", color: "#d32f2f" }}
-          >
-            Mandarin Tutoring
-          </Typography>
-
-          <Button color="inherit">Dashboard</Button>
-          <Button color="inherit">Find Tutors</Button>
-          <Button color="inherit">Bookings</Button>
-          <Button color="inherit">Materials</Button>
-          <Button color="inherit" startIcon={<MessageIcon />}>
-            Messages
-          </Button>
-
-          <Avatar sx={{ bgcolor: "#1976d2", ml: 2 }}>A</Avatar>
-          <Typography sx={{ ml: 1 }}>Alice Wang</Typography>
-        </Toolbar>
-      </AppBar>
-
+    <Box sx={{ bgcolor: "#f8f9fb", minHeight: "100vh", pt: 10 }}>
       {/* Main Content */}
       <Box sx={{ p: 4 }}>
-        <Typography variant="h5" sx={{ fontWeight: "bold", mb: 1 }}>
-          Welcome back, Alice Wang!
-        </Typography>
+        <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+          <Typography variant="h5" sx={{ fontWeight: "bold", mr: 2 }}>
+            Welcome back, {currentUser?.username}!
+          </Typography>
+          <Chip
+            label={currentUser?.role.charAt(0).toUpperCase() + currentUser?.role.slice(1)}
+            color={currentUser?.role === 'admin' ? 'secondary' : currentUser?.role === 'tutor' ? 'primary' : 'default'}
+            size="small"
+          />
+        </Box>
+        {currentUser?.profile.bio && (
+          <Typography variant="body1" color="text.secondary" sx={{ mb: 2, fontStyle: 'italic' }}>
+            "{currentUser.profile.bio}"
+          </Typography>
+        )}
         <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
           Here's what's happening with your Mandarin learning journey
         </Typography>
