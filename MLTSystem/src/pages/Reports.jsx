@@ -21,8 +21,11 @@ import {
   Divider,
   TextField as MuiTextField,
   FormControl,
-  Alert
+  Alert,
+  IconButton
 } from "@mui/material";
+import SearchIcon from "@mui/icons-material/Search";
+import CloseIcon from "@mui/icons-material/Close";
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import * as ReportsController from "../controllers/ReportsController";
@@ -31,6 +34,7 @@ export default function Reports() {
   const [reports, setReports] = useState([]);
   const [selectedReport, setSelectedReport] = useState(null);
   const [viewReportDialog, setViewReportDialog] = useState(false);
+  const [expandedImage, setExpandedImage] = useState(null);
   const [loading, setLoading] = useState(false);
   const [adminNote, setAdminNote] = useState('');
   const [error, setError] = useState('');
@@ -94,50 +98,93 @@ export default function Reports() {
   };
 
   return (
-    <Box sx={{ p: 3, pt: 10 }}>
-      <Typography variant="h4" sx={{ mb: 3, fontWeight: 'bold' }}>
-        Reports Management
-      </Typography>
+    <Box sx={{ 
+      background: 'linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)', 
+      minHeight: "100vh", 
+      pt: 10, 
+      pb: 4, 
+      px: 4 
+    }}>
+      {/* Header */}
+      <Box 
+        sx={{ 
+          background: 'linear-gradient(135deg, #d32f2f 0%, #ef5350 100%)', 
+          color: 'white', 
+          p: 4, 
+          borderRadius: 4, 
+          mb: 4,
+          boxShadow: 3,
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center'
+        }}
+      >
+        <Box>
+          <Typography variant="h4" fontWeight="bold">
+            Reports Management
+          </Typography>
+          <Typography variant="body1" sx={{ opacity: 0.9 }}>
+            Review and resolve user reports and issues
+          </Typography>
+        </Box>
+      </Box>
 
-      {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
+      {error && <Alert severity="error" sx={{ mb: 3, borderRadius: 2 }}>{error}</Alert>}
 
-      <TableContainer component={Paper}>
+      <TableContainer 
+        component={Paper} 
+        sx={{ 
+          borderRadius: 3, 
+          boxShadow: 3,
+          background: 'rgba(255, 255, 255, 0.9)',
+          backdropFilter: 'blur(10px)',
+          overflow: 'hidden'
+        }}
+      >
         <Table>
-            <TableHead>
+            <TableHead sx={{ bgcolor: 'rgba(211, 47, 47, 0.1)' }}>
                 <TableRow>
-                    <TableCell>ID</TableCell>
-                    <TableCell>Reporter</TableCell>
-                    <TableCell>Reported User</TableCell>
-                    <TableCell>Category</TableCell>
-                    <TableCell>Status</TableCell>
-                    <TableCell>Date</TableCell>
-                    <TableCell>Action</TableCell>
+                    <TableCell sx={{ fontWeight: 'bold', color: '#c62828' }}>ID</TableCell>
+                    <TableCell sx={{ fontWeight: 'bold', color: '#c62828' }}>Reporter</TableCell>
+                    <TableCell sx={{ fontWeight: 'bold', color: '#c62828' }}>Reported User</TableCell>
+                    <TableCell sx={{ fontWeight: 'bold', color: '#c62828' }}>Category</TableCell>
+                    <TableCell sx={{ fontWeight: 'bold', color: '#c62828' }}>Status</TableCell>
+                    <TableCell sx={{ fontWeight: 'bold', color: '#c62828' }}>Date</TableCell>
+                    <TableCell sx={{ fontWeight: 'bold', color: '#c62828' }}>Action</TableCell>
                 </TableRow>
             </TableHead>
             <TableBody>
                 {reports.length === 0 ? (
                     <TableRow>
-                        <TableCell colSpan={7} align="center">No reports found</TableCell>
+                        <TableCell colSpan={7} align="center" sx={{ py: 4 }}>
+                          <Typography color="text.secondary">No reports found</Typography>
+                        </TableCell>
                     </TableRow>
                 ) : (
                     reports.map((report) => (
-                        <TableRow key={report.id}>
+                        <TableRow key={report.id} hover sx={{ '&:hover': { bgcolor: 'rgba(211, 47, 47, 0.05)' } }}>
                             <TableCell>#{report.id}</TableCell>
                             <TableCell>{report.reporter_name || report.reporter_id}</TableCell>
                             <TableCell>{report.reported_name || report.reported_id || 'N/A'}</TableCell>
                             <TableCell>
-                                <Chip label={report.category} size="small" />
+                                <Chip label={report.category} size="small" variant="outlined" />
                             </TableCell>
                             <TableCell>
                                 <Chip 
                                     label={report.status === 'dismissed' ? 'Dismissed' : report.status === 'pending' ? 'Pending' : report.status === 'investigating' ? 'Investigating' : report.status === 'resolved' ? 'Resolved' : report.status} 
                                     color={report.status === 'pending' ? 'warning' : report.status === 'dismissed' ? 'error' : report.status === 'investigating' ? 'info' : report.status === 'resolved' ? 'success' : 'default'} 
                                     size="small" 
+                                    sx={{ fontWeight: 'bold' }}
                                 />
                             </TableCell>
                             <TableCell>{new Date(report.created_at).toLocaleDateString()}</TableCell>
                             <TableCell>
-                                <Button size="small" variant="outlined" onClick={() => handleOpenReport(report)}>
+                                <Button 
+                                  size="small" 
+                                  variant="outlined" 
+                                  onClick={() => handleOpenReport(report)}
+                                  sx={{ borderRadius: 2 }}
+                                >
                                     View
                                 </Button>
                             </TableCell>
@@ -149,55 +196,85 @@ export default function Reports() {
       </TableContainer>
 
       {/* Report Details Dialog */}
-      <Dialog open={viewReportDialog} onClose={() => setViewReportDialog(false)} maxWidth="md" fullWidth>
-            <DialogTitle>Report Details #{selectedReport?.id}</DialogTitle>
-            <DialogContent dividers>
+      <Dialog 
+        open={viewReportDialog} 
+        onClose={() => setViewReportDialog(false)} 
+        maxWidth="md" 
+        fullWidth
+        PaperProps={{ sx: { borderRadius: 3 } }}
+      >
+            <DialogTitle sx={{ borderBottom: '1px solid #eee', pb: 2 }}>
+              <Typography variant="h6" fontWeight="bold">Report Details #{selectedReport?.id}</Typography>
+            </DialogTitle>
+            <DialogContent dividers sx={{ pt: 3 }}>
                 {selectedReport && (
-                    <Box display="flex" flexDirection="column" gap={2}>
-                        <Grid container spacing={2}>
+                    <Box display="flex" flexDirection="column" gap={3}>
+                        <Grid container spacing={3}>
                             <Grid item xs={6}>
-                                <Typography variant="subtitle2">Reporter</Typography>
-                                <Typography variant="body1">{selectedReport.reporter_name} ({selectedReport.reporter_id})</Typography>
+                                <Typography variant="subtitle2" color="text.secondary">Reporter</Typography>
+                                <Typography variant="body1" fontWeight="500">{selectedReport.reporter_name} ({selectedReport.reporter_id})</Typography>
                             </Grid>
                             <Grid item xs={6}>
-                                <Typography variant="subtitle2">Reported User</Typography>
-                                <Typography variant="body1">{selectedReport.reported_name || 'N/A'} ({selectedReport.reported_id || 'N/A'})</Typography>
+                                <Typography variant="subtitle2" color="text.secondary">Reported User</Typography>
+                                <Typography variant="body1" fontWeight="500">{selectedReport.reported_name || 'N/A'} ({selectedReport.reported_id || 'N/A'})</Typography>
                             </Grid>
                             <Grid item xs={6}>
-                                <Typography variant="subtitle2">Category</Typography>
-                                <Typography variant="body1">{selectedReport.category}</Typography>
+                                <Typography variant="subtitle2" color="text.secondary">Category</Typography>
+                                <Typography variant="body1" fontWeight="500">{selectedReport.category}</Typography>
                             </Grid>
                             <Grid item xs={6}>
-                                <Typography variant="subtitle2">Target</Typography>
-                                <Typography variant="body1">{selectedReport.target_type} (ID: {selectedReport.target_id})</Typography>
+                                <Typography variant="subtitle2" color="text.secondary">Target</Typography>
+                                <Typography variant="body1" fontWeight="500">{selectedReport.target_type} (ID: {selectedReport.target_id})</Typography>
                             </Grid>
                         </Grid>
                         
                         <Divider />
                         
-                        <Typography variant="subtitle2">Description</Typography>
-                        <Paper variant="outlined" sx={{ p: 2, bgcolor: '#f5f5f5' }}>
-                            <Typography variant="body1">{selectedReport.description}</Typography>
-                        </Paper>
+                        <Box>
+                          <Typography variant="subtitle2" color="text.secondary" gutterBottom>Description</Typography>
+                          <Paper variant="outlined" sx={{ p: 2, bgcolor: '#f8f9fa', borderRadius: 2 }}>
+                              <Typography variant="body1">{selectedReport.description}</Typography>
+                          </Paper>
+                        </Box>
 
                         {selectedReport.evidence_url && (
                             <Box>
-                                <Typography variant="subtitle2">Evidence</Typography>
+                                <Typography variant="subtitle2" color="text.secondary" gutterBottom>Evidence</Typography>
                                 <Box mt={1}>
                                     {selectedReport.evidence_url.startsWith('data:image') ? (
                                         <Box>
-                                            <img 
-                                                src={selectedReport.evidence_url} 
-                                                alt="Evidence" 
-                                                style={{ maxWidth: '100%', maxHeight: 300, display: 'block', marginBottom: 8 }} 
-                                            />
-                                            <Button 
-                                                variant="outlined" 
-                                                size="small"
-                                                onClick={() => downloadEvidence(selectedReport.evidence_url, `evidence-${selectedReport.id}.png`)}
-                                            >
-                                                Download Image
-                                            </Button>
+                                            <Box sx={{ position: 'relative', display: 'inline-block', mb: 1 }}>
+                                                <img 
+                                                    src={selectedReport.evidence_url} 
+                                                    alt="Evidence" 
+                                                    style={{ maxWidth: '100%', maxHeight: 300, display: 'block', borderRadius: 8, border: '1px solid #eee', cursor: 'pointer' }} 
+                                                    onClick={() => setExpandedImage(selectedReport.evidence_url)}
+                                                />
+                                                <IconButton
+                                                    size="small"
+                                                    sx={{
+                                                        position: 'absolute',
+                                                        top: 5,
+                                                        right: 5,
+                                                        bgcolor: 'rgba(0,0,0,0.5)',
+                                                        color: 'white',
+                                                        '&:hover': { bgcolor: 'rgba(0,0,0,0.7)' }
+                                                    }}
+                                                    onClick={() => setExpandedImage(selectedReport.evidence_url)}
+                                                    title="Expand image"
+                                                >
+                                                    <SearchIcon fontSize="small" />
+                                                </IconButton>
+                                            </Box>
+                                            <Box>
+                                                <Button 
+                                                    variant="outlined" 
+                                                    size="small"
+                                                    onClick={() => downloadEvidence(selectedReport.evidence_url, `evidence-${selectedReport.id}.png`)}
+                                                >
+                                                    Download Image
+                                                </Button>
+                                            </Box>
                                         </Box>
                                     ) : (
                                         <Button 
@@ -221,17 +298,59 @@ export default function Reports() {
                                 value={adminNote}
                                 onChange={(e) => setAdminNote(e.target.value)}
                                 placeholder="Enter notes about action taken..."
+                                variant="outlined"
                             />
                         </FormControl>
                     </Box>
                 )}
             </DialogContent>
-            <DialogActions>
-                <Button onClick={() => setViewReportDialog(false)}>Close</Button>
+            <DialogActions sx={{ p: 3, borderTop: '1px solid #eee' }}>
+                <Button onClick={() => setViewReportDialog(false)} color="inherit">Close</Button>
                 <Button onClick={() => handleUpdateReportStatus('dismissed')} color="error">Dismiss</Button>
                 <Button onClick={() => handleUpdateReportStatus('investigating')} color="info" variant="outlined">Investigating</Button>
-                <Button onClick={() => handleUpdateReportStatus('resolved')} color="success" variant="contained">Resolve</Button>
+                <Button onClick={() => handleUpdateReportStatus('resolved')} color="success" variant="contained" disableElevation>Resolve</Button>
             </DialogActions>
+        </Dialog>
+
+        {/* Image Expansion Dialog */}
+        <Dialog
+            open={!!expandedImage}
+            onClose={() => setExpandedImage(null)}
+            maxWidth="lg"
+            PaperProps={{
+                sx: {
+                    bgcolor: 'transparent',
+                    boxShadow: 'none',
+                    overflow: 'hidden'
+                }
+            }}
+        >
+            <Box sx={{ position: 'relative', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+                <IconButton
+                    onClick={() => setExpandedImage(null)}
+                    sx={{
+                        position: 'absolute',
+                        top: 10,
+                        right: 10,
+                        bgcolor: 'rgba(0,0,0,0.5)',
+                        color: 'white',
+                        '&:hover': { bgcolor: 'rgba(0,0,0,0.7)' },
+                        zIndex: 1
+                    }}
+                >
+                    <CloseIcon />
+                </IconButton>
+                <img
+                    src={expandedImage}
+                    alt="Expanded view"
+                    style={{
+                        maxWidth: '90vw',
+                        maxHeight: '90vh',
+                        objectFit: 'contain',
+                        borderRadius: 8
+                    }}
+                />
+            </Box>
         </Dialog>
     </Box>
   );

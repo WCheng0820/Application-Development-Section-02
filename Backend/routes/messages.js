@@ -49,6 +49,22 @@ router.get('/students', authenticateToken, async (req, res) => {
     }
 });
 
+// Get all users (students and tutors) for admin to chat with
+router.get('/all-users', authenticateToken, async (req, res) => {
+    try {
+        const users = await query(
+            `SELECT userId, username as name, role, email 
+             FROM users 
+             WHERE role IN ('student', 'tutor') AND status = 'active'
+             ORDER BY username ASC`
+        );
+        res.json({ success: true, data: users });
+    } catch (err) {
+        console.error('Error fetching all users:', err);
+        res.status(500).json({ success: false, error: err.message });
+    }
+});
+
 // Get conversations for a user (with optional tutors they haven't booked)
 router.get('/conversations/:userId', authenticateToken, async (req, res) => {
     try {
@@ -135,13 +151,13 @@ router.get('/conversations/:userId', authenticateToken, async (req, res) => {
 
         const conversations = Array.from(conversationMap.values());
 
-        // 2. Fetch active direct conversations (no booking)
-        // Find messages where user is sender or recipient, and bookingId is NULL
+        // 2. Fetch active direct conversations (no booking or admin chats)
+        // Find messages where user is sender or recipient
         const directMessages = await query(
             `SELECT DISTINCT 
                 CASE WHEN senderId = ? THEN recipientId ELSE senderId END as otherId
              FROM message 
-             WHERE bookingId IS NULL AND (senderId = ? OR recipientId = ?)`,
+             WHERE senderId = ? OR recipientId = ?`,
             [userId, userId, userId]
         );
 
@@ -156,6 +172,7 @@ router.get('/conversations/:userId', authenticateToken, async (req, res) => {
             let otherName = 'Unknown User';
             let tutorInfo = null;
 
+            // Check if it's a tutor
             const tutorRes = await query('SELECT name, price, specialization, rating FROM tutor WHERE tutorId = ?', [otherId]);
             if (tutorRes.length > 0) {
                 otherName = tutorRes[0].name;
@@ -165,16 +182,10 @@ router.get('/conversations/:userId', authenticateToken, async (req, res) => {
                     rating: tutorRes[0].rating
                 };
             } else {
-                // Try student
-                const studentRes = await query(
-                    `SELECT u.username 
-                     FROM student s 
-                     JOIN users u ON s.user_id = u.id 
-                     WHERE s.studentId = ?`, 
-                    [otherId]
-                );
-                if (studentRes.length > 0) {
-                    otherName = studentRes[0].username;
+                // Check users table (for students or admins)
+                const userRes = await query('SELECT username FROM users WHERE userId = ?', [otherId]);
+                if (userRes.length > 0) {
+                    otherName = userRes[0].username;
                 }
             }
 
@@ -192,7 +203,7 @@ router.get('/conversations/:userId', authenticateToken, async (req, res) => {
                 `SELECT COUNT(*) as count FROM message 
                  WHERE ((senderId = ? AND recipientId = ?) OR (senderId = ? AND recipientId = ?))
                  AND senderId != ? 
-                 AND JSON_CONTAINS(readBy_json, ?, '$[*].userId') = 0`,
+                 AND (readBy_json IS NULL OR JSON_CONTAINS(readBy_json, ?, '$[*].userId') = 0)`,
                 [userId, otherId, otherId, userId, userId, JSON.stringify(userId)]
             );
             const unreadCount = unreadFromUser[0]?.count || 0;
@@ -245,7 +256,7 @@ router.get('/messages/:bookingId', authenticateToken, async (req, res) => {
                  ORDER BY created_at ASC`,
                 [senderId, recipientId, recipientId, senderId]
             );
-        } else if (bookingId && bookingId !== 'null') {
+        } else if (bookingId && bookingId !== 'null' && bookingId !== 'undefined') {
             // Fallback to bookingId if participants not provided (legacy support)
             messages = await query(
                 `SELECT * FROM message 

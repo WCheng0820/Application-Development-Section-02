@@ -16,6 +16,8 @@ import Reports from "./pages/Reports";
 import TutorSetup from "./pages/TutorSetup";
 import Upload from "./pages/Upload";
 import Materials from "./pages/Materials";
+import AdminSessions from "./pages/AdminSessions";
+import AdminUsers from "./pages/AdminUsers";
 import { useAuth } from "./context/AuthContext";
 
 // Role-based materials view
@@ -119,6 +121,22 @@ export default function App() {
             element={
               <PrivateRoute>
                 <ManageSchedule />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/admin/sessions"
+            element={
+              <PrivateRoute>
+                <AdminSessions />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/admin/users"
+            element={
+              <PrivateRoute>
+                <AdminUsers />
               </PrivateRoute>
             }
           />

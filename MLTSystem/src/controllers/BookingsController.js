@@ -19,7 +19,9 @@ function getAxiosConfig() {
 export async function fetchBookings(filters = {}) {
   try {
     const config = getAxiosConfig();
-    const res = await axios.get(BOOKINGS_URL, { params: filters, ...config });
+    // Add cache busting
+    const params = { ...filters, t: new Date().getTime() };
+    const res = await axios.get(BOOKINGS_URL, { params, ...config });
     const rows = res.data.success ? res.data.data : [];
 
     // Map backend rows to UI-friendly booking objects and format date/time for Malaysia timezone

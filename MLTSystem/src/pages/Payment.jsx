@@ -18,6 +18,7 @@ import {
   Paper,
   Grid,
 } from "@mui/material";
+import PaymentIcon from "@mui/icons-material/Payment";
 import CreditCardIcon from "@mui/icons-material/CreditCard";
 import AccountBalanceWalletIcon from "@mui/icons-material/AccountBalanceWallet";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
@@ -173,23 +174,67 @@ export default function Payment() {
   }
 
   return (
-    <Container maxWidth="md" sx={{ mt: 12, mb: 6 }}>
-      {/* Back Button */}
-      <Button
-        startIcon={<ArrowBackIcon />}
-        onClick={handleCancel}
-        sx={{ mb: 3 }}
-        disabled={isProcessing}
-      >
-        Back to Tutors
-      </Button>
+    <Box
+      sx={{
+        minHeight: "100vh",
+        pt: 10,
+        pb: 4,
+        px: 3,
+        background: 'linear-gradient(135deg, #1976d2 0%, #64b5f6 100%)',
+      }}
+    >
+      <Container maxWidth="md">
+        {/* Header Section */}
+        <Paper
+          elevation={3}
+          sx={{
+            mb: 4,
+            p: 3,
+            borderRadius: 4,
+            background: 'rgba(255, 255, 255, 0.9)',
+            backdropFilter: 'blur(10px)',
+            boxShadow: '0 8px 32px 0 rgba(31, 38, 135, 0.37)',
+            display: "flex",
+            alignItems: "center",
+            gap: 2,
+          }}
+        >
+          <PaymentIcon sx={{ fontSize: 40, color: '#1565c0' }} />
+          <Box>
+            <Typography variant="h4" fontWeight="700" sx={{ color: '#1565c0' }}>
+              Secure Payment
+            </Typography>
+            <Typography variant="subtitle1" sx={{ color: 'text.secondary' }}>
+              Complete your booking securely
+            </Typography>
+          </Box>
+        </Paper>
 
-      <Grid container spacing={3}>
-        {/* Booking Details */}
-        <Grid item xs={12} md={7}>
-          <Card sx={{ mb: 3 }}>
-            <CardContent>
-              <Typography variant="h6" fontWeight="bold" mb={2}>
+        {/* Back Button */}
+        <Button
+          startIcon={<ArrowBackIcon />}
+          onClick={handleCancel}
+          sx={{ mb: 3, color: 'white' }}
+          disabled={isProcessing}
+        >
+          Back to Tutors
+        </Button>
+
+        <Grid container spacing={3}>
+          {/* Booking Details */}
+          <Grid item xs={12} md={7}>
+            <Paper
+              elevation={3}
+              sx={{
+                mb: 3,
+                p: 3,
+                borderRadius: 4,
+                background: 'rgba(255, 255, 255, 0.9)',
+                backdropFilter: 'blur(10px)',
+                boxShadow: '0 8px 32px 0 rgba(31, 38, 135, 0.37)',
+              }}
+            >
+              <Typography variant="h6" fontWeight="bold" mb={2} color="primary.main">
                 Booking Details
               </Typography>
               <Box sx={{ display: "flex", gap: 2, mb: 2 }}>
@@ -225,13 +270,20 @@ export default function Payment() {
                   RM{Number(totalAmount).toFixed(2)}
                 </Typography>
               </Box>
-            </CardContent>
-          </Card>
+            </Paper>
 
-          {/* Payment Method Selection */}
-          <Card>
-            <CardContent>
-              <Typography variant="h6" fontWeight="bold" mb={2}>
+            {/* Payment Method Selection */}
+            <Paper
+              sx={{
+                p: 3,
+                borderRadius: 3,
+                background: "rgba(255, 255, 255, 0.8)",
+                backdropFilter: "blur(10px)",
+                boxShadow: "0 8px 32px 0 rgba(31, 38, 135, 0.15)",
+                border: "1px solid rgba(255, 255, 255, 0.18)",
+              }}
+            >
+              <Typography variant="h6" fontWeight="bold" mb={2} color="primary.main">
                 Choose Payment Method
               </Typography>
 
@@ -249,10 +301,11 @@ export default function Payment() {
                       cursor: "pointer",
                       border: paymentMethod === "tng" ? "2px solid" : "1px solid",
                       borderColor: paymentMethod === "tng" ? "primary.main" : "divider",
-                      bgcolor: paymentMethod === "tng" ? "action.selected" : "background.paper",
+                      bgcolor: paymentMethod === "tng" ? "rgba(25, 118, 210, 0.08)" : "rgba(255,255,255,0.5)",
                       transition: "all 0.3s",
+                      borderRadius: 2,
                       "&:hover": {
-                        bgcolor: "action.hover",
+                        bgcolor: "rgba(25, 118, 210, 0.04)",
                       },
                     }}
                     onClick={() => setPaymentMethod("tng")}
@@ -286,10 +339,11 @@ export default function Payment() {
                       cursor: "pointer",
                       border: paymentMethod === "card" ? "2px solid" : "1px solid",
                       borderColor: paymentMethod === "card" ? "primary.main" : "divider",
-                      bgcolor: paymentMethod === "card" ? "action.selected" : "background.paper",
+                      bgcolor: paymentMethod === "card" ? "rgba(25, 118, 210, 0.08)" : "rgba(255,255,255,0.5)",
                       transition: "all 0.3s",
+                      borderRadius: 2,
                       "&:hover": {
-                        bgcolor: "action.hover",
+                        bgcolor: "rgba(25, 118, 210, 0.04)",
                       },
                     }}
                     onClick={() => setPaymentMethod("card")}
@@ -316,20 +370,29 @@ export default function Payment() {
                 </RadioGroup>
               </FormControl>
 
-              <Alert severity="info" sx={{ mt: 2 }}>
+              <Alert severity="info" sx={{ mt: 2, borderRadius: 2 }}>
                 <Typography variant="body2">
                   💡 This is a demo payment flow. In production, this would integrate with a real payment gateway.
                 </Typography>
               </Alert>
-            </CardContent>
-          </Card>
-        </Grid>
+            </Paper>
+          </Grid>
 
-        {/* Order Summary & Confirm */}
-        <Grid item xs={12} md={5}>
-          <Card sx={{ position: "sticky", top: 100 }}>
-            <CardContent>
-              <Typography variant="h6" fontWeight="bold" mb={3}>
+          {/* Order Summary & Confirm */}
+          <Grid item xs={12} md={5}>
+            <Paper
+              sx={{
+                position: "sticky",
+                top: 100,
+                p: 3,
+                borderRadius: 3,
+                background: "rgba(255, 255, 255, 0.8)",
+                backdropFilter: "blur(10px)",
+                boxShadow: "0 8px 32px 0 rgba(31, 38, 135, 0.15)",
+                border: "1px solid rgba(255, 255, 255, 0.18)",
+              }}
+            >
+              <Typography variant="h6" fontWeight="bold" mb={3} color="primary.main">
                 Order Summary
               </Typography>
 
@@ -356,7 +419,7 @@ export default function Payment() {
               </Box>
 
               {error && (
-                <Alert severity="error" sx={{ mb: 2 }}>
+                <Alert severity="error" sx={{ mb: 2, borderRadius: 2 }}>
                   {error}
                 </Alert>
               )}
@@ -368,11 +431,11 @@ export default function Payment() {
                 size="large"
                 onClick={handleConfirmPayment}
                 disabled={isProcessing}
-                sx={{ mb: 2 }}
+                sx={{ mb: 2, borderRadius: 2, py: 1.5, fontWeight: 'bold' }}
               >
                 {isProcessing ? (
                   <>
-                    <CircularProgress size={20} sx={{ mr: 1 }} />
+                    <CircularProgress size={20} sx={{ mr: 1, color: 'white' }} />
                     Processing...
                   </>
                 ) : (
@@ -386,6 +449,7 @@ export default function Payment() {
                 fullWidth
                 onClick={handleCancel}
                 disabled={isProcessing}
+                sx={{ borderRadius: 2 }}
               >
                 Cancel Booking
               </Button>
@@ -393,10 +457,10 @@ export default function Payment() {
               <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 2, textAlign: "center" }}>
                 Your payment information is secure and encrypted.
               </Typography>
-            </CardContent>
-          </Card>
+            </Paper>
+          </Grid>
         </Grid>
-      </Grid>
-    </Container>
+      </Container>
+    </Box>
   );
 }

@@ -8,7 +8,13 @@ const { google } = require('googleapis');
 router.get('/', async (req, res) => {
   try {
     // Always fetch from database first (source of truth)
-    const rows = await query('SELECT * FROM materials ORDER BY created_at DESC');
+    // Join with tutor table to get uploader name
+    const rows = await query(`
+        SELECT m.*, t.name as tutor_name 
+        FROM materials m 
+        LEFT JOIN tutor t ON m.tutorId = t.tutorId 
+        ORDER BY m.created_at DESC
+    `);
     return res.json({ success: true, data: rows });
   } catch (error) {
     if (error && error.code === 'ER_NO_SUCH_TABLE') {

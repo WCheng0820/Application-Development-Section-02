@@ -26,14 +26,17 @@ import AttachMoneyIcon from "@mui/icons-material/AttachMoney";
 import CalendarTodayIcon from "@mui/icons-material/CalendarToday";
 import ReviewsIcon from "@mui/icons-material/Reviews";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
+import FlagIcon from "@mui/icons-material/Flag";
 
 import * as TutorsController from "../controllers/TutorsController";
 import { formatMalaysiaDate, formatMalaysiaTime } from "../utils/dateUtils";
+import ReportDialog from "./ReportDialog";
 
 export default function TutorCard({ tutor, onBook, initiallyOpen = false }) {
   const [openProfile, setOpenProfile] = useState(false);
   const [selectedSlot, setSelectedSlot] = useState(null);
   const [reviews, setReviews] = useState([]);
+  const [reportDialogOpen, setReportDialogOpen] = useState(false);
 
   useEffect(() => {
     if (initiallyOpen) {
@@ -414,21 +417,40 @@ export default function TutorCard({ tutor, onBook, initiallyOpen = false }) {
           </Box>
         </DialogContent>
 
-        <DialogActions>
-          <Button onClick={handleCloseProfile} color="inherit">
-            Cancel
-          </Button>
-          <Button
-            onClick={handleBook}
-            variant="contained"
-            color="primary"
+        <DialogActions sx={{ justifyContent: 'space-between', px: 3, pb: 3 }}>
+          <Button 
+            startIcon={<FlagIcon />} 
+            color="error" 
+            onClick={() => setReportDialogOpen(true)}
             size="small"
-            disabled={!selectedSlot || availableSlots.length === 0}
           >
-            Proceed to Payment
+            Report Tutor
           </Button>
+          <Box>
+            <Button onClick={handleCloseProfile} color="inherit" sx={{ mr: 1 }}>
+              Cancel
+            </Button>
+            <Button
+              onClick={handleBook}
+              variant="contained"
+              color="primary"
+              size="small"
+              disabled={!selectedSlot || availableSlots.length === 0}
+            >
+              Proceed to Payment
+            </Button>
+          </Box>
         </DialogActions>
       </Dialog>
+
+      <ReportDialog 
+        open={reportDialogOpen}
+        onClose={() => setReportDialogOpen(false)}
+        targetType="tutor"
+        targetId={`tutor-${tutor.id}`}
+        reportedId={tutor.userId || tutor.id} // Fallback if userId is not directly on tutor object
+        defaultCategory="other"
+      />
     </>
   );
 }

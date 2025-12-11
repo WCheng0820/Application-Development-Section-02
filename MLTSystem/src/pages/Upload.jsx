@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from "react";
 import { 
   Box, Button, Grid, Typography, IconButton, Tooltip,
-  Dialog, DialogTitle, DialogContent, DialogActions, TextField
+  Dialog, DialogTitle, DialogContent, DialogActions, TextField, Paper
 } from "@mui/material";
 import FlagIcon from "@mui/icons-material/Flag";
 
 // Keep your image import exactly as it was
-import pngtreeImage from "../assets/—Pngtree—thank you in different languages_9057022.jpg"; 
+import pngtreeImage from "../assets/thank-you.jpg"; 
 
 export default function StudentMaterials() {
   const [materials, setMaterials] = useState([]); // Store data from DB
@@ -96,7 +96,8 @@ export default function StudentMaterials() {
         body: JSON.stringify({
           materialLink: selectedMaterial.web_view_link,
           materialTitle: selectedMaterial.title,
-          reason: reportReason.trim()
+          reason: reportReason.trim(),
+          reportedId: selectedMaterial.tutorId // Pass the uploader's ID
         })
       });
 
@@ -132,14 +133,32 @@ export default function StudentMaterials() {
   };
 
   return (
-    <Box sx={{ mt: 10, px: 5 }}>
+    <Box 
+      sx={{ 
+        minHeight: '100vh',
+        background: 'linear-gradient(135deg, #1976d2 0%, #64b5f6 100%)',
+        pt: 10, 
+        px: 5,
+        pb: 5
+      }}
+    >
+      <Paper
+        elevation={3}
+        sx={{
+          p: 4,
+          borderRadius: 4,
+          background: 'rgba(255, 255, 255, 0.9)',
+          backdropFilter: 'blur(10px)',
+          boxShadow: '0 8px 32px 0 rgba(31, 38, 135, 0.37)',
+        }}
+      >
       {/* Title */}
-      <Typography variant="h4" fontWeight="bold" sx={{ textAlign: "left" }}>
+      <Typography variant="h4" fontWeight="bold" sx={{ textAlign: "left", color: '#1565c0' }}>
         Learning Material
       </Typography>
 
       {/* Subtitle */}
-      <Typography variant="h6" sx={{ textAlign: "left", mb: 3 }}>
+      <Typography variant="h6" sx={{ textAlign: "left", mb: 3, color: 'text.secondary' }}>
         Browse and download study resources
       </Typography>
 
@@ -234,6 +253,13 @@ export default function StudentMaterials() {
                 {material.title}
               </Typography>
 
+              {/* Uploader Name */}
+              {material.tutor_name && (
+                <Typography variant="caption" display="block" sx={{ mb: 1, color: 'text.secondary', fontStyle: 'italic' }}>
+                  Uploaded by: {material.tutor_name}
+                </Typography>
+              )}
+
               {/* Material Description */}
               {material.description && (
                 <Typography 
@@ -313,6 +339,7 @@ export default function StudentMaterials() {
           </Button>
         </DialogActions>
       </Dialog>
+      </Paper>
     </Box>
   );
 }

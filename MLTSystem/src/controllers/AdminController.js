@@ -12,7 +12,7 @@ const getAuthHeader = () => {
 
 export const getDashboardStats = async () => {
     try {
-        const response = await axios.get(`${API_URL}/api/admin/stats`, {
+        const response = await axios.get(`${API_URL}/api/admin/stats?t=${new Date().getTime()}`, {
             headers: getAuthHeader()
         });
         return response.data.data;
@@ -24,7 +24,7 @@ export const getDashboardStats = async () => {
 
 export const getPendingTutors = async () => {
     try {
-        const response = await axios.get(`${API_URL}/api/auth/pending-tutors`, {
+        const response = await axios.get(`${API_URL}/api/auth/pending-tutors?t=${new Date().getTime()}`, {
             headers: getAuthHeader()
         });
         return response.data.tutors || [];
@@ -48,11 +48,76 @@ export const approveTutor = async (tutorId) => {
 };
 
 export const rejectTutor = async (tutorId) => {
-    // Assuming there is a reject endpoint, or we use a generic update status
-    // For now, let's assume the existing logic in AdminDashboard used a specific endpoint or we need to create one.
-    // Checking AdminDashboard.jsx... it calls handleReject but I didn't see the implementation in the snippet.
-    // I'll leave this placeholder or implement if I find the endpoint.
-    // Based on previous reads, there might not be a specific reject endpoint in auth.js, usually it's just status update.
-    // Let's stick to what we know exists or what we added.
-    return { success: false, error: 'Not implemented' };
+    try {
+        const response = await axios.post(`${API_URL}/api/admin/reject-user/${tutorId}`, 
+            {},
+            { headers: getAuthHeader() }
+        );
+        return response.data;
+    } catch (error) {
+        console.error('Error rejecting tutor:', error);
+        throw error;
+    }
+};
+
+export const getAllSessions = async () => {
+    try {
+        const response = await axios.get(`${API_URL}/api/admin/sessions?t=${new Date().getTime()}`, {
+            headers: getAuthHeader()
+        });
+        return response.data.data;
+    } catch (error) {
+        console.error('Error fetching sessions:', error);
+        throw error;
+    }
+};
+
+export const cancelSession = async (bookingId) => {
+    try {
+        const response = await axios.post(`${API_URL}/api/admin/cancel-session/${bookingId}`, 
+            {},
+            { headers: getAuthHeader() }
+        );
+        return response.data;
+    } catch (error) {
+        console.error('Error cancelling session:', error);
+        throw error;
+    }
+};
+
+export const getAllUsers = async () => {
+    try {
+        const response = await axios.get(`${API_URL}/api/admin/users?t=${new Date().getTime()}`, {
+            headers: getAuthHeader()
+        });
+        return response.data.data;
+    } catch (error) {
+        console.error('Error fetching users:', error);
+        throw error;
+    }
+};
+
+export const updateUser = async (userId, userData) => {
+    try {
+        const response = await axios.put(`${API_URL}/api/admin/users/${userId}`, 
+            userData,
+            { headers: getAuthHeader() }
+        );
+        return response.data;
+    } catch (error) {
+        console.error('Error updating user:', error);
+        throw error;
+    }
+};
+
+export const deleteUser = async (userId) => {
+    try {
+        const response = await axios.delete(`${API_URL}/api/admin/users/${userId}`, {
+            headers: getAuthHeader()
+        });
+        return response.data;
+    } catch (error) {
+        console.error('Error deleting user:', error);
+        throw error;
+    }
 };

@@ -210,4 +210,156 @@ router.get('/stats', isAdmin, async (req, res) => {
   }
 });
 
+// Get all sessions (bookings)
+router.get('/sessions', isAdmin, async (req, res) => {
+  try {
+    const sessions = await query(`
+      SELECT 
+        b.bookingId,
+        b.booking_date,
+        b.start_time,
+        b.end_time,
+        b.status,
+        b.subject,
+        t.name as tutorName,
+        u.username as studentName,
+        b.created_at
+      FROM booking b
+      LEFT JOIN tutor t ON b.tutorId = t.tutorId
+      LEFT JOIN student s ON b.studentId = s.studentId
+      LEFT JOIN users u ON s.user_id = u.id
+      ORDER BY b.booking_date DESC, b.start_time DESC
+    `);
+
+    res.json({
+      success: true,
+      data: sessions
+    });
+  } catch (err) {
+    console.error('Error fetching sessions:', err);
+    res.status(500).json({ success: false, error: 'Error fetching sessions' });
+  }
+});
+
+// Cancel a session (booking)
+router.post('/cancel-session/:bookingId', isAdmin, async (req, res) => {
+  try {
+    const { bookingId } = req.params;
+
+    // Check if booking exists
+    const bookings = await query('SELECT bookingId, status FROM booking WHERE bookingId = ?', [bookingId]);
+    if (bookings.length === 0) {
+      return res.status(404).json({ success: false, error: 'Booking not found' });
+    }
+
+    const booking = bookings[0];
+    if (booking.status === 'cancelled') {
+      return res.status(400).json({ success: false, error: 'Booking is already cancelled' });
+    }
+
+    // Update status to cancelled
+    await query('UPDATE booking SET status = ? WHERE bookingId = ?', ['cancelled', bookingId]);
+
+    // Also update tutor schedule to free if needed? 
+    // Usually if a booking is cancelled, the slot should become free again.
+    // Let's check if there is a corresponding schedule entry.
+    // The booking table has tutorId, booking_date, start_time, end_time.
+    // The tutor_schedule table has tutorId, schedule_date, start_time, end_time.
+    
+    const bookingDetails = await query('SELECT tutorId, booking_date, start_time, end_time FROM booking WHERE bookingId = ?', [bookingId]);
+    if (bookingDetails.length > 0) {
+        const { tutorId, booking_date, start_time, end_time } = bookingDetails[0];
+        // Format date for query
+        const dateStr = new Date(booking_date).toISOString().split('T')[0];
+        
+        await query(
+            `UPDATE tutor_schedule 
+             SET status = 'free', reserved_by = NULL, reserved_at = NULL, booked_at = NULL 
+             WHERE tutorId = ? AND schedule_date = ? AND start_time = ? AND end_time = ?`,
+            [tutorId, dateStr, start_time, end_time]
+        );
+    }
+
+    res.json({
+      success: true,
+      message: `Session ${bookingId} cancelled successfully`
+    });
+  } catch (err) {
+    console.error('Error cancelling session:', err);
+    res.status(500).json({ success: false, error: 'Error cancelling session' });
+  }
+});
+
+// Get all users
+router.get('/users', isAdmin, async (req, res) => {
+  try {
+    const users = await query(
+      'SELECT id, userId, username, email, role, status, created_at FROM users ORDER BY created_at DESC'
+    );
+    res.json({ success: true, data: users });
+  } catch (err) {
+    console.error('Error fetching users:', err);
+    res.status(500).json({ success: false, error: 'Error fetching users' });
+  }
+});
+
+// Update user
+router.put('/users/:id', isAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status, role } = req.body;
+    
+    await query(
+      'UPDATE users SET status = ?, role = ? WHERE id = ?',
+      [status, role, id]
+    );
+    
+    res.json({ success: true, message: 'User updated successfully' });
+  } catch (err) {
+    console.error('Error updating user:', err);
+    res.status(500).json({ success: false, error: 'Error updating user' });
+  }
+});
+
+// Delete user
+router.delete('/users/:id', isAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    // Get user details first to know which role tables to clean up
+    const users = await query('SELECT userId, role FROM users WHERE id = ?', [id]);
+    if (users.length === 0) {
+      return res.status(404).json({ success: false, error: 'User not found' });
+    }
+    const user = users[0];
+
+    // Delete from role-specific tables
+    if (user.role === 'student') {
+      await query('DELETE FROM student WHERE user_id = ?', [id]);
+    } else if (user.role === 'tutor') {
+      await query('DELETE FROM tutor WHERE user_id = ?', [id]);
+      // Also clean up schedule?
+      await query('DELETE FROM tutor_schedule WHERE tutorId = ?', [user.userId]);
+    } else if (user.role === 'admin') {
+      await query('DELETE FROM admin WHERE user_id = ?', [id]);
+    }
+
+    // Delete bookings? (Maybe keep them for records, but set user_id to NULL? Or delete?)
+    // For simplicity, let's delete bookings associated with this user
+    if (user.role === 'student') {
+        await query('DELETE FROM booking WHERE studentId = ?', [user.userId]);
+    } else if (user.role === 'tutor') {
+        await query('DELETE FROM booking WHERE tutorId = ?', [user.userId]);
+    }
+
+    // Finally delete the user
+    await query('DELETE FROM users WHERE id = ?', [id]);
+    
+    res.json({ success: true, message: 'User deleted successfully' });
+  } catch (err) {
+    console.error('Error deleting user:', err);
+    res.status(500).json({ success: false, error: 'Error deleting user' });
+  }
+});
+
 module.exports = router;

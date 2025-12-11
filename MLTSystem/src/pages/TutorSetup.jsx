@@ -59,7 +59,7 @@ export default function TutorSetup() {
         display: 'flex', 
         alignItems: 'center', 
         justifyContent: 'center', 
-        bgcolor: '#f5f5f5',
+        background: 'linear-gradient(135deg, #2e7d32 0%, #66bb6a 100%)',
         p: 3
       }}
     >
@@ -69,11 +69,14 @@ export default function TutorSetup() {
           maxWidth: 600, 
           width: '100%', 
           p: 4, 
-          borderRadius: 2 
+          borderRadius: 4,
+          background: 'rgba(255, 255, 255, 0.9)',
+          backdropFilter: 'blur(10px)',
+          boxShadow: '0 8px 32px 0 rgba(31, 38, 135, 0.37)',
         }}
       >
         <Box sx={{ textAlign: 'center', mb: 4 }}>
-          <SchoolIcon sx={{ fontSize: 60, color: 'primary.main', mb: 2 }} />
+          <SchoolIcon sx={{ fontSize: 60, color: '#2e7d32', mb: 2 }} />
           <Typography variant="h4" component="h1" gutterBottom fontWeight="bold">
             Welcome to MLT System!
           </Typography>
@@ -108,7 +111,7 @@ export default function TutorSetup() {
         <form onSubmit={handleSubmit}>
           <Box sx={{ mb: 3 }}>
             <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-              <MonetizationOnIcon color="primary" fontSize="small" />
+              <MonetizationOnIcon sx={{ color: '#2e7d32' }} fontSize="small" />
               Set Your Hourly Rate
             </Typography>
             <Typography variant="body2" color="text.secondary" paragraph>
@@ -144,7 +147,13 @@ export default function TutorSetup() {
             fullWidth 
             size="large"
             disabled={loading}
-            sx={{ py: 1.5 }}
+            sx={{ 
+              py: 1.5,
+              bgcolor: '#2e7d32',
+              '&:hover': {
+                bgcolor: '#1b5e20',
+              }
+            }}
           >
             {loading ? 'Saving...' : 'Complete Setup'}
           </Button>

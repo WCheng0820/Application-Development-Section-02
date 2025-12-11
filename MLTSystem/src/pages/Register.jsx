@@ -13,18 +13,29 @@ import {
   InputLabel,
   Select,
   MenuItem,
-  FormHelperText
+  FormHelperText,
+  InputAdornment,
+  IconButton,
+  Stepper,
+  Step,
+  StepLabel,
+  Grid
 } from '@mui/material';
 import { Link as RouterLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { ROLES } from '../models/Role';
 import UploadFileIcon from '@mui/icons-material/UploadFile';
+import PersonAddIcon from '@mui/icons-material/PersonAdd';
+import Visibility from '@mui/icons-material/Visibility';
+import VisibilityOff from '@mui/icons-material/VisibilityOff';
+import SchoolIcon from '@mui/icons-material/School';
+import BadgeIcon from '@mui/icons-material/Badge';
 
 export default function Register() {
   const [formData, setFormData] = useState({
     username: '',
     email: '',
     password: '',
+    confirmPassword: '',
     nophone: '',
     role: 'student',
     // Student fields
@@ -39,6 +50,8 @@ export default function Register() {
   const [verificationDocuments, setVerificationDocuments] = useState([]);
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const { register } = useAuth();
   const navigate = useNavigate();
@@ -53,7 +66,6 @@ export default function Register() {
   const handleFileChange = (e) => {
     if (e.target.files && e.target.files.length > 0) {
       const files = Array.from(e.target.files);
-      // Convert files to base64 for storage (in a real app, upload to server)
       const filePromises = files.map(file => {
         return new Promise((resolve, reject) => {
           const reader = new FileReader();
@@ -62,7 +74,7 @@ export default function Register() {
               name: file.name,
               type: file.type,
               size: file.size,
-              data: event.target.result // base64 encoded
+              data: event.target.result
             });
           };
           reader.onerror = reject;
@@ -100,6 +112,11 @@ export default function Register() {
       return;
     }
 
+    if (formData.password !== formData.confirmPassword) {
+      setError('Passwords do not match');
+      return;
+    }
+
     // For tutors, require verification documents
     if (formData.role === 'tutor' && verificationDocuments.length === 0) {
       setError('Please upload verification documents to show your experience in teaching Mandarin');
@@ -109,7 +126,6 @@ export default function Register() {
     setIsLoading(true);
 
     try {
-      // Prepare registration data with all form fields
       const registrationData = {
         username: formData.username.trim(),
         email: formData.email.trim(),
@@ -117,11 +133,9 @@ export default function Register() {
         role: formData.role,
         nophone: formData.nophone.trim() || null,
         verificationDocuments: formData.role === 'tutor' ? verificationDocuments : [],
-        // Student-specific fields
         yearOfStudy: formData.role === 'student' ? parseInt(formData.yearOfStudy) || 1 : undefined,
         programme: formData.role === 'student' ? formData.programme.trim() || null : undefined,
         faculty: formData.role === 'student' ? formData.faculty.trim() || null : undefined,
-        // Tutor-specific fields
         yearsOfExperience: formData.role === 'tutor' ? parseInt(formData.yearsOfExperience) || 0 : undefined,
         bio: formData.role === 'tutor' ? formData.bio.trim() || null : undefined,
         specialization: formData.role === 'tutor' ? formData.specialization || null : undefined
@@ -130,7 +144,6 @@ export default function Register() {
       const result = await register(registrationData);
       if (result.success) {
         if (formData.role === 'tutor') {
-          // Show success message and redirect to login
           alert('Registration successful! Your account is pending admin approval. You will be notified once approved.');
           navigate('/login');
         } else {
@@ -147,231 +160,317 @@ export default function Register() {
   };
 
   return (
-    <Container component="main" maxWidth="sm">
-      <Box
-        sx={{
-          marginTop: 8,
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-        }}
-      >
-        <Paper elevation={3} sx={{ padding: 4, width: '100%' }}>
-          <Typography component="h1" variant="h4" align="center" gutterBottom>
-            Sign Up
-          </Typography>
-          <Typography variant="body2" align="center" color="text.secondary" sx={{ mb: 3 }}>
-            Join Mandarin Tutoring today
-          </Typography>
+    <Box 
+      sx={{ 
+        minHeight: '100vh',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        background: 'linear-gradient(135deg, #1976d2 0%, #64b5f6 100%)',
+        py: 4
+      }}
+    >
+      <Container component="main" maxWidth="md">
+        <Paper 
+          elevation={6} 
+          sx={{ 
+            p: 4, 
+            borderRadius: 4,
+            background: 'rgba(255, 255, 255, 0.9)',
+            backdropFilter: 'blur(10px)',
+            boxShadow: '0 8px 32px 0 rgba(31, 38, 135, 0.37)',
+          }}
+        >
+          <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', mb: 4 }}>
+            <Box 
+              sx={{ 
+                bgcolor: 'secondary.main', 
+                color: 'white', 
+                p: 2, 
+                borderRadius: '50%', 
+                mb: 2,
+                boxShadow: 3
+              }}
+            >
+              <PersonAddIcon fontSize="large" />
+            </Box>
+            <Typography component="h1" variant="h4" fontWeight="bold" color="primary">
+              Create Account
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              Join our community of learners and tutors
+            </Typography>
+          </Box>
 
           {error && (
-            <Alert severity="error" sx={{ mb: 2 }}>
+            <Alert severity="error" sx={{ mb: 3, borderRadius: 2 }}>
               {error}
             </Alert>
           )}
 
-          <Box component="form" onSubmit={handleSubmit} sx={{ mt: 1 }}>
-            <TextField
-              required
-              fullWidth
-              id="username"
-              label="Username"
-              name="username"
-              autoComplete="username"
-              value={formData.username}
-              onChange={handleChange}
-              autoFocus
-              sx={{ mb: 2 }}
-              helperText="Choose a unique username for login"
-            />
-            <TextField
-              required
-              fullWidth
-              id="email"
-              label="Email Address"
-              name="email"
-              autoComplete="email"
-              type="email"
-              value={formData.email}
-              onChange={handleChange}
-              sx={{ mb: 2 }}
-            />
-            <TextField
-              fullWidth
-              id="nophone"
-              label="Phone Number"
-              name="nophone"
-              type="tel"
-              value={formData.nophone}
-              onChange={handleChange}
-              sx={{ mb: 2 }}
-              helperText="Optional contact number"
-            />
-            <FormControl fullWidth sx={{ mb: 2 }}>
-              <InputLabel id="role-label">Role</InputLabel>
-              <Select
-                labelId="role-label"
-                id="role"
-                name="role"
-                value={formData.role}
-                label="Role"
-                onChange={handleChange}
-              >
-                <MenuItem value="student">Student</MenuItem>
-                <MenuItem value="tutor">Tutor</MenuItem>
-              </Select>
-            </FormControl>
-            <TextField
-              required
-              fullWidth
-              name="password"
-              label="Password"
-              type="password"
-              id="password"
-              autoComplete="new-password"
-              value={formData.password}
-              onChange={handleChange}
-              sx={{ mb: 2 }}
-              helperText="Must be at least 6 characters"
-            />
-
-            {/* Student-specific fields */}
-            {formData.role === 'student' && (
-              <Box sx={{ mb: 2 }}>
+          <Box component="form" onSubmit={handleSubmit}>
+            <Grid container spacing={3}>
+              {/* Basic Info Section */}
+              <Grid item xs={12}>
+                <Typography variant="h6" sx={{ mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <BadgeIcon color="action" /> Basic Information
+                </Typography>
+              </Grid>
+              
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  required
+                  fullWidth
+                  id="username"
+                  label="Username"
+                  name="username"
+                  value={formData.username}
+                  onChange={handleChange}
+                  helperText="Choose a unique username"
+                />
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  required
+                  fullWidth
+                  id="email"
+                  label="Email Address"
+                  name="email"
+                  type="email"
+                  value={formData.email}
+                  onChange={handleChange}
+                />
+              </Grid>
+              <Grid item xs={12} sm={6}>
                 <TextField
                   fullWidth
-                  type="number"
-                  name="yearOfStudy"
-                  label="Year of Study"
-                  value={formData.yearOfStudy}
+                  id="nophone"
+                  label="Phone Number"
+                  name="nophone"
+                  type="tel"
+                  value={formData.nophone}
                   onChange={handleChange}
-                  inputProps={{ min: 1, max: 10 }}
-                  sx={{ mb: 2 }}
-                  helperText="What year are you in?"
                 />
-                <TextField
-                  fullWidth
-                  name="programme"
-                  label="Programme/Course"
-                  value={formData.programme}
-                  onChange={handleChange}
-                  sx={{ mb: 2 }}
-                  helperText="e.g., Computer Science, Engineering"
-                />
-                <TextField
-                  fullWidth
-                  name="faculty"
-                  label="Faculty"
-                  value={formData.faculty}
-                  onChange={handleChange}
-                  helperText="e.g., Faculty of Engineering"
-                />
-              </Box>
-            )}
-
-            {/* Tutor-specific fields */}
-            {formData.role === 'tutor' && (
-              <Box sx={{ mb: 2 }}>
-                <TextField
-                  fullWidth
-                  type="number"
-                  name="yearsOfExperience"
-                  label="Years of Experience"
-                  value={formData.yearsOfExperience}
-                  onChange={handleChange}
-                  inputProps={{ min: 0 }}
-                  sx={{ mb: 2 }}
-                  helperText="How many years of teaching experience do you have?"
-                />
-                <TextField
-                  fullWidth
-                  name="bio"
-                  label="Bio"
-                  value={formData.bio}
-                  onChange={handleChange}
-                  multiline
-                  rows={4}
-                  sx={{ mb: 2 }}
-                  helperText="Tell students about your teaching style and what makes you a great tutor"
-                />
-                <FormControl fullWidth sx={{ mb: 2 }}>
-                  <InputLabel>Specialization</InputLabel>
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <FormControl fullWidth>
+                  <InputLabel id="role-label">I want to be a</InputLabel>
                   <Select
-                    name="specialization"
-                    value={formData.specialization}
-                    label="Specialization"
+                    labelId="role-label"
+                    id="role"
+                    name="role"
+                    value={formData.role}
+                    label="I want to be a"
                     onChange={handleChange}
                   >
-                    <MenuItem value="">Select a specialization</MenuItem>
-                    <MenuItem value="HSK Test Prep">HSK Test Preparation</MenuItem>
-                    <MenuItem value="Conversational">Conversational Mandarin</MenuItem>
-                    <MenuItem value="Business">Business Mandarin</MenuItem>
-                    <MenuItem value="Children">Children & Beginners</MenuItem>
-                    <MenuItem value="Advanced">Advanced Mandarin</MenuItem>
-                    <MenuItem value="General">General Chinese</MenuItem>
+                    <MenuItem value="student">Student</MenuItem>
+                    <MenuItem value="tutor">Tutor</MenuItem>
                   </Select>
-                  <FormHelperText>Choose your primary teaching specialization</FormHelperText>
                 </FormControl>
-              </Box>
-            )}
+              </Grid>
 
-            {formData.role === 'tutor' && (
-              <Box sx={{ mb: 2 }}>
-                <input
-                  accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
-                  style={{ display: 'none' }}
-                  id="verification-documents-upload"
-                  multiple
-                  type="file"
-                  onChange={handleFileChange}
+              {/* Password Section */}
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  required
+                  fullWidth
+                  name="password"
+                  label="Password"
+                  type={showPassword ? 'text' : 'password'}
+                  value={formData.password}
+                  onChange={handleChange}
+                  helperText="At least 6 characters"
+                  InputProps={{
+                    endAdornment: (
+                      <InputAdornment position="end">
+                        <IconButton
+                          onClick={() => setShowPassword(!showPassword)}
+                          edge="end"
+                        >
+                          {showPassword ? <VisibilityOff /> : <Visibility />}
+                        </IconButton>
+                      </InputAdornment>
+                    ),
+                  }}
                 />
-                <label htmlFor="verification-documents-upload">
-                  <Button
-                    variant="outlined"
-                    component="span"
-                    fullWidth
-                    startIcon={<UploadFileIcon />}
-                    sx={{ mb: 1 }}
-                  >
-                    Upload Verification Documents
-                  </Button>
-                </label>
-                <FormHelperText>
-                  Upload documents showing your experience in teaching Mandarin (e.g., certificates, diplomas, teaching credentials)
-                </FormHelperText>
-                {verificationDocuments.length > 0 && (
-                  <Box sx={{ mt: 1 }}>
-                    <Typography variant="body2" color="text.secondary">
-                      {verificationDocuments.length} file(s) selected:
-                    </Typography>
-                    {verificationDocuments.map((doc, index) => (
-                      <Typography key={index} variant="caption" display="block" color="success.main">
-                        • {doc.name}
-                      </Typography>
-                    ))}
-                  </Box>
-                )}
-              </Box>
-            )}
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  required
+                  fullWidth
+                  name="confirmPassword"
+                  label="Confirm Password"
+                  type={showConfirmPassword ? 'text' : 'password'}
+                  value={formData.confirmPassword}
+                  onChange={handleChange}
+                  helperText="Re-enter your password"
+                  InputProps={{
+                    endAdornment: (
+                      <InputAdornment position="end">
+                        <IconButton
+                          onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                          edge="end"
+                        >
+                          {showConfirmPassword ? <VisibilityOff /> : <Visibility />}
+                        </IconButton>
+                      </InputAdornment>
+                    ),
+                  }}
+                />
+              </Grid>
+
+              {/* Role Specific Section */}
+              <Grid item xs={12}>
+                <Typography variant="h6" sx={{ mt: 2, mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <SchoolIcon color="action" /> {formData.role === 'student' ? 'Student Details' : 'Tutor Profile'}
+                </Typography>
+              </Grid>
+
+              {formData.role === 'student' ? (
+                <>
+                  <Grid item xs={12} sm={4}>
+                    <TextField
+                      fullWidth
+                      type="number"
+                      name="yearOfStudy"
+                      label="Year of Study"
+                      value={formData.yearOfStudy}
+                      onChange={handleChange}
+                      inputProps={{ min: 1, max: 10 }}
+                    />
+                  </Grid>
+                  <Grid item xs={12} sm={4}>
+                    <TextField
+                      fullWidth
+                      name="programme"
+                      label="Programme"
+                      value={formData.programme}
+                      onChange={handleChange}
+                    />
+                  </Grid>
+                  <Grid item xs={12} sm={4}>
+                    <TextField
+                      fullWidth
+                      name="faculty"
+                      label="Faculty"
+                      value={formData.faculty}
+                      onChange={handleChange}
+                    />
+                  </Grid>
+                </>
+              ) : (
+                <>
+                  <Grid item xs={12} sm={6}>
+                    <TextField
+                      fullWidth
+                      type="number"
+                      name="yearsOfExperience"
+                      label="Years of Experience"
+                      value={formData.yearsOfExperience}
+                      onChange={handleChange}
+                      inputProps={{ min: 0 }}
+                    />
+                  </Grid>
+                  <Grid item xs={12} sm={6}>
+                    <FormControl fullWidth>
+                      <InputLabel>Specialization</InputLabel>
+                      <Select
+                        name="specialization"
+                        value={formData.specialization}
+                        label="Specialization"
+                        onChange={handleChange}
+                      >
+                        <MenuItem value="">Select...</MenuItem>
+                        <MenuItem value="HSK Test Prep">HSK Test Prep</MenuItem>
+                        <MenuItem value="Conversational">Conversational</MenuItem>
+                        <MenuItem value="Business">Business</MenuItem>
+                        <MenuItem value="Children">Children & Beginners</MenuItem>
+                        <MenuItem value="Advanced">Advanced</MenuItem>
+                        <MenuItem value="General">General Chinese</MenuItem>
+                      </Select>
+                    </FormControl>
+                  </Grid>
+                  <Grid item xs={12}>
+                    <TextField
+                      fullWidth
+                      name="bio"
+                      label="Bio / Teaching Style"
+                      value={formData.bio}
+                      onChange={handleChange}
+                      multiline
+                      rows={3}
+                      placeholder="Tell students about yourself..."
+                    />
+                  </Grid>
+                  <Grid item xs={12}>
+                    <Paper variant="outlined" sx={{ p: 2, bgcolor: '#f8f9fa' }}>
+                      <Typography variant="subtitle2" gutterBottom>Verification Documents</Typography>
+                      <input
+                        accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                        style={{ display: 'none' }}
+                        id="verification-documents-upload"
+                        multiple
+                        type="file"
+                        onChange={handleFileChange}
+                      />
+                      <label htmlFor="verification-documents-upload">
+                        <Button
+                          variant="outlined"
+                          component="span"
+                          startIcon={<UploadFileIcon />}
+                          size="small"
+                        >
+                          Upload Files
+                        </Button>
+                      </label>
+                      <FormHelperText>Upload certificates or credentials (required for tutors)</FormHelperText>
+                      
+                      {verificationDocuments.length > 0 && (
+                        <Box sx={{ mt: 1, display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                          {verificationDocuments.map((doc, index) => (
+                            <Typography key={index} variant="caption" sx={{ bgcolor: '#e8f5e9', color: '#2e7d32', px: 1, py: 0.5, borderRadius: 1 }}>
+                              {doc.name}
+                            </Typography>
+                          ))}
+                        </Box>
+                      )}
+                    </Paper>
+                  </Grid>
+                </>
+              )}
+            </Grid>
 
             <Button
               type="submit"
               fullWidth
               variant="contained"
-              sx={{ mt: 3, mb: 2 }}
+              size="large"
               disabled={isLoading}
+              sx={{ 
+                mt: 4, 
+                mb: 2, 
+                py: 1.5,
+                borderRadius: 2,
+                fontSize: '1rem',
+                fontWeight: 'bold',
+                textTransform: 'none',
+                boxShadow: 2
+              }}
             >
-              {isLoading ? 'Creating Account...' : 'Sign Up'}
+              {isLoading ? 'Creating Account...' : 'Create Account'}
             </Button>
 
             <Box sx={{ textAlign: 'center' }}>
-              <Link component={RouterLink} to="/login" variant="body2">
-                {"Already have an account? Sign In"}
-              </Link>
+              <Typography variant="body2" color="text.secondary">
+                Already have an account?{' '}
+                <Link component={RouterLink} to="/login" variant="body2" fontWeight="bold">
+                  Sign In
+                </Link>
+              </Typography>
             </Box>
           </Box>
         </Paper>
-      </Box>
-    </Container>
+      </Container>
+    </Box>
   );
 }

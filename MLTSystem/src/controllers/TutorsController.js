@@ -16,7 +16,7 @@ let tutorsCache = [];
  */
 export async function fetchTutors() {
   try {
-    const response = await axios.get(API_URL);
+    const response = await axios.get(`${API_URL}?t=${new Date().getTime()}`);
     console.log("API Response:", response.data);
     if (response.data.success && Array.isArray(response.data.data)) {
       // Map backend data to our frontend model
@@ -128,7 +128,7 @@ export function getTutorById(id) {
 
 export async function getTutorReviews(tutorId) {
   try {
-    const response = await axios.get(`${API_URL}/${tutorId}/reviews`);
+    const response = await axios.get(`${API_URL}/${tutorId}/reviews?t=${new Date().getTime()}`);
     return response.data.success ? response.data.data : [];
   } catch (error) {
     console.error("Error fetching tutor reviews:", error);

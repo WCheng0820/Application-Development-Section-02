@@ -15,10 +15,12 @@ import {
   Slider,
   Chip,
   Collapse,
+  InputAdornment
 } from "@mui/material";
 import FilterListIcon from "@mui/icons-material/FilterList";
 import ClearIcon from "@mui/icons-material/Clear";
 import SearchIcon from "@mui/icons-material/Search";
+import SchoolIcon from "@mui/icons-material/School";
 import TutorCard from "../components/TutorCard";
 import * as TutorsController from "../controllers/TutorsController";
 import * as ScheduleController from "../controllers/ScheduleController";
@@ -152,187 +154,243 @@ export default function FindTutors() {
     (minRating > 0 ? 1 : 0);
 
   return (
-    <Container maxWidth="lg" sx={{ mt: 12, mb: 6 }}>
-      {/* Header */}
-      <Box sx={{ mb: 6 }}>
-        <Typography variant="h4" fontWeight="bold" gutterBottom>
-          Find Your Perfect Mandarin Tutor 🇨🇳
-        </Typography>
-        <Typography variant="body1" color="text.secondary" paragraph>
-          Browse experienced Mandarin Chinese tutors and filter by focus,
-          experience, price, and rating to find your perfect match.
-        </Typography>
-      </Box>
+    <Box sx={{ 
+      background: 'linear-gradient(135deg, #1976d2 0%, #64b5f6 100%)', 
+      minHeight: "100vh", 
+      pt: 10, 
+      pb: 6 
+    }}>
+      <Container maxWidth="lg">
+        {/* Header */}
+        <Paper 
+          elevation={3}
+          sx={{ 
+            mb: 6, 
+            textAlign: 'center',
+            background: 'rgba(255, 255, 255, 0.9)',
+            backdropFilter: 'blur(10px)',
+            borderRadius: 4,
+            p: 4,
+            boxShadow: '0 8px 32px 0 rgba(31, 38, 135, 0.37)',
+          }}
+        >
+          <Box display="flex" justifyContent="center" mb={2}>
+            <Box sx={{ bgcolor: 'rgba(25, 118, 210, 0.1)', p: 2, borderRadius: '50%' }}>
+              <SchoolIcon sx={{ fontSize: 40, color: '#1565c0' }} />
+            </Box>
+          </Box>
+          <Typography variant="h3" fontWeight="bold" gutterBottom sx={{ color: '#1565c0' }}>
+            Find Your Perfect Mandarin Tutor 🇨🇳
+          </Typography>
+          <Typography variant="h6" sx={{ color: 'text.secondary', maxWidth: '800px', mx: 'auto' }}>
+            Browse experienced Mandarin Chinese tutors and filter by focus,
+            experience, price, and rating to find your perfect match.
+          </Typography>
+        </Paper>
 
-      {/* Search + Filters */}
-      {/* Hide search/filter dash for tutors (they don't need to find other tutors) */}
-      {currentUser?.role?.toString().toLowerCase() !== 'tutor' && (
-        <Paper elevation={1} sx={{ p: 3, mb: 4 }}>
-        {/* Search Bar */}
-        <Box sx={{ mb: 3 }}>
-          <TextField
-            fullWidth
-            placeholder="Search by tutor name, learning focus, or keywords..."
-            value={keywords}
-            onChange={(e) => setKeywords(e.target.value)}
-            InputProps={{
-              startAdornment: (
-                <SearchIcon sx={{ mr: 1, color: "text.secondary" }} />
-              ),
+        {/* Search + Filters */}
+        {/* Hide search/filter dash for tutors (they don't need to find other tutors) */}
+        {currentUser?.role?.toString().toLowerCase() !== 'tutor' && (
+          <Paper 
+            elevation={3} 
+            sx={{ 
+              p: 3, 
+              mb: 4, 
+              borderRadius: 3,
+              background: 'rgba(255, 255, 255, 0.95)',
+              backdropFilter: 'blur(10px)'
             }}
-            size="small"
-          />
-        </Box>
-
-        {/* Filter Toggle */}
-        <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 2 }}>
-          <Button
-            startIcon={<FilterListIcon />}
-            onClick={() => setExpandFilters(!expandFilters)}
-            size="small"
           >
-            {expandFilters ? "Hide" : "Show"} Filters
-            {activeFiltersCount > 0 && (
-              <Chip
-                label={activeFiltersCount}
-                size="small"
-                color="primary"
-                sx={{ ml: 1 }}
-              />
-            )}
-          </Button>
+          {/* Search Bar */}
+          <Box sx={{ mb: 3 }}>
+            <TextField
+              fullWidth
+              placeholder="Search by tutor name, learning focus, or keywords..."
+              value={keywords}
+              onChange={(e) => setKeywords(e.target.value)}
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <SearchIcon color="primary" />
+                  </InputAdornment>
+                ),
+                sx: { borderRadius: 2, bgcolor: 'white' }
+              }}
+              variant="outlined"
+            />
+          </Box>
 
-          {activeFiltersCount > 0 && (
+          {/* Filter Toggle */}
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 2 }}>
             <Button
-              startIcon={<ClearIcon />}
-              onClick={handleResetFilters}
-              size="small"
-              variant="text"
+              startIcon={<FilterListIcon />}
+              onClick={() => setExpandFilters(!expandFilters)}
+              variant={expandFilters ? "contained" : "outlined"}
+              sx={{ borderRadius: 2 }}
             >
-              Clear All
+              {expandFilters ? "Hide Filters" : "Show Filters"}
+              {activeFiltersCount > 0 && (
+                <Chip
+                  label={activeFiltersCount}
+                  size="small"
+                  color="secondary"
+                  sx={{ ml: 1, height: 20, minWidth: 20 }}
+                />
+              )}
             </Button>
+
+            {activeFiltersCount > 0 && (
+              <Button
+                startIcon={<ClearIcon />}
+                onClick={handleResetFilters}
+                color="error"
+                sx={{ borderRadius: 2 }}
+              >
+                Clear All
+              </Button>
+            )}
+          </Box>
+
+          {/* Expandable Filters */}
+          <Collapse in={expandFilters}>
+            <Box sx={{ pt: 2, borderTop: '1px solid #eee', mt: 2 }}>
+              <Grid container spacing={3}>
+                {/* Subject Filter */}
+                <Grid item xs={12} sm={6} md={3}>
+                  <FormControl fullWidth size="small">
+                    <InputLabel>Learning Focus</InputLabel>
+                    <Select
+                      value={selectedSubject}
+                      label="Learning Focus"
+                      onChange={(e) => setSelectedSubject(e.target.value)}
+                      sx={{ bgcolor: 'white', borderRadius: 1 }}
+                    >
+                      <MenuItem value="">All Learning Focuses</MenuItem>
+                      {subjects.map((subject) => (
+                        <MenuItem key={subject} value={subject}>
+                          {subject}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                </Grid>
+
+                {/* Price Filter */}
+                <Grid item xs={12} sm={6} md={3}>
+                  <Typography variant="body2" fontWeight="bold" gutterBottom color="text.secondary">
+                    Max Price: RM{priceRange[1]}/hr
+                  </Typography>
+                  <Slider
+                    value={priceRange}
+                    onChange={(e, v) => setPriceRange(v)}
+                    min={0}
+                    max={priceMax}
+                    step={5}
+                    valueLabelDisplay="auto"
+                    sx={{ color: 'primary.main' }}
+                  />
+                  <Box display="flex" justifyContent="space-between">
+                    <Typography variant="caption" color="text.secondary">RM0</Typography>
+                    <Typography variant="caption" color="text.secondary">RM{priceMax}</Typography>
+                  </Box>
+                </Grid>
+
+                {/* Experience Filter */}
+                <Grid item xs={12} sm={6} md={3}>
+                  <Typography variant="body2" fontWeight="bold" gutterBottom color="text.secondary">
+                    Min Experience: {minExperience} years
+                  </Typography>
+                  <Slider
+                    value={minExperience}
+                    onChange={(e, v) => setMinExperience(v)}
+                    min={0}
+                    max={experienceMax}
+                    step={1}
+                    valueLabelDisplay="auto"
+                    sx={{ color: 'secondary.main' }}
+                  />
+                  <Box display="flex" justifyContent="space-between">
+                    <Typography variant="caption" color="text.secondary">0 yrs</Typography>
+                    <Typography variant="caption" color="text.secondary">{experienceMax} yrs</Typography>
+                  </Box>
+                </Grid>
+
+                {/* Rating Filter */}
+                <Grid item xs={12} sm={6} md={3}>
+                  <FormControl fullWidth size="small">
+                    <InputLabel>Minimum Rating</InputLabel>
+                    <Select
+                      value={minRating}
+                      label="Minimum Rating"
+                      onChange={(e) => setMinRating(e.target.value)}
+                      sx={{ bgcolor: 'white', borderRadius: 1 }}
+                    >
+                      <MenuItem value={0}>Any Rating</MenuItem>
+                      <MenuItem value={3}>3★ & Above</MenuItem>
+                      <MenuItem value={3.5}>3.5★ & Above</MenuItem>
+                      <MenuItem value={4}>4★ & Above</MenuItem>
+                      <MenuItem value={4.5}>4.5★ & Above</MenuItem>
+                    </Select>
+                  </FormControl>
+                </Grid>
+              </Grid>
+            </Box>
+          </Collapse>
+        </Paper>
+        )}
+
+        {/* Results */}
+        <Box sx={{ mb: 4 }}>
+          <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
+            <Typography variant="h5" fontWeight="bold" color="text.primary">
+              Available Tutors
+            </Typography>
+            <Chip 
+              label={`${filteredTutors.length} found`} 
+              color="primary" 
+              variant="outlined" 
+              sx={{ fontWeight: 'bold' }}
+            />
+          </Box>
+
+          {filteredTutors.length === 0 ? (
+            <Paper 
+              sx={{ 
+                p: 6, 
+                textAlign: "center", 
+                borderRadius: 3,
+                background: 'rgba(255, 255, 255, 0.8)',
+                backdropFilter: 'blur(10px)'
+              }}
+            >
+              <SearchIcon sx={{ fontSize: 60, color: 'text.disabled', mb: 2 }} />
+              <Typography variant="h6" mb={2} color="text.secondary">
+                No tutors match your filters
+              </Typography>
+              <Button
+                variant="contained"
+                startIcon={<ClearIcon />}
+                onClick={handleResetFilters}
+              >
+                Reset Filters
+              </Button>
+            </Paper>
+          ) : (
+            <Grid container spacing={3}>
+              {filteredTutors.map((tutor) => (
+                <Grid item xs={12} sm={6} md={4} key={tutor.id}>
+                  <TutorCard
+                    tutor={tutor}
+                    onBook={handleBooking}
+                    isProcessing={isBooking}
+                    initiallyOpen={location.state?.openTutorId === tutor.id}
+                  />
+                </Grid>
+              ))}
+            </Grid>
           )}
         </Box>
-
-        {/* Expandable Filters */}
-        <Collapse in={expandFilters}>
-          <Box sx={{ pt: 2 }}>
-            <Grid container spacing={3}>
-              {/* Subject Filter */}
-              <Grid item xs={12} sm={6} md={3}>
-                <FormControl fullWidth size="small">
-                  <InputLabel>Learning Focus</InputLabel>
-                  <Select
-                    value={selectedSubject}
-                    label="Learning Focus"
-                    onChange={(e) => setSelectedSubject(e.target.value)}
-                  >
-                    <MenuItem value="">All Learning Focuses</MenuItem>
-                    {subjects.map((subject) => (
-                      <MenuItem key={subject} value={subject}>
-                        {subject}
-                      </MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
-              </Grid>
-
-              {/* Price Filter */}
-              <Grid item xs={12} sm={6} md={3}>
-                <Typography fontWeight="bold" mb={1}>
-                  Price per Hour: RM{priceRange[1]}
-                </Typography>
-                <Slider
-                  value={priceRange}
-                  onChange={(e, v) => setPriceRange(v)}
-                  min={0}
-                  max={priceMax}
-                  step={2}
-                  marks={[
-                    { value: 0, label: "RM0" },
-                    { value: priceMax, label: `RM${priceMax}` },
-                  ]}
-                  valueLabelDisplay="auto"
-                />
-              </Grid>
-
-              {/* Experience Filter */}
-              <Grid item xs={12} sm={6} md={3}>
-                <Typography fontWeight="bold" mb={1}>
-                  Min. Experience: {minExperience} years
-                </Typography>
-                <Slider
-                  value={minExperience}
-                  onChange={(e, v) => setMinExperience(v)}
-                  min={0}
-                  max={experienceMax}
-                  step={1}
-                  marks={[
-                    { value: 0, label: "0" },
-                    { value: experienceMax, label: `${experienceMax}` },
-                  ]}
-                  valueLabelDisplay="auto"
-                />
-              </Grid>
-
-              {/* Rating Filter */}
-              <Grid item xs={12} sm={6} md={3}>
-                <FormControl fullWidth size="small">
-                  <InputLabel>Minimum Rating</InputLabel>
-                  <Select
-                    value={minRating}
-                    label="Minimum Rating"
-                    onChange={(e) => setMinRating(e.target.value)}
-                  >
-                    <MenuItem value={0}>Any Rating</MenuItem>
-                    <MenuItem value={3}>3★ & Above</MenuItem>
-                    <MenuItem value={3.5}>3.5★ & Above</MenuItem>
-                    <MenuItem value={4}>4★ & Above</MenuItem>
-                    <MenuItem value={4.5}>4.5★ & Above</MenuItem>
-                  </Select>
-                </FormControl>
-              </Grid>
-            </Grid>
-          </Box>
-        </Collapse>
-      </Paper>
-      )}
-
-      {/* Results */}
-      <Box sx={{ mb: 4 }}>
-        <Typography variant="subtitle1" fontWeight="bold" mb={3}>
-          {filteredTutors.length} tutor
-          {filteredTutors.length !== 1 ? "s" : ""} found
-        </Typography>
-
-        {filteredTutors.length === 0 ? (
-          <Paper sx={{ p: 6, textAlign: "center" }}>
-            <Typography variant="h6" mb={2}>
-              No tutors match your filters
-            </Typography>
-            <Button
-              variant="contained"
-              startIcon={<ClearIcon />}
-              onClick={handleResetFilters}
-            >
-              Reset Filters
-            </Button>
-          </Paper>
-        ) : (
-          <Grid container spacing={3}>
-            {filteredTutors.map((tutor) => (
-              <Grid item xs={12} sm={6} md={4} key={tutor.id}>
-                <TutorCard
-                  tutor={tutor}
-                  onBook={handleBooking}
-                  isProcessing={isBooking}
-                  initiallyOpen={location.state?.openTutorId === tutor.id}
-                />
-              </Grid>
-            ))}
-          </Grid>
-        )}
-      </Box>
-    </Container>
+      </Container>
+    </Box>
   );
 }

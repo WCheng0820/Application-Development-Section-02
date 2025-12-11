@@ -110,10 +110,18 @@ router.put('/:id', verifyToken, async (req, res) => {
             return res.status(400).json({ success: false, error: 'Status is required' });
         }
 
-        await query(
-            `UPDATE reports SET status = ?, admin_notes = ? WHERE id = ?`,
-            [status, adminNotes || null, id]
-        );
+        // If status is 'resolved', update resolved_at timestamp
+        if (status === 'resolved') {
+            await query(
+                `UPDATE reports SET status = ?, admin_notes = ?, resolved_at = CURRENT_TIMESTAMP WHERE id = ?`,
+                [status, adminNotes || null, id]
+            );
+        } else {
+            await query(
+                `UPDATE reports SET status = ?, admin_notes = ? WHERE id = ?`,
+                [status, adminNotes || null, id]
+            );
+        }
 
         // Notify reporter about the update
         const [report] = await query('SELECT reporter_id FROM reports WHERE id = ?', [id]);

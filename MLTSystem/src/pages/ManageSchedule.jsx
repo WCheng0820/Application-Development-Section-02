@@ -1,6 +1,7 @@
 // src/pages/ManageSchedule.jsx
 import React, { useEffect, useState } from 'react';
-import { Container, Typography, Box, CircularProgress, Alert } from '@mui/material';
+import { Container, Typography, Box, CircularProgress, Alert, Paper } from '@mui/material';
+import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
 import ScheduleManager from '../components/ScheduleManager';
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000';
@@ -75,9 +76,55 @@ export default function ManageSchedule() {
   }
 
   return (
-    <Container maxWidth="md" sx={{ mt: 10 }}>
-      <Typography variant="h5" sx={{ mb: 2 }}>Manage Schedule</Typography>
-      <ScheduleManager tutorId={tutorId} />
-    </Container>
+    <Box
+      sx={{
+        minHeight: "100vh",
+        pt: 10,
+        pb: 4,
+        px: 3,
+        background: 'linear-gradient(135deg, #2e7d32 0%, #66bb6a 100%)',
+      }}
+    >
+      <Container maxWidth="md">
+        {/* Header Section */}
+        <Paper
+          elevation={3}
+          sx={{
+            mb: 4,
+            p: 3,
+            borderRadius: 4,
+            background: 'rgba(255, 255, 255, 0.9)',
+            backdropFilter: 'blur(10px)',
+            boxShadow: '0 8px 32px 0 rgba(31, 38, 135, 0.37)',
+            display: "flex",
+            alignItems: "center",
+            gap: 2,
+          }}
+        >
+          <CalendarTodayIcon sx={{ fontSize: 40, color: '#2e7d32' }} />
+          <Box>
+            <Typography variant="h4" fontWeight="700" sx={{ color: '#2e7d32' }}>
+              Manage Schedule
+            </Typography>
+            <Typography variant="subtitle1" sx={{ color: 'text.secondary' }}>
+              Set your availability for student bookings
+            </Typography>
+          </Box>
+        </Paper>
+
+        <Paper
+          elevation={3}
+          sx={{
+            p: 4,
+            borderRadius: 4,
+            background: 'rgba(255, 255, 255, 0.9)',
+            backdropFilter: 'blur(10px)',
+            boxShadow: '0 8px 32px 0 rgba(31, 38, 135, 0.37)',
+          }}
+        >
+          <ScheduleManager tutorId={tutorId} />
+        </Paper>
+      </Container>
+    </Box>
   );
 }

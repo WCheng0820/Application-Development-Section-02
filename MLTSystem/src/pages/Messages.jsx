@@ -23,10 +23,14 @@ import {
   DialogTitle,
   DialogContent,
   InputAdornment,
+  Collapse,
 } from "@mui/material";
+import MessageIcon from "@mui/icons-material/Message";
 import AttachFileIcon from "@mui/icons-material/AttachFile";
 import SendIcon from "@mui/icons-material/Send";
 import CloseIcon from "@mui/icons-material/Close";
+import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
+import KeyboardArrowUpIcon from "@mui/icons-material/KeyboardArrowUp";
 import CalendarTodayIcon from "@mui/icons-material/CalendarToday";
 import AccessTimeIcon from "@mui/icons-material/AccessTime";
 import StarIcon from "@mui/icons-material/Star";
@@ -51,6 +55,8 @@ export default function Messages() {
   const [loading, setLoading] = useState(false);
   const [onlineUsers, setOnlineUsers] = useState([]);
   const [typingUsers, setTypingUsers] = useState(new Set());
+  const [bookingInfoExpanded, setBookingInfoExpanded] = useState(false);
+  const [expandedImage, setExpandedImage] = useState(null);
   const messagesEndRef = React.useRef(null);
   const selectedConversationRef = React.useRef(selectedConversation);
   
@@ -81,27 +87,27 @@ export default function Messages() {
 
   // Load conversations on mount and when currentUser changes
   useEffect(() => {
-    if (currentUser?.studentId || currentUser?.tutorId) {
+    if (currentUser?.studentId || currentUser?.tutorId || currentUser?.adminId) {
       refreshConversations();
     }
-  }, [currentUser?.studentId, currentUser?.tutorId]);
+  }, [currentUser?.studentId, currentUser?.tutorId, currentUser?.adminId]);
 
   // Refresh conversations periodically to update booking status
   useEffect(() => {
-    if (!currentUser?.studentId && !currentUser?.tutorId) return;
+    if (!currentUser?.studentId && !currentUser?.tutorId && !currentUser?.adminId) return;
     
     const interval = setInterval(() => {
       refreshConversations();
     }, 10000); // Check every 10 seconds for status updates
     
     return () => clearInterval(interval);
-  }, [currentUser?.studentId, currentUser?.tutorId]);
+  }, [currentUser?.studentId, currentUser?.tutorId, currentUser?.adminId]);
 
   // Initialize socket connection
   useEffect(() => {
-    if (!currentUser?.studentId && !currentUser?.tutorId) return;
+    const userId = currentUser?.studentId || currentUser?.tutorId || currentUser?.adminId;
+    if (!userId) return;
 
-    const userId = currentUser.studentId || currentUser.tutorId;
     socketService.initSocket(userId);
 
     // Clean up old listeners first to prevent duplicates
@@ -113,7 +119,7 @@ export default function Messages() {
     // Listen for incoming messages
     socketService.onMessageReceived((data) => {
       const currentSelected = selectedConversationRef.current;
-      const currentUserId = currentUser.studentId || currentUser.tutorId;
+      const currentUserId = currentUser?.studentId || currentUser?.tutorId || currentUser?.adminId;
 
       // 1. Update thread messages if viewing this conversation
       const isCurrentConversation = currentSelected && (
@@ -227,13 +233,13 @@ export default function Messages() {
       socketService.offTypingStatus();
       socketService.disconnectSocket();
     };
-  }, [currentUser?.studentId, currentUser?.tutorId]);
+  }, [currentUser?.studentId, currentUser?.tutorId, currentUser?.adminId]);
 
   async function refreshConversations() {
-    if (!currentUser?.studentId && !currentUser?.tutorId) return;
+    const userId = currentUser?.studentId || currentUser?.tutorId || currentUser?.adminId;
+    if (!userId) return;
     setLoading(true);
     try {
-      const userId = currentUser.studentId || currentUser.tutorId;
       const convos = await MessagesController.fetchConversations(userId);
       setConversations(convos);
       if (!selectedConversation && convos.length) {
@@ -252,7 +258,7 @@ export default function Messages() {
     
     (async () => {
       try {
-        const currentUserId = currentUser.studentId || currentUser.tutorId;
+        const currentUserId = currentUser.studentId || currentUser.tutorId || currentUser.adminId;
         
         // Join socket room for real-time updates
         socketService.joinConversation(
@@ -298,8 +304,8 @@ export default function Messages() {
 
     // Cleanup when leaving conversation
     return () => {
-      if (selectedConversation && currentUser?.studentId || currentUser?.tutorId) {
-        const currentUserId = currentUser.studentId || currentUser.tutorId;
+      if (selectedConversation && (currentUser?.studentId || currentUser?.tutorId || currentUser?.adminId)) {
+        const currentUserId = currentUser.studentId || currentUser.tutorId || currentUser.adminId;
         socketService.leaveConversation(
           selectedConversation.bookingId,
           currentUserId,
@@ -344,8 +350,8 @@ export default function Messages() {
     if (!selectedConversation) return;
     
     const conversationId = selectedConversation.bookingId || 
-      `${[currentUser.studentId || currentUser.tutorId, selectedConversation.otherParticipantId].sort().join('-')}`;
-    const userId = currentUser.studentId || currentUser.tutorId;
+      `${[currentUser.studentId || currentUser.tutorId || currentUser.adminId, selectedConversation.otherParticipantId].sort().join('-')}`;
+    const userId = currentUser.studentId || currentUser.tutorId || currentUser.adminId;
     
     // Get user's full name from profile
     const firstName = currentUser.profile?.firstName || '';
@@ -387,7 +393,7 @@ export default function Messages() {
     }
 
     try {
-      const currentUserId = currentUser.studentId || currentUser.tutorId;
+      const currentUserId = currentUser.studentId || currentUser.tutorId || currentUser.adminId || currentUser.userId;
       const messageData = {
         bookingId: selectedConversation.bookingId,
         senderId: currentUserId,
@@ -431,6 +437,9 @@ export default function Messages() {
       } else if (currentUser?.tutorId) {
         const students = await MessagesController.fetchAvailableStudents();
         setAvailableUsers(students);
+      } else if (currentUser?.adminId) {
+        const users = await MessagesController.fetchAllUsers();
+        setAvailableUsers(users);
       }
     } catch (err) {
       console.error("Failed to fetch users", err);
@@ -439,7 +448,14 @@ export default function Messages() {
 
   const handleStartChat = (user) => {
     // Determine other participant ID based on current user role
-    const otherId = currentUser?.studentId ? user.tutorId : user.studentId;
+    let otherId;
+    if (currentUser?.studentId) {
+        otherId = user.tutorId;
+    } else if (currentUser?.tutorId) {
+        otherId = user.studentId;
+    } else if (currentUser?.adminId) {
+        otherId = user.userId;
+    }
     
     // Check if conversation already exists
     const existing = conversations.find(c => c.otherParticipantId === otherId);
@@ -450,9 +466,9 @@ export default function Messages() {
       // Create temporary conversation object
       const newConvo = {
         bookingId: null,
-        title: `Chat with ${user.name}`,
+        title: `Chat with ${user.name || user.username}`,
         otherParticipantId: otherId,
-        otherParticipantName: user.name,
+        otherParticipantName: user.name || user.username,
         snippet: 'Start a new conversation',
         timestamp: Date.now(),
         unread: false,
@@ -487,21 +503,68 @@ export default function Messages() {
     );
   }
 
-  return (
-    <Box sx={{ mt: 10, px: 4, pb: 4 }}>
-      <Typography variant="h4" fontWeight="700" sx={{ mb: 1 }}>
-        Messages & Notifications
-      </Typography>
-      <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
-        Chat with your tutors and receive updates on your bookings
-      </Typography>
+  const isTutor = currentUser?.role === 'tutor';
+  const themeColor = isTutor ? '#2e7d32' : '#1976d2';
+  const gradient = isTutor 
+    ? 'linear-gradient(135deg, #2e7d32 0%, #66bb6a 100%)' 
+    : 'linear-gradient(135deg, #1976d2 0%, #64b5f6 100%)';
+  const iconColor = isTutor ? '#2e7d32' : '#1565c0';
 
-      <Box sx={{ display: "flex", gap: 3 }}>
+  return (
+    <Box
+      sx={{
+        height: "100vh",
+        pt: 10,
+        pb: 2,
+        px: 3,
+        background: gradient,
+        display: "flex",
+        flexDirection: "column",
+        overflow: "hidden",
+      }}
+    >
+      {/* Header Section */}
+      <Paper
+        elevation={3}
+        sx={{
+          mb: 2,
+          p: 2,
+          borderRadius: 4,
+          background: 'rgba(255, 255, 255, 0.9)',
+          backdropFilter: 'blur(10px)',
+          boxShadow: '0 8px 32px 0 rgba(31, 38, 135, 0.37)',
+          display: "flex",
+          alignItems: "center",
+          gap: 2,
+        }}
+      >
+        <MessageIcon sx={{ fontSize: 32, color: iconColor }} />
+        <Box>
+          <Typography variant="h5" fontWeight="700" sx={{ color: iconColor }}>
+            Messages & Notifications
+          </Typography>
+        </Box>
+      </Paper>
+
+      <Box sx={{ display: "flex", gap: 3, flex: 1, minHeight: 0 }}>
         {/* Left column: conversations list */}
-        <Paper sx={{ width: 320, p: 2, maxHeight: 700, overflowY: "auto" }}>
+        <Paper
+          elevation={3}
+          sx={{
+            width: 320,
+            p: 2,
+            height: "100%",
+            display: "flex",
+            flexDirection: "column",
+            background: 'rgba(255, 255, 255, 0.9)',
+            backdropFilter: 'blur(10px)',
+            borderRadius: 4,
+            boxShadow: '0 8px 32px 0 rgba(31, 38, 135, 0.37)',
+          }}
+        >
           <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 2 }}>
             <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-              <Typography variant="h6" fontWeight="600">
+              <Typography variant="h6" fontWeight="600" color="primary">
                 Conversations
               </Typography>
               {conversations.some(c => c.unread) && (
@@ -513,7 +576,7 @@ export default function Messages() {
             </IconButton>
           </Box>
 
-          <List sx={{ p: 0 }}>
+          <List sx={{ p: 0, overflowY: "auto", flex: 1 }}>
             {conversations.map((c) => (
               <ListItem
                 key={c.otherParticipantId}
@@ -524,8 +587,10 @@ export default function Messages() {
                   mb: 1,
                   borderRadius: 2,
                   cursor: "pointer",
-                  backgroundColor: selectedConversation?.otherParticipantId === c.otherParticipantId ? "#f5f5f5" : "transparent",
-                  "&:hover": { backgroundColor: "#fafafa" }
+                  backgroundColor: selectedConversation?.otherParticipantId === c.otherParticipantId ? "rgba(25, 118, 210, 0.1)" : "transparent",
+                  "&:hover": { backgroundColor: "rgba(25, 118, 210, 0.05)" },
+                  borderLeft: selectedConversation?.otherParticipantId === c.otherParticipantId ? "4px solid #1976d2" : "4px solid transparent",
+                  transition: "all 0.2s"
                 }}
               >
                 <ListItemAvatar>
@@ -575,9 +640,9 @@ export default function Messages() {
               </ListItem>
             ))}
             {conversations.length === 0 && (
-              <Box sx={{ p: 2, textAlign: "center" }}>
-                <Typography color="text.secondary">No conversations yet</Typography>
-                <Button variant="outlined" startIcon={<AddCommentIcon />} onClick={handleOpenNewChat} sx={{ mt: 2 }}>
+              <Box sx={{ p: 2, textAlign: "center", mt: 4 }}>
+                <Typography color="text.secondary" sx={{ mb: 2 }}>No conversations yet</Typography>
+                <Button variant="contained" startIcon={<AddCommentIcon />} onClick={handleOpenNewChat}>
                   Start New Chat
                 </Button>
               </Box>
@@ -586,20 +651,47 @@ export default function Messages() {
         </Paper>
 
         {/* Right column: thread + booking info */}
-        <Box sx={{ flex: 1 }}>
+        <Box sx={{ flex: 1, display: "flex", flexDirection: "column", height: "100%" }}>
           {!selectedConversation ? (
-            <Paper sx={{ p: 4, textAlign: "center" }}>
-              <Typography color="text.secondary">Select a conversation to start messaging</Typography>
+            <Paper
+              sx={{
+                p: 4,
+                textAlign: "center",
+                height: "100%",
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                justifyContent: "center",
+                background: "rgba(255, 255, 255, 0.8)",
+                backdropFilter: "blur(10px)",
+                borderRadius: 3,
+                boxShadow: "0 8px 32px 0 rgba(31, 38, 135, 0.15)",
+                border: "1px solid rgba(255, 255, 255, 0.18)",
+              }}
+            >
+              <MessageIcon sx={{ fontSize: 60, color: "text.secondary", mb: 2, opacity: 0.5 }} />
+              <Typography variant="h6" color="text.secondary">Select a conversation to start messaging</Typography>
             </Paper>
           ) : (
-            <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
+            <Box sx={{ display: "flex", flexDirection: "column", gap: 1, height: "100%" }}>
               {/* Chat Header with Report Button */}
-              <Paper sx={{ p: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <Paper
+                sx={{
+                  p: 1.5,
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  background: "rgba(255, 255, 255, 0.9)",
+                  backdropFilter: "blur(10px)",
+                  borderRadius: 3,
+                  boxShadow: "0 4px 16px 0 rgba(31, 38, 135, 0.1)",
+                }}
+              >
                   <Box display="flex" alignItems="center" gap={2}>
                       <Avatar sx={{ bgcolor: "#1976d2" }}>
                           {(selectedConversation.otherParticipantName || "?").charAt(0).toUpperCase()}
                       </Avatar>
-                      <Typography variant="h6">
+                      <Typography variant="h6" fontWeight="600">
                           {selectedConversation.otherParticipantName}
                       </Typography>
                   </Box>
@@ -609,6 +701,7 @@ export default function Messages() {
                       startIcon={<FlagIcon />}
                       onClick={() => setReportDialogOpen(true)}
                       size="small"
+                      sx={{ borderRadius: 2 }}
                   >
                       Report
                   </Button>
@@ -618,56 +711,64 @@ export default function Messages() {
               {selectedConversation.hasBooking && selectedConversation.bookings && selectedConversation.bookings.length > 0 && (
                 <Card 
                     sx={{ 
-                        backgroundColor: "#e3f2fd", 
-                        cursor: 'pointer',
-                        transition: '0.2s',
-                        '&:hover': {
-                            backgroundColor: "#bbdefb",
-                            transform: 'translateY(-2px)',
-                            boxShadow: 2
-                        }
+                        background: "linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%)",
+                        borderRadius: 3,
+                        boxShadow: "0 4px 16px 0 rgba(31, 38, 135, 0.1)",
                     }}
-                    onClick={() => handleBookingClick(selectedConversation.bookings[0].id)}
                 >
-                  <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
-                        <Typography variant="subtitle1" fontWeight="600">
-                        📅 Latest Booking
-                        </Typography>
-                        {selectedConversation.bookings.length > 1 && (
-                            <Chip label={`${selectedConversation.bookings.length} Bookings`} size="small" color="primary" variant="outlined" />
-                        )}
+                  <CardContent sx={{ p: 1, '&:last-child': { pb: 1 } }}>
+                    <Box 
+                        sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer' }}
+                        onClick={() => setBookingInfoExpanded(!bookingInfoExpanded)}
+                    >
+                        <Box display="flex" alignItems="center" gap={1}>
+                            <Typography variant="subtitle2" fontWeight="600" color="primary.dark">
+                            📅 Latest Booking
+                            </Typography>
+                            {selectedConversation.bookings.length > 1 && (
+                                <Chip label={`${selectedConversation.bookings.length}`} size="small" color="primary" sx={{ height: 20, fontSize: '0.7rem' }} />
+                            )}
+                        </Box>
+                        <IconButton size="small" sx={{ p: 0 }}>
+                            {bookingInfoExpanded ? <KeyboardArrowUpIcon fontSize="small" /> : <KeyboardArrowDownIcon fontSize="small" />}
+                        </IconButton>
                     </Box>
                     
-                    {/* Show only the latest booking (first in array) */}
-                    {(() => {
-                        const latestBooking = selectedConversation.bookings[0];
-                        return (
-                            <Grid container spacing={1}>
-                                <Grid item xs={6}>
-                                    <Typography variant="caption" color="text.secondary">Date</Typography>
-                                    <Typography variant="body2" fontWeight="600">
-                                    {new Date(latestBooking.date).toLocaleDateString()}
-                                    </Typography>
-                                </Grid>
-                                <Grid item xs={6}>
-                                    <Typography variant="caption" color="text.secondary">Time</Typography>
-                                    <Typography variant="body2" fontWeight="600">
-                                    {latestBooking.startTime} - {latestBooking.endTime}
-                                    </Typography>
-                                </Grid>
-                                <Grid item xs={12} sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 0.5 }}>
-                                    <Typography variant="caption" color="text.secondary">Status:</Typography>
-                                    <Chip
-                                    label={latestBooking.status}
-                                    color={latestBooking.status === "confirmed" ? "success" : latestBooking.status === "cancelled" ? "error" : "warning"}
-                                    size="small"
-                                    sx={{ height: 20, fontSize: '0.7rem' }}
-                                    />
-                                </Grid>
-                            </Grid>
-                        );
-                    })()}
+                    <Collapse in={bookingInfoExpanded}>
+                        <Box 
+                            sx={{ mt: 1, cursor: 'pointer' }} 
+                            onClick={() => handleBookingClick(selectedConversation.bookings[0].id)}
+                        >
+                            {(() => {
+                                const latestBooking = selectedConversation.bookings[0];
+                                return (
+                                    <Grid container spacing={1}>
+                                        <Grid item xs={6}>
+                                            <Typography variant="caption" color="text.secondary">Date</Typography>
+                                            <Typography variant="body2" fontWeight="600">
+                                            {new Date(latestBooking.date).toLocaleDateString()}
+                                            </Typography>
+                                        </Grid>
+                                        <Grid item xs={6}>
+                                            <Typography variant="caption" color="text.secondary">Time</Typography>
+                                            <Typography variant="body2" fontWeight="600">
+                                            {latestBooking.startTime} - {latestBooking.endTime}
+                                            </Typography>
+                                        </Grid>
+                                        <Grid item xs={12} sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 0.5 }}>
+                                            <Typography variant="caption" color="text.secondary">Status:</Typography>
+                                            <Chip
+                                            label={latestBooking.status}
+                                            color={latestBooking.status === "confirmed" ? "success" : latestBooking.status === "cancelled" ? "error" : "warning"}
+                                            size="small"
+                                            sx={{ height: 20, fontSize: '0.7rem', fontWeight: 'bold' }}
+                                            />
+                                        </Grid>
+                                    </Grid>
+                                );
+                            })()}
+                        </Box>
+                    </Collapse>
                   </CardContent>
                 </Card>
               )}
@@ -676,57 +777,77 @@ export default function Messages() {
               {!selectedConversation.hasBooking && selectedConversation.tutorInfo && (
                 <Card 
                     sx={{ 
-                        backgroundColor: "#f3e5f5",
-                        cursor: 'pointer',
-                        transition: '0.2s',
-                        '&:hover': {
-                            backgroundColor: "#e1bee7",
-                            transform: 'translateY(-2px)',
-                            boxShadow: 2
-                        }
+                        background: "linear-gradient(135deg, #f3e5f5 0%, #e1bee7 100%)",
+                        borderRadius: 3,
+                        boxShadow: "0 4px 16px 0 rgba(31, 38, 135, 0.1)",
                     }}
-                    onClick={() => handleTutorClick(selectedConversation.otherParticipantId)}
                 >
-                  <CardContent>
-                    <Typography variant="h6" fontWeight="600" sx={{ mb: 1 }}>
-                      👨‍🏫 Tutor Information
-                    </Typography>
-                    <Grid container spacing={2}>
-                      <Grid item xs={6}>
-                        <Typography variant="body2" color="text.secondary">Specialization</Typography>
-                        <Typography variant="body1" fontWeight="600">
-                          {selectedConversation.tutorInfo.specialization}
+                  <CardContent sx={{ p: 1, '&:last-child': { pb: 1 } }}>
+                    <Box 
+                        sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer' }}
+                        onClick={() => setBookingInfoExpanded(!bookingInfoExpanded)}
+                    >
+                        <Typography variant="subtitle2" fontWeight="600" color="secondary.dark">
+                        👨‍🏫 Tutor Information
                         </Typography>
-                      </Grid>
-                      <Grid item xs={6}>
-                        <Typography variant="body2" color="text.secondary">Hourly Rate</Typography>
-                        <Typography variant="body1" fontWeight="600">
-                          RM {selectedConversation.tutorInfo.price}
-                        </Typography>
-                      </Grid>
-                      <Grid item xs={12}>
-                        <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
-                          <StarIcon sx={{ color: "#ffc107", fontSize: 18 }} />
-                          <Typography variant="body1" fontWeight="600">
-                            {selectedConversation.tutorInfo.rating || "No rating yet"}
-                          </Typography>
+                        <IconButton size="small" sx={{ p: 0 }}>
+                            {bookingInfoExpanded ? <KeyboardArrowUpIcon fontSize="small" /> : <KeyboardArrowDownIcon fontSize="small" />}
+                        </IconButton>
+                    </Box>
+
+                    <Collapse in={bookingInfoExpanded}>
+                        <Box sx={{ mt: 1, cursor: 'pointer' }} onClick={() => handleTutorClick(selectedConversation.otherParticipantId)}>
+                            <Grid container spacing={2}>
+                            <Grid item xs={6}>
+                                <Typography variant="body2" color="text.secondary">Specialization</Typography>
+                                <Typography variant="body1" fontWeight="600">
+                                {selectedConversation.tutorInfo.specialization}
+                                </Typography>
+                            </Grid>
+                            <Grid item xs={6}>
+                                <Typography variant="body2" color="text.secondary">Hourly Rate</Typography>
+                                <Typography variant="body1" fontWeight="600">
+                                RM {selectedConversation.tutorInfo.price}
+                                </Typography>
+                            </Grid>
+                            <Grid item xs={12}>
+                                <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
+                                <StarIcon sx={{ color: "#ffc107", fontSize: 18 }} />
+                                <Typography variant="body1" fontWeight="600">
+                                    {selectedConversation.tutorInfo.rating || "No rating yet"}
+                                </Typography>
+                                </Box>
+                            </Grid>
+                            </Grid>
                         </Box>
-                      </Grid>
-                    </Grid>
+                    </Collapse>
                   </CardContent>
                 </Card>
               )}
 
               {/* Messages Thread */}
-              <Paper sx={{ height: 400, p: 2, display: "flex", flexDirection: "column", overflowY: "auto" }}>
-                <Box sx={{ flex: 1, overflowY: "auto", mb: 2 }}>
+              <Paper
+                sx={{
+                  flex: 1,
+                  p: 2,
+                  display: "flex",
+                  flexDirection: "column",
+                  overflow: "hidden",
+                  background: "rgba(255, 255, 255, 0.8)",
+                  backdropFilter: "blur(10px)",
+                  borderRadius: 3,
+                  boxShadow: "0 8px 32px 0 rgba(31, 38, 135, 0.15)",
+                  border: "1px solid rgba(255, 255, 255, 0.18)",
+                }}
+              >
+                <Box sx={{ flex: 1, overflowY: "auto", mb: 2, px: 1 }}>
                   {threadMessages.length === 0 ? (
                     <Box sx={{ height: "100%", display: "flex", alignItems: "center", justifyContent: "center" }}>
                       <Typography color="text.secondary">No messages yet. Start the conversation!</Typography>
                     </Box>
                   ) : (
                     threadMessages.map((m) => {
-                      const currentUserId = currentUser.studentId || currentUser.tutorId;
+                      const currentUserId = currentUser.studentId || currentUser.tutorId || currentUser.adminId;
                       const isCurrentUser = m.senderId === currentUserId;
                       
                       // Use name initials instead of ID initials
@@ -749,12 +870,13 @@ export default function Messages() {
                           </Avatar>
                           <Box sx={{ flex: 1, maxWidth: "70%" }}>
                             <Box sx={{
-                              bgcolor: isCurrentUser ? "#e3f2fd" : "#f5f5f5",
+                              bgcolor: isCurrentUser ? "#e3f2fd" : "white",
                               color: isCurrentUser ? "#0d47a1" : "text.primary",
                               p: 2,
                               borderRadius: isCurrentUser ? "20px 20px 4px 20px" : "20px 20px 20px 4px",
-                              boxShadow: 1,
-                              wordBreak: "break-word"
+                              boxShadow: "0 2px 5px rgba(0,0,0,0.05)",
+                              wordBreak: "break-word",
+                              border: isCurrentUser ? "none" : "1px solid #eee"
                             }}>
                               {m.content && (
                                 <Typography variant="body2" sx={{ whiteSpace: "pre-wrap", fontSize: "0.95rem" }}>
@@ -764,12 +886,28 @@ export default function Messages() {
                               {m.attachment && m.attachment.dataUrl && (
                                 <Box sx={{ mt: m.content ? 1 : 0 }}>
                                   {m.attachment.type.startsWith("image/") && (
-                                    <Box>
+                                    <Box sx={{ position: 'relative', display: 'inline-block' }}>
                                       <img
                                         src={m.attachment.dataUrl}
                                         alt="attachment"
-                                        style={{ maxWidth: 250, borderRadius: 4 }}
+                                        style={{ maxWidth: 250, borderRadius: 8, cursor: 'pointer' }}
+                                        onClick={() => setExpandedImage(m.attachment.dataUrl)}
                                       />
+                                      <IconButton
+                                        size="small"
+                                        sx={{
+                                          position: 'absolute',
+                                          top: 5,
+                                          right: 5,
+                                          bgcolor: 'rgba(0,0,0,0.5)',
+                                          color: 'white',
+                                          '&:hover': { bgcolor: 'rgba(0,0,0,0.7)' }
+                                        }}
+                                        onClick={() => setExpandedImage(m.attachment.dataUrl)}
+                                        title="Expand image"
+                                      >
+                                        <SearchIcon fontSize="small" />
+                                      </IconButton>
                                       {m.attachment.size && (
                                         <Typography variant="caption" display="block" color="text.secondary" sx={{ mt: 0.5 }}>
                                           {formatFileSize(m.attachment.size)}
@@ -894,7 +1032,7 @@ export default function Messages() {
                 )}
 
                 {/* Composer */}
-                <Box sx={{ display: "flex", gap: 1, alignItems: "flex-end", borderTop: "1px solid #eee", pt: 2 }}>
+                <Box sx={{ display: "flex", gap: 1, alignItems: "flex-end", borderTop: "1px solid rgba(0,0,0,0.05)", pt: 2 }}>
                   <TextField
                     fullWidth
                     multiline
@@ -909,14 +1047,20 @@ export default function Messages() {
                       }
                     }}
                     size="small"
+                    sx={{
+                      "& .MuiOutlinedInput-root": {
+                        borderRadius: 3,
+                        backgroundColor: "rgba(255,255,255,0.5)",
+                      }
+                    }}
                   />
                   <input id="file-input" type="file" style={{ display: "none" }} onChange={handleFileChange} />
                   <label htmlFor="file-input">
-                    <IconButton component="span" size="small">
+                    <IconButton component="span" size="small" color="primary">
                       <AttachFileIcon />
                     </IconButton>
                   </label>
-                  <Button variant="contained" endIcon={<SendIcon />} onClick={handleSend} size="small">
+                  <Button variant="contained" endIcon={<SendIcon />} onClick={handleSend} size="small" sx={{ borderRadius: 3, px: 3 }}>
                     Send
                   </Button>
                 </Box>
@@ -935,8 +1079,20 @@ export default function Messages() {
       </Snackbar>
 
       {/* New Chat Dialog */}
-      <Dialog open={openNewChat} onClose={() => setOpenNewChat(false)} maxWidth="sm" fullWidth>
-        <DialogTitle>Start New Conversation</DialogTitle>
+      <Dialog 
+        open={openNewChat} 
+        onClose={() => setOpenNewChat(false)} 
+        maxWidth="sm" 
+        fullWidth
+        PaperProps={{
+          sx: {
+            borderRadius: 3,
+            background: "rgba(255, 255, 255, 0.95)",
+            backdropFilter: "blur(10px)",
+          }
+        }}
+      >
+        <DialogTitle sx={{ fontWeight: 700, color: "#1976d2" }}>Start New Conversation</DialogTitle>
         <DialogContent>
           <TextField
             fullWidth
@@ -954,25 +1110,27 @@ export default function Messages() {
           />
           <List>
             {availableUsers
-              .filter(u => u.name.toLowerCase().includes(searchTerm.toLowerCase()))
+              .filter(u => (u.name || u.username).toLowerCase().includes(searchTerm.toLowerCase()))
               .map((user) => (
                 <ListItem 
-                  key={user.tutorId || user.studentId} 
+                  key={user.tutorId || user.studentId || user.userId} 
                   button 
                   onClick={() => handleStartChat(user)}
-                  sx={{ borderRadius: 1, mb: 0.5, '&:hover': { bgcolor: '#f5f5f5' } }}
+                  sx={{ borderRadius: 2, mb: 0.5, '&:hover': { bgcolor: '#f5f5f5' } }}
                 >
                   <ListItemAvatar>
                     <Avatar sx={{ bgcolor: "#1976d2" }}>
-                      {user.name.charAt(0).toUpperCase()}
+                      {(user.name || user.username).charAt(0).toUpperCase()}
                     </Avatar>
                   </ListItemAvatar>
                   <ListItemText 
-                    primary={user.name} 
+                    primary={user.name || user.username} 
                     secondary={
                       currentUser?.studentId 
                         ? `${user.specialization} • RM${user.price}/hr`
-                        : user.email
+                        : currentUser?.adminId
+                          ? <Chip label={user.role} size="small" color={user.role === 'tutor' ? 'primary' : 'default'} sx={{ height: 20, fontSize: '0.7rem', textTransform: 'capitalize' }} />
+                          : user.email
                     } 
                   />
                 </ListItem>
@@ -993,6 +1151,47 @@ export default function Messages() {
         reportedId={selectedConversation?.otherParticipantId}
         defaultCategory="harassment"
       />
+
+      {/* Image Expansion Dialog */}
+      <Dialog
+        open={!!expandedImage}
+        onClose={() => setExpandedImage(null)}
+        maxWidth="lg"
+        PaperProps={{
+          sx: {
+            bgcolor: 'transparent',
+            boxShadow: 'none',
+            overflow: 'hidden'
+          }
+        }}
+      >
+        <Box sx={{ position: 'relative', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+          <IconButton
+            onClick={() => setExpandedImage(null)}
+            sx={{
+              position: 'absolute',
+              top: 10,
+              right: 10,
+              bgcolor: 'rgba(0,0,0,0.5)',
+              color: 'white',
+              '&:hover': { bgcolor: 'rgba(0,0,0,0.7)' },
+              zIndex: 1
+            }}
+          >
+            <CloseIcon />
+          </IconButton>
+          <img
+            src={expandedImage}
+            alt="Expanded view"
+            style={{
+              maxWidth: '90vw',
+              maxHeight: '90vh',
+              objectFit: 'contain',
+              borderRadius: 8
+            }}
+          />
+        </Box>
+      </Dialog>
     </Box>
   );
 }

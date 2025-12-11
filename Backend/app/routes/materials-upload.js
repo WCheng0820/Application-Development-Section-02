@@ -4,6 +4,7 @@ const multer = require('multer');
 const { google } = require('googleapis');
 const stream = require('stream');
 const mysql = require('mysql');
+const { verifyToken } = require('../middlewares/auth');
 
 // Multer config for file upload
 const upload = multer({
@@ -34,13 +35,23 @@ const db = mysql.createPool({
 });
 
 // POST /api/materials/upload - Upload file to Drive (MLT folder) and save metadata to DB
-router.post('/upload', upload.single('file'), async (req, res) => {
+router.post('/upload', verifyToken, upload.single('file'), async (req, res) => {
     try {
         if (!req.file) {
             return res.status(400).json({ success: false, error: 'No file uploaded' });
         }
 
         const { title, category, description } = req.body;
+        // Get tutorId from token (req.user)
+        // Note: verifyToken middleware populates req.user with { userId, role, ... }
+        // For tutors, we need to fetch their tutorId if it's not in the token payload
+        // But usually we can assume userId is the tutorId if they are a tutor (based on our seeding logic)
+        // Or we can query the tutor table.
+        // Let's assume req.user.tutorId is available if we updated auth middleware, 
+        // but standard verifyToken might only have userId.
+        // Let's use req.user.userId as tutorId since they are identical in our system (t000001)
+        const tutorId = req.user.tutorId || req.user.userId;
+
         const MLT_FOLDER_ID = process.env.GOOGLE_MLT_FOLDER_ID; // Add this to .env
 
         if (!MLT_FOLDER_ID) {
@@ -84,9 +95,9 @@ router.post('/upload', upload.single('file'), async (req, res) => {
         const { webViewLink, webContentLink } = result.data;
 
         // Save metadata to database
-        const sql = `INSERT INTO materials (title, description, category, drive_file_id, web_view_link, web_content_link) VALUES (?, ?, ?, ?, ?, ?)`;
+        const sql = `INSERT INTO materials (title, description, category, drive_file_id, web_view_link, web_content_link, tutorId) VALUES (?, ?, ?, ?, ?, ?, ?)`;
         
-        db.query(sql, [title, description || null, category, fileId, webViewLink, webContentLink], (err, dbResult) => {
+        db.query(sql, [title, description || null, category, fileId, webViewLink, webContentLink, tutorId], (err, dbResult) => {
             if (err) {
                 console.error('DB error:', err);
                 return res.status(500).json({ success: false, error: err.message });

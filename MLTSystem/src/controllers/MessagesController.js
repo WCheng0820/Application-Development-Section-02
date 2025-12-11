@@ -38,6 +38,18 @@ export async function fetchAvailableStudents() {
   }
 }
 
+// Get all users for admin to chat with
+export async function fetchAllUsers() {
+  try {
+    const config = getAxiosConfig();
+    const res = await axios.get(`${MESSAGES_URL}/all-users`, config);
+    return res.data.success ? res.data.data : [];
+  } catch (err) {
+    console.error('Error fetching all users:', err);
+    return [];
+  }
+}
+
 // Fetch conversations for a user (includes booked tutors and available tutors)
 export async function fetchConversations(userId) {
   try {
@@ -130,7 +142,7 @@ export async function getUnreadCount(userId) {
 export async function getUnreadMessagesCount(userId) {
   try {
     const config = getAxiosConfig();
-    const res = await axios.get(`${MESSAGES_URL}/unread-messages-count/${userId}`, config);
+    const res = await axios.get(`${MESSAGES_URL}/unread-messages-count/${userId}?t=${new Date().getTime()}`, config);
     return res.data.success ? res.data.data.unreadCount : 0;
   } catch (err) {
     console.error('Error getting unread messages count:', err);

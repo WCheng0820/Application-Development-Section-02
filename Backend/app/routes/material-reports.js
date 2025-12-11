@@ -7,10 +7,10 @@ const { verifyToken } = require('../middlewares/auth');
 // POST /api/material-reports
 router.post('/', verifyToken, async (req, res) => {
     try {
-        const { materialLink, materialTitle, reason } = req.body;
+        const { materialLink, materialTitle, reason, reportedId } = req.body;
         const reporterId = req.user.userId;
 
-        console.log('Report submission:', { materialLink, materialTitle, reason, reporterId });
+        console.log('Report submission:', { materialLink, materialTitle, reason, reporterId, reportedId });
 
         if (!materialLink || !reason) {
             return res.status(400).json({ success: false, error: 'Missing materialLink or reason' });
@@ -27,21 +27,33 @@ router.post('/', verifyToken, async (req, res) => {
         // category: 'material'
         // evidence_url: materialLink (the Google Drive link)
         // reporter_id: student who flagged
-        // reported_id: NULL (one-directional, no specific user reported)
+        // reported_id: The tutor who uploaded the material (if available)
         const description = materialTitle ? `[${materialTitle}] ${reason}` : reason;
         const result = await db.query(
             `INSERT INTO reports (reporter_id, reported_id, target_type, target_id, category, description, evidence_url, status)
-             VALUES (?, NULL, 'content', NULL, 'material', ?, ?, 'pending')`,
-            [reporterId, description, materialLink]
+             VALUES (?, ?, 'content', NULL, 'material', ?, ?, 'pending')`,
+            [reporterId, reportedId || null, description, materialLink]
         );
 
-        console.log('Report created successfully:', result.insertId);
+        const reportId = result.insertId;
+
+        // Notify all admins
+        const admins = await db.query("SELECT userId FROM users WHERE role = 'admin'");
+        for (const admin of admins) {
+            await db.query(
+                `INSERT INTO notification (recipientId, senderId, reportId, text, type)
+                 VALUES (?, ?, ?, ?, 'report')`,
+                [admin.userId, reporterId, reportId, `New material report: ${materialTitle || 'Untitled'}`]
+            );
+        }
+
+        console.log('Report created successfully:', reportId);
 
         res.status(201).json({ 
             success: true,
             message: 'Material report submitted successfully',
             data: {
-                id: result.insertId,
+                id: reportId,
                 materialLink,
                 reporterId,
                 reason,

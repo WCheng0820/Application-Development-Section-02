@@ -15,8 +15,11 @@ import { useAuth } from "../context/AuthContext";
 import { useState, useEffect } from "react";
 import AccountCircle from "@mui/icons-material/AccountCircle";
 import NotificationsIcon from '@mui/icons-material/Notifications';
+import DoneAllIcon from '@mui/icons-material/DoneAll';
+import CircleIcon from '@mui/icons-material/Circle';
 import * as MessagesController from "../controllers/MessagesController";
 import * as socketService from "../services/socketService";
+import AutoStoriesIcon from '@mui/icons-material/AutoStories';
 
 const Navbar = () => {
   const location = useLocation();
@@ -31,13 +34,22 @@ const Navbar = () => {
   const navItems = [
     { label: "Dashboard", path: "/" },
     { label: "Find Tutors", path: "/find-tutors" },
-    { label: "Bookings", path: "/bookings" },
+    // Admin sees "Monitor Sessions", others see "Bookings"
+    ...(currentUser?.role === 'admin' 
+      ? [{ label: "Monitor Sessions", path: "/admin/sessions" }]
+      : [{ label: "Bookings", path: "/bookings" }]
+    ),
     { label: "Materials", path: "/materials" },
-    { label: "Messages", path: "/messages" },
+    { 
+      label: "Messages", 
+      path: "/messages",
+      badge: unreadMessages // Add badge count property
+    },
   ];
 
   if (currentUser?.role === 'admin') {
     navItems.push({ label: "Reports", path: "/reports" });
+    navItems.push({ label: "Manage Users", path: "/admin/users" });
   }
 
   const handleMenu = (event) => {
@@ -66,6 +78,17 @@ const Navbar = () => {
 
   const handleNotificationClose = () => {
     setNotificationAnchorEl(null);
+  };
+
+  const handleMarkAllRead = async () => {
+    if (currentUser) {
+      const userId = currentUser.studentId || currentUser.tutorId || currentUser.adminId || currentUser.id;
+      if (userId) {
+        await MessagesController.clearNotificationsForUser(userId);
+        setNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
+        setUnreadNotifications(0);
+      }
+    }
   };
 
   const handleNotificationItemClick = async (notification) => {
@@ -117,7 +140,7 @@ const Navbar = () => {
 
   // Fetch unread count on mount and when currentUser changes
   useEffect(() => {
-    const userId = currentUser?.studentId || currentUser?.tutorId;
+    const userId = currentUser?.studentId || currentUser?.tutorId || currentUser?.adminId || currentUser?.id;
     
     if (!userId) return;
     
@@ -144,7 +167,7 @@ const Navbar = () => {
       clearInterval(interval);
       socketService.offNotification();
     };
-  }, [currentUser?.studentId, currentUser?.tutorId]);
+  }, [currentUser]);
 
   async function refreshUnreadCount(userId) {
     if (!userId) return;
@@ -184,9 +207,14 @@ const Navbar = () => {
       sx={{ backgroundColor: "white" }}
     >
       <Toolbar sx={{ display: "flex", justifyContent: "space-between" }}>
-        <Typography variant="h6" sx={{ fontWeight: "bold", color: "red" }}>
-          Mandarin Tutoring
-        </Typography>
+        <Box display="flex" alignItems="center" gap={2} component={Link} to="/" sx={{ textDecoration: 'none', color: 'inherit' }}>
+          <Avatar sx={{ bgcolor: 'primary.main', width: 40, height: 40 }}>
+            <AutoStoriesIcon sx={{ color: 'white' }} />
+          </Avatar>
+          <Typography variant="h6" sx={{ fontWeight: "bold", color: "primary.main", letterSpacing: 1 }}>
+            Mandarin Tutoring
+          </Typography>
+        </Box>
 
         {isAuthenticated && (
           <Box>
@@ -209,13 +237,9 @@ const Navbar = () => {
                       position: 'relative'
                     }}
                   >
-                    {unreadMessages > 0 ? (
-                      <Badge badgeContent={unreadMessages} color="error">
-                        {item.label}
-                      </Badge>
-                    ) : (
-                      item.label
-                    )}
+                    <Badge badgeContent={item.badge} color="error">
+                      {item.label}
+                    </Badge>
                   </Button>
                 );
               }
@@ -265,41 +289,71 @@ const Navbar = () => {
               onClose={handleNotificationClose}
               PaperProps={{
                 style: {
-                  maxHeight: 400,
-                  width: 350,
+                  maxHeight: 500,
+                  width: 360,
                 },
+                elevation: 4,
+                sx: { borderRadius: 2, mt: 1.5 }
               }}
               transformOrigin={{ horizontal: 'right', vertical: 'top' }}
               anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
             >
+                <Box sx={{ p: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #eee' }}>
+                  <Typography variant="subtitle1" fontWeight="bold">Notifications</Typography>
+                  {notifications.length > 0 && unreadNotifications > 0 && (
+                    <Button 
+                      size="small" 
+                      startIcon={<DoneAllIcon />} 
+                      onClick={handleMarkAllRead}
+                      sx={{ textTransform: 'none', fontSize: '0.8rem' }}
+                    >
+                      Mark all read
+                    </Button>
+                  )}
+                </Box>
                 {notifications.length === 0 ? (
-                    <MenuItem disabled>
-                        <Typography variant="body2">No notifications</Typography>
-                    </MenuItem>
+                    <Box sx={{ p: 4, textAlign: 'center', opacity: 0.6 }}>
+                        <NotificationsIcon sx={{ fontSize: 40, mb: 1, color: 'text.disabled' }} />
+                        <Typography variant="body2">No notifications yet</Typography>
+                    </Box>
                 ) : (
-                    notifications.map((notif) => (
+                    <Box sx={{ maxHeight: 400, overflow: 'auto' }}>
+                    {notifications.map((notif) => (
                         <MenuItem 
                             key={notif.id} 
                             onClick={() => handleNotificationItemClick(notif)}
                             sx={{ 
                                 whiteSpace: 'normal', 
-                                backgroundColor: notif.is_read ? 'inherit' : 'action.hover',
-                                borderBottom: '1px solid #eee'
+                                backgroundColor: notif.is_read ? 'inherit' : 'rgba(25, 118, 210, 0.04)',
+                                borderBottom: '1px solid #f5f5f5',
+                                py: 2,
+                                px: 2,
+                                display: 'flex',
+                                alignItems: 'flex-start',
+                                gap: 1.5
                             }}
                         >
-                            <Box>
-                                <Typography variant="subtitle2" fontWeight="bold">
-                                    {notif.type.charAt(0).toUpperCase() + notif.type.slice(1)}
-                                </Typography>
-                                <Typography variant="body2" color="text.secondary">
+                            {!notif.is_read && (
+                              <CircleIcon sx={{ fontSize: 10, color: 'primary.main', mt: 0.8 }} />
+                            )}
+                            <Box sx={{ flex: 1 }}>
+                                <Box display="flex" justifyContent="space-between" alignItems="flex-start" mb={0.5}>
+                                  <Typography variant="subtitle2" fontWeight="bold" color={notif.is_read ? 'text.primary' : 'primary.main'}>
+                                      {notif.type.charAt(0).toUpperCase() + notif.type.slice(1).replace('_', ' ')}
+                                  </Typography>
+                                  <Typography variant="caption" color="text.secondary" sx={{ whiteSpace: 'nowrap', ml: 1 }}>
+                                      {new Date(notif.created_at).toLocaleDateString() === new Date().toLocaleDateString() 
+                                        ? new Date(notif.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                                        : new Date(notif.created_at).toLocaleDateString()}
+                                  </Typography>
+                                </Box>
+                                <Typography variant="body2" color="text.secondary" sx={{ lineHeight: 1.4 }}>
                                     {notif.text}
-                                </Typography>
-                                <Typography variant="caption" color="text.disabled">
-                                    {new Date(notif.created_at).toLocaleString()}
                                 </Typography>
                             </Box>
                         </MenuItem>
-                    ))
+                    ))}
+                    </Box>
                 )}
             </Menu>
 
