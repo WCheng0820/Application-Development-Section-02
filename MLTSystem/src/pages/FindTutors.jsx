@@ -155,7 +155,7 @@ export default function FindTutors() {
 
   return (
     <Box sx={{ 
-      background: 'linear-gradient(135deg, #1976d2 0%, #64b5f6 100%)', 
+      background: currentUser?.role === 'admin' ? 'linear-gradient(135deg, #e5b8f5 0%, #f3e0f9 100%)' : 'linear-gradient(135deg, #6db3f2 0%, #a8d5ff 100%)', 
       minHeight: "100vh", 
       pt: 10, 
       pb: 6 
@@ -175,11 +175,11 @@ export default function FindTutors() {
           }}
         >
           <Box display="flex" justifyContent="center" mb={2}>
-            <Box sx={{ bgcolor: 'rgba(25, 118, 210, 0.1)', p: 2, borderRadius: '50%' }}>
-              <SchoolIcon sx={{ fontSize: 40, color: '#1565c0' }} />
+            <Box sx={{ bgcolor: currentUser?.role === 'admin' ? 'rgba(123, 31, 162, 0.1)' : 'rgba(25, 118, 210, 0.1)', p: 2, borderRadius: '50%' }}>
+              <SchoolIcon sx={{ fontSize: 40, color: currentUser?.role === 'admin' ? '#7b1fa2' : '#1565c0' }} />
             </Box>
           </Box>
-          <Typography variant="h3" fontWeight="bold" gutterBottom sx={{ color: '#1565c0' }}>
+          <Typography variant="h3" fontWeight="bold" gutterBottom sx={{ color: currentUser?.role === 'admin' ? '#7b1fa2' : '#1565c0' }}>
             Find Your Perfect Mandarin Tutor 🇨🇳
           </Typography>
           <Typography variant="h6" sx={{ color: 'text.secondary', maxWidth: '800px', mx: 'auto' }}>
@@ -342,14 +342,24 @@ export default function FindTutors() {
         {/* Results */}
         <Box sx={{ mb: 4 }}>
           <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
-            <Typography variant="h5" fontWeight="bold" color="text.primary">
+            <Typography 
+              variant="h5" 
+              fontWeight="bold" 
+              color="text.primary"
+              sx={{ 
+                backgroundColor: '#fafafa',
+                padding: '12px 16px',
+                borderRadius: '8px',
+                border: '1px solid #e0e0e0'
+              }}
+            >
               Available Tutors
             </Typography>
             <Chip 
               label={`${filteredTutors.length} found`} 
               color="primary" 
-              variant="outlined" 
-              sx={{ fontWeight: 'bold' }}
+              variant="filled" 
+              sx={{ fontWeight: 'bold', backgroundColor: 'white', color: 'black' }}
             />
           </Box>
 
@@ -378,7 +388,19 @@ export default function FindTutors() {
           ) : (
             <Grid container spacing={3}>
               {filteredTutors.map((tutor) => (
-                <Grid item xs={12} sm={6} md={4} key={tutor.id}>
+                <Grid 
+                  item 
+                  xs={12} 
+                  sm={6} 
+                  md={4} 
+                  key={tutor.id}
+                  sx={{
+                    transition: 'transform 0.3s ease-in-out',
+                    '&:hover': {
+                      transform: 'scale(1.05)'
+                    }
+                  }}
+                >
                   <TutorCard
                     tutor={tutor}
                     onBook={handleBooking}

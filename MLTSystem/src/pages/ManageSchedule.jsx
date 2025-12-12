@@ -82,7 +82,7 @@ export default function ManageSchedule() {
         pt: 10,
         pb: 4,
         px: 3,
-        background: 'linear-gradient(135deg, #2e7d32 0%, #66bb6a 100%)',
+        background: 'linear-gradient(135deg, #7abf6f 0%, #a0d69a 100%)',
       }}
     >
       <Container maxWidth="md">

@@ -13,8 +13,7 @@ export default function StudentMaterials() {
   const [category, setCategory] = useState("All Materials");
   const [reportDialogOpen, setReportDialogOpen] = useState(false);
   const [selectedMaterial, setSelectedMaterial] = useState(null);
-  const [reportReason, setReportReason] = useState("");
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [reportReason, setReportReason] = useState("");  const [expandedCards, setExpandedCards] = useState({});  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // 1. Fetch materials from Backend on load
   useEffect(() => {
@@ -25,7 +24,12 @@ export default function StudentMaterials() {
     try {
       // Use backend API base (defaults to 5000)
       const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
-      const response = await fetch(`${API_URL}/api/materials`);
+      const token = sessionStorage.getItem('mlt_session_token');
+      const response = await fetch(`${API_URL}/api/materials`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
 
       if (!response.ok) {
         throw new Error(`API returned ${response.status}`);
@@ -136,7 +140,7 @@ export default function StudentMaterials() {
     <Box 
       sx={{ 
         minHeight: '100vh',
-        background: 'linear-gradient(135deg, #1976d2 0%, #64b5f6 100%)',
+        background: 'linear-gradient(135deg, #6db3f2 0%, #a8d5ff 100%)',
         pt: 10, 
         px: 5,
         pb: 5
@@ -200,16 +204,22 @@ export default function StudentMaterials() {
             key={material.id || index} // Use DB ID if available
           >
             <Box
+              onClick={() => setExpandedCards(prev => ({ ...prev, [material.id]: !prev[material.id] }))}
               sx={{
                 border: "1px solid #ccc",
                 borderRadius: "8px",
                 padding: 2,
                 textAlign: "center",
-                height: "200px",
+                height: expandedCards[material.id] ? "auto" : "200px",
                 display: "flex",
                 flexDirection: "column",
                 justifyContent: "space-between",
                 position: "relative",
+                cursor: "pointer",
+                transition: "height 0.3s ease, box-shadow 0.2s ease",
+                "&:hover": {
+                  boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
+                },
               }}
             >
               {/* Category Label */}
@@ -268,15 +278,20 @@ export default function StudentMaterials() {
                   sx={{ 
                     mb: 1, 
                     fontSize: '0.85rem',
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                    display: '-webkit-box',
-                    WebkitLineClamp: 3,
+                    overflow: expandedCards[material.id] ? 'visible' : 'hidden',
+                    textOverflow: expandedCards[material.id] ? 'clip' : 'ellipsis',
+                    display: expandedCards[material.id] ? 'block' : '-webkit-box',
+                    WebkitLineClamp: expandedCards[material.id] ? 'none' : 3,
                     WebkitBoxOrient: 'vertical',
                     lineHeight: 1.4,
                   }}
                 >
                   {material.description}
+                </Typography>
+              )}
+              {material.description && material.description.length > 100 && (
+                <Typography variant="caption" color="primary" sx={{ fontStyle: 'italic', fontSize: '0.75rem' }}>
+                  {expandedCards[material.id] ? 'Click to collapse' : 'Click to expand'}
                 </Typography>
               )}
 

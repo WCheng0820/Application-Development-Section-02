@@ -65,7 +65,7 @@ export default function Login() {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        background: 'linear-gradient(135deg, #1976d2 0%, #64b5f6 100%)',
+        background: 'linear-gradient(135deg, #6db3f2 0%, #a8d5ff 100%)',
         py: 4
       }}
     >

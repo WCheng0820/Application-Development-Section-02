@@ -129,7 +129,7 @@ export default function TutorDashboard() {
 
   return (
     <Box sx={{ 
-      background: 'linear-gradient(135deg, #2e7d32 0%, #66bb6a 100%)', 
+      background: 'linear-gradient(135deg, #7abf6f 0%, #a0d69a 100%)', 
       minHeight: "100vh", 
       pt: 10, 
       pb: 4 

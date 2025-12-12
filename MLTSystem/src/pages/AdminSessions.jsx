@@ -95,38 +95,40 @@ export default function AdminSessions() {
 
   return (
     <Box sx={{ 
-      background: 'linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)', 
+      background: 'linear-gradient(135deg, #e5b8f5 0%, #f3e0f9 100%)', 
       minHeight: "100vh", 
       pt: 10, 
       pb: 4, 
       px: 4 
     }}>
       {/* Header */}
-      <Box 
+      <Paper 
+        elevation={3}
         sx={{ 
-          background: 'linear-gradient(135deg, #9c27b0 0%, #ce93d8 100%)', 
-          color: 'white', 
           p: 4, 
+          mx: 4, 
           borderRadius: 4, 
           mb: 4,
-          boxShadow: 3,
+          background: 'rgba(255, 255, 255, 0.9)',
+          backdropFilter: 'blur(10px)',
+          boxShadow: '0 8px 32px 0 rgba(31, 38, 135, 0.37)',
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center'
         }}
       >
         <Box>
-          <Typography variant="h4" fontWeight="bold">
+          <Typography variant="h4" fontWeight="bold" sx={{ color: '#7b1fa2' }}>
             Monitor Sessions
           </Typography>
-          <Typography variant="body1" sx={{ opacity: 0.9 }}>
+          <Typography variant="body1" sx={{ color: 'text.secondary' }}>
             Track and manage all tutoring sessions
           </Typography>
         </Box>
-        <IconButton onClick={fetchSessions} sx={{ color: 'white', bgcolor: 'rgba(255,255,255,0.2)', '&:hover': { bgcolor: 'rgba(255,255,255,0.3)' } }}>
+        <IconButton onClick={fetchSessions} sx={{ color: '#7b1fa2', bgcolor: 'rgba(123, 31, 162, 0.1)', '&:hover': { bgcolor: 'rgba(123, 31, 162, 0.2)' } }}>
           <RefreshIcon />
         </IconButton>
-      </Box>
+      </Paper>
 
       {/* Filters and Search */}
       <Paper 

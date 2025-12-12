@@ -21,8 +21,10 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import DescriptionIcon from '@mui/icons-material/Description';
 import UploadFileIcon from '@mui/icons-material/UploadFile';
+import { useAuth } from '../context/AuthContext';
 
 export default function TutorUploadMaterial() {
+  const { currentUser } = useAuth();
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [category, setCategory] = useState("Beginner");
@@ -30,6 +32,7 @@ export default function TutorUploadMaterial() {
   
   const [uploaded, setUploaded] = useState([]);
   const [uploading, setUploading] = useState(false);
+  const [expandedCards, setExpandedCards] = useState({});
 
   useEffect(() => {
     fetchMaterials();
@@ -38,7 +41,12 @@ export default function TutorUploadMaterial() {
   const fetchMaterials = async () => {
     try {
       const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
-      const response = await fetch(`${API_URL}/api/materials`);
+      const token = sessionStorage.getItem('mlt_session_token');
+      const response = await fetch(`${API_URL}/api/materials`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
       const data = await response.json();
       if (data.success) {
         setUploaded(data.data);
@@ -127,7 +135,7 @@ export default function TutorUploadMaterial() {
         pt: 10,
         pb: 4,
         px: 3,
-        background: 'linear-gradient(135deg, #2e7d32 0%, #66bb6a 100%)',
+        background: currentUser?.role === 'admin' ? 'linear-gradient(135deg, #e5b8f5 0%, #f3e0f9 100%)' : 'linear-gradient(135deg, #7abf6f 0%, #a0d69a 100%)',
       }}
     >
       {/* Header Section */}
@@ -145,9 +153,9 @@ export default function TutorUploadMaterial() {
           gap: 2,
         }}
       >
-        <DescriptionIcon sx={{ fontSize: 40, color: '#2e7d32' }} />
+        <DescriptionIcon sx={{ fontSize: 40, color: currentUser?.role === 'admin' ? '#7b1fa2' : '#2e7d32' }} />
         <Box>
-          <Typography variant="h4" fontWeight="700" sx={{ color: '#2e7d32' }}>
+          <Typography variant="h4" fontWeight="700" sx={{ color: currentUser?.role === 'admin' ? '#7b1fa2' : '#2e7d32' }}>
             Upload Study Material
           </Typography>
           <Typography variant="subtitle1" sx={{ color: 'text.secondary' }}>
@@ -164,7 +172,7 @@ export default function TutorUploadMaterial() {
             sx={{
               p: 3,
               borderRadius: 4,
-              background: 'rgba(255, 255, 255, 0.9)',
+              background: '#ffffff',
               backdropFilter: 'blur(10px)',
               boxShadow: '0 8px 32px 0 rgba(31, 38, 135, 0.37)',
               height: "100%",
@@ -254,16 +262,18 @@ export default function TutorUploadMaterial() {
             {uploaded.map((item, idx) => (
               <Grid item xs={12} sm={6} key={item.id || idx}>
                 <Card
+                  onClick={() => setExpandedCards(prev => ({ ...prev, [item.id]: !prev[item.id] }))}
                   sx={{
-                    height: '100%',
+                    height: expandedCards[item.id] ? 'auto' : '100%',
                     display: 'flex',
                     flexDirection: 'column',
                     justifyContent: 'space-between',
                     borderRadius: 3,
-                    background: "rgba(255, 255, 255, 0.9)",
+                    background: "#ffffff",
                     backdropFilter: "blur(10px)",
                     boxShadow: "0 4px 16px 0 rgba(31, 38, 135, 0.05)",
-                    transition: "transform 0.2s",
+                    transition: "transform 0.2s, height 0.3s ease",
+                    cursor: "pointer",
                     "&:hover": {
                       transform: "translateY(-4px)",
                       boxShadow: "0 8px 24px 0 rgba(31, 38, 135, 0.15)",
@@ -288,16 +298,21 @@ export default function TutorUploadMaterial() {
                         variant="body2" 
                         color="text.secondary" 
                         sx={{ 
-                          mb: 2,
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis',
-                          display: '-webkit-box',
-                          WebkitLineClamp: 2,
+                          mb: 1,
+                          overflow: expandedCards[item.id] ? 'visible' : 'hidden',
+                          textOverflow: expandedCards[item.id] ? 'clip' : 'ellipsis',
+                          display: expandedCards[item.id] ? 'block' : '-webkit-box',
+                          WebkitLineClamp: expandedCards[item.id] ? 'none' : 2,
                           WebkitBoxOrient: 'vertical',
-                          minHeight: '40px'
+                          minHeight: expandedCards[item.id] ? 'auto' : '40px'
                         }}
                       >
                         {item.description}
+                      </Typography>
+                    )}
+                    {item.description && item.description.length > 80 && (
+                      <Typography variant="caption" color="primary" sx={{ fontStyle: 'italic', fontSize: '0.75rem', mb: 1 }}>
+                        {expandedCards[item.id] ? 'Click to collapse' : 'Click to expand'}
                       </Typography>
                     )}
                   </CardContent>

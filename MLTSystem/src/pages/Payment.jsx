@@ -180,7 +180,7 @@ export default function Payment() {
         pt: 10,
         pb: 4,
         px: 3,
-        background: 'linear-gradient(135deg, #1976d2 0%, #64b5f6 100%)',
+        background: 'linear-gradient(135deg, #6db3f2 0%, #a8d5ff 100%)',
       }}
     >
       <Container maxWidth="md">

@@ -504,11 +504,14 @@ export default function Messages() {
   }
 
   const isTutor = currentUser?.role === 'tutor';
-  const themeColor = isTutor ? '#2e7d32' : '#1976d2';
+  const isAdmin = currentUser?.role === 'admin';
+  const themeColor = isTutor ? '#2e7d32' : isAdmin ? '#7b1fa2' : '#1976d2';
   const gradient = isTutor 
-    ? 'linear-gradient(135deg, #2e7d32 0%, #66bb6a 100%)' 
-    : 'linear-gradient(135deg, #1976d2 0%, #64b5f6 100%)';
-  const iconColor = isTutor ? '#2e7d32' : '#1565c0';
+    ? 'linear-gradient(135deg, #7abf6f 0%, #a0d69a 100%)' 
+    : isAdmin
+      ? 'linear-gradient(135deg, #e5b8f5 0%, #f3e0f9 100%)'
+      : 'linear-gradient(135deg, #6db3f2 0%, #a8d5ff 100%)';
+  const iconColor = isTutor ? '#2e7d32' : isAdmin ? '#7b1fa2' : '#1565c0';
 
   return (
     <Box
@@ -599,44 +602,34 @@ export default function Messages() {
                   </Avatar>
                 </ListItemAvatar>
                 <ListItemText
-                  primary={
-                    <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                      <Typography fontWeight={c.unread ? 700 : 500} sx={{ flex: 1 }}>
-                        {c.otherParticipantName}
-                      </Typography>
-                      {c.unreadCount > 0 && (
-                        <Box sx={{ 
-                          ml: 1,
-                          bgcolor: "error.main",
-                          color: "white",
-                          width: 22,
-                          height: 22,
-                          borderRadius: "50%",
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          fontSize: "0.75rem",
-                          fontWeight: "bold",
-                          boxShadow: 1
-                        }}>
-                          {c.unreadCount}
-                        </Box>
-                      )}
-                    </Box>
-                  }
-                  secondary={
-                    <Box>
-                      <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                        {c.snippet}
-                      </Typography>
-                      {c.timestamp && (
-                        <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 0.5 }}>
-                          {new Date(c.timestamp).toLocaleString()}
-                        </Typography>
-                      )}
-                    </Box>
-                  }
+                  primary={c.otherParticipantName}
+                  primaryTypographyProps={{ fontWeight: c.unread ? 700 : 500 }}
+                  secondary={c.snippet}
+                  secondaryTypographyProps={{ variant: "body2", color: "text.secondary", sx: { mt: 0.5, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' } }}
                 />
+                {c.unreadCount > 0 && (
+                  <Box sx={{ 
+                    ml: 1,
+                    bgcolor: "error.main",
+                    color: "white",
+                    width: 22,
+                    height: 22,
+                    borderRadius: "50%",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    fontSize: "0.75rem",
+                    fontWeight: "bold",
+                    boxShadow: 1
+                  }}>
+                    {c.unreadCount}
+                  </Box>
+                )}
+                {c.timestamp && (
+                  <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 0.5 }}>
+                    {new Date(c.timestamp).toLocaleString()}
+                  </Typography>
+                )}
               </ListItem>
             ))}
             {conversations.length === 0 && (
@@ -711,7 +704,7 @@ export default function Messages() {
               {selectedConversation.hasBooking && selectedConversation.bookings && selectedConversation.bookings.length > 0 && (
                 <Card 
                     sx={{ 
-                        background: "linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%)",
+                        background: "#ffffff",
                         borderRadius: 3,
                         boxShadow: "0 4px 16px 0 rgba(31, 38, 135, 0.1)",
                     }}
@@ -870,13 +863,13 @@ export default function Messages() {
                           </Avatar>
                           <Box sx={{ flex: 1, maxWidth: "70%" }}>
                             <Box sx={{
-                              bgcolor: isCurrentUser ? "#e3f2fd" : "white",
-                              color: isCurrentUser ? "#0d47a1" : "text.primary",
+                              bgcolor: "white",
+                              color: "text.primary",
                               p: 2,
                               borderRadius: isCurrentUser ? "20px 20px 4px 20px" : "20px 20px 20px 4px",
                               boxShadow: "0 2px 5px rgba(0,0,0,0.05)",
                               wordBreak: "break-word",
-                              border: isCurrentUser ? "none" : "1px solid #eee"
+                              border: "1px solid #eee"
                             }}>
                               {m.content && (
                                 <Typography variant="body2" sx={{ whiteSpace: "pre-wrap", fontSize: "0.95rem" }}>
@@ -1087,13 +1080,13 @@ export default function Messages() {
         PaperProps={{
           sx: {
             borderRadius: 3,
-            background: "rgba(255, 255, 255, 0.95)",
-            backdropFilter: "blur(10px)",
+            bgcolor: "#ffffff",
+            backgroundColor: "#ffffff !important",
           }
         }}
       >
-        <DialogTitle sx={{ fontWeight: 700, color: "#1976d2" }}>Start New Conversation</DialogTitle>
-        <DialogContent>
+        <DialogTitle sx={{ fontWeight: 700, color: "#1976d2", bgcolor: "#ffffff" }}>Start New Conversation</DialogTitle>
+        <DialogContent sx={{ bgcolor: "#ffffff" }}>
           <TextField
             fullWidth
             placeholder={currentUser?.studentId ? "Search tutors..." : "Search students..."}
@@ -1129,10 +1122,13 @@ export default function Messages() {
                       currentUser?.studentId 
                         ? `${user.specialization} • RM${user.price}/hr`
                         : currentUser?.adminId
-                          ? <Chip label={user.role} size="small" color={user.role === 'tutor' ? 'primary' : 'default'} sx={{ height: 20, fontSize: '0.7rem', textTransform: 'capitalize' }} />
+                          ? null
                           : user.email
                     } 
                   />
+                  {currentUser?.adminId && (
+                    <Chip label={user.role} size="small" color={user.role === 'tutor' ? 'primary' : 'default'} sx={{ height: 20, fontSize: '0.7rem', textTransform: 'capitalize', ml: 1 }} />
+                  )}
                 </ListItem>
               ))}
             {availableUsers.length === 0 && (

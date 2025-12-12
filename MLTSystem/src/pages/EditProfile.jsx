@@ -142,8 +142,8 @@ export default function EditProfile() {
   const isTutor = currentUser?.role === 'tutor';
   const themeColor = isTutor ? '#2e7d32' : '#1976d2';
   const gradient = isTutor 
-    ? 'linear-gradient(135deg, #2e7d32 0%, #66bb6a 100%)' 
-    : 'linear-gradient(135deg, #1976d2 0%, #64b5f6 100%)';
+    ? 'linear-gradient(135deg, #7abf6f 0%, #a0d69a 100%)' 
+    : 'linear-gradient(135deg, #6db3f2 0%, #a8d5ff 100%)'
   const iconBg = isTutor ? 'rgba(46, 125, 50, 0.1)' : 'rgba(25, 118, 210, 0.1)';
   const iconColor = isTutor ? '#2e7d32' : '#1565c0';
   const iconBorder = isTutor ? '2px solid rgba(46, 125, 50, 0.2)' : '2px solid rgba(25, 118, 210, 0.2)';

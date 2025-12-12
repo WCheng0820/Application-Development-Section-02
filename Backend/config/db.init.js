@@ -274,9 +274,11 @@ const initDatabase = async () => {
                 drive_file_id VARCHAR(255) NOT NULL,
                 web_view_link VARCHAR(500),
                 web_content_link VARCHAR(500),
+                tutorId VARCHAR(20),
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 INDEX idx_category (category),
-                INDEX idx_created_at (created_at)
+                INDEX idx_created_at (created_at),
+                INDEX idx_tutorId (tutorId)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
         `);
         console.log('✅ Materials table created');

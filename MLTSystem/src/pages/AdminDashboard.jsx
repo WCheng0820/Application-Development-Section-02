@@ -141,7 +141,7 @@ export default function AdminDashboard() {
 
   return (
     <Box sx={{ 
-      background: 'linear-gradient(135deg, #9c27b0 0%, #ce93d8 100%)', 
+      background: 'linear-gradient(135deg, #e5b8f5 0%, #f3e0f9 100%)',
       minHeight: "100vh", 
       pt: 10, 
       pb: 4 

@@ -99,7 +99,7 @@ export default function Reports() {
 
   return (
     <Box sx={{ 
-      background: 'linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)', 
+      background: 'linear-gradient(135deg, #e5b8f5 0%, #f3e0f9 100%)', 
       minHeight: "100vh", 
       pt: 10, 
       pb: 4, 

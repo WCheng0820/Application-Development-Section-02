@@ -102,7 +102,7 @@ export default function StudentDashboard() {
 
   return (
     <Box sx={{ 
-      background: 'linear-gradient(135deg, #1976d2 0%, #64b5f6 100%)', 
+      background: 'linear-gradient(135deg, #6db3f2 0%, #a8d5ff 100%)', 
       minHeight: "100vh", 
       pt: 10, 
       pb: 4 

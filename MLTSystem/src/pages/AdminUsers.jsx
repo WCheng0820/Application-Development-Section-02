@@ -135,7 +135,7 @@ export default function AdminUsers() {
     <Box 
       sx={{ 
         minHeight: '100vh',
-        background: 'linear-gradient(135deg, #9c27b0 0%, #ce93d8 100%)',
+        background: 'linear-gradient(135deg, #e5b8f5 0%, #f3e0f9 100%)',
         pt: 10, 
         pb: 4, 
         px: 4 
