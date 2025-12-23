@@ -5,7 +5,7 @@ In this project,we decided to solve the problem and challenges that are faced by
 **Developer: Chong Zu Wei**
 | Sprint | Module Name | Frontend | Backend | Database |
 |--------|----------|---------|---------|---------|
-| **1**  | Register User's Info Module | [MLTSystem/src/pages/Register.jsx](MLTSystem/src/pages/Register.jsx) |[Backend/app/controllers/AuthController.js](Backend/app/controllers/AuthController.js)|User,student,tutor,admin,sesison |
+| **1**  | Register User's Info Module | [MLTSystem/src/pages/Register.jsx](MLTSystem/src/pages/Register.jsx)<br>[MLTSystem/src/models/Role.js](MLTSystem/src/models/Role.js)<br>[MLTSystem/src/models/User.js](MLTSystem/src/models/User.js)<br>[MLTSystem/src/context/AuthContext.jsx](MLTSystem/src/context/AuthContext.jsx)  |[Backend/app/controllers/AuthController.js](Backend/app/controllers/AuthController.js)|User,student,tutor,admin,sesison |
 | **2**  | Login Module | [MLTSystem/src/pages/Login.jsx](MLTSystem/src/pages/Login.jsx) |[Backend/app/controllers/AuthController.js](Backend/app/controllers/AuthController.js) |User,student,tutor,admin,sesison |
 | **3**  | Edit User Profile Module | [MLTSystem/src/pages/EditProfile.jsx](MLTSystem/src/pages/EditProfile.jsx) |[Backend/app/controllers/AuthController.js](Backend/app/controllers/AuthController.js)| User,student,tutor,admin,sesison|
 
