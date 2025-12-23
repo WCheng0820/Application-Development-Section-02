@@ -5,9 +5,9 @@ In this project,we decided to solve the problem and challenges that are faced by
 **Developer: Chong Zu Wei**
 | Sprint | Module Name | Frontend | Backend | Database |
 |--------|----------|---------|---------|---------|
-| **1**  | Register User's Info Module | | | |
-| **2**  | Login Module | | | |
-| **3**  | Edit User Profile Module | | | |
+| **1**  | Register User's Info Module | [MLTSystem/src/pages/Register.jsx](MLTSystem/src/pages/Register.jsx) | | |
+| **2**  | Login Module | [MLTSystem/src/pages/Login.jsx](MLTSystem/src/pages/Login.jsx) | | |
+| **3**  | Edit User Profile Module | [MLTSystem/src/pages/EditProfile.jsx](MLTSystem/src/pages/EditProfile.jsx) | | |
 
 
 # 📩Communication and Feedback Subsystem
