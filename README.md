@@ -24,7 +24,7 @@ In this project,we decided to solve the problem and challenges that are faced by
    ```bash
    npm install
    ```
-3. Create a `.env` file in the `Backend` folder and add the following (update with your MySQL credentials):
+3. Rename the env.md in Backend folder to .env and add the following environment variables to the file in the Backend directory (or use the default values):
    ```env
    DB_HOST=localhost
    DB_USER=root
