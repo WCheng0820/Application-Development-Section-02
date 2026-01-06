@@ -1,5 +1,7 @@
-import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import { BrowserRouter as Router, Routes, Route, useLocation } from "react-router-dom";
 import { AuthProvider } from "./context/AuthContext";
+import { Box } from "@mui/material";
+import { motion, AnimatePresence } from "framer-motion";
 import Navbar from "./components/Navbar";
 import PrivateRoute from "./components/PrivateRoute";
 import SessionTimeout from "./components/SessionTimeout";
@@ -41,16 +43,26 @@ function StudentAIWrapper() {
   return null;
 }
 
-export default function App() {
+// Page transition wrapper component
+function AnimatedRoutes() {
+  const location = useLocation();
+  // Don't show navbar padding on login/register pages
+  const isAuthPage = location.pathname === '/login' || location.pathname === '/register';
+  
   return (
-    <AuthProvider>
-      <Router>
-        <Navbar />
-        <SessionTimeout />
-        <Routes>
-          {/* Public routes */}
-          <Route path="/login" element={<Login />} />
-          <Route path="/register" element={<Register />} />
+    <Box sx={{ pt: isAuthPage ? 0 : 8 }}>
+      <AnimatePresence mode="wait">
+        <motion.div
+          key={location.pathname}
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -20 }}
+          transition={{ duration: 0.3, ease: "easeInOut" }}
+        >
+          <Routes location={location}>
+            {/* Public routes */}
+            <Route path="/login" element={<Login />} />
+            <Route path="/register" element={<Register />} />
 
           {/* Protected routes */}
           <Route
@@ -150,7 +162,20 @@ export default function App() {
               </PrivateRoute>
             }
           />
-        </Routes>
+          </Routes>
+        </motion.div>
+      </AnimatePresence>
+    </Box>
+  );
+}
+
+export default function App() {
+  return (
+    <AuthProvider>
+      <Router>
+        <Navbar />
+        <SessionTimeout />
+        <AnimatedRoutes />
         <StudentAIWrapper />
       </Router>
     </AuthProvider>

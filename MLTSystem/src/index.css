@@ -57,8 +57,17 @@ button:focus-visible {
   }
 }
 
+html {
+  overflow-y: scroll; /* Prevent layout shift from scrollbar appearing/disappearing */
+}
+
 * {
   margin: 0;
   padding: 0;
   box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  padding: 0;
 }
