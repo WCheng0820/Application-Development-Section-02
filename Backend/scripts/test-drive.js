@@ -3,6 +3,7 @@
 // Required env vars: GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, GOOGLE_REFRESH_TOKEN
 // Optional: GOOGLE_DRIVE_FOLDER_ID to scope listing
 
+require('dotenv').config();
 const { google } = require('googleapis');
 
 async function main() {
