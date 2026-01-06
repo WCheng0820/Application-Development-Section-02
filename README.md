@@ -1,6 +1,63 @@
 # 🍊Mandarin Language Tutoring System🍊
 In this project,we decided to solve the problem and challenges that are faced by the Mandarin club by designing an innovative digital platform called Mandarin Language Tutoring System that aims to help Mandarin language learners to learn Mandarin from their tutors. With the growing global demand for Mandarin lessons, our system provides a personalized, engaging, and effective language learning experience that goes beyond traditional classroom methods.
 
+## 🚀 Setup Instructions
+
+### Prerequisites
+- **Node.js** (v18 or higher)
+- **MySQL** installed and running
+- **Google Gemini API Key** (for AI Study Assistant)
+
+### 1. Database Setup
+1. Open your MySQL client (e.g., MySQL Workbench or Command Line).
+2. Create a new database named `mlt_system`:
+   ```sql
+   CREATE DATABASE mlt_system;
+   ```
+
+### 2. Backend Configuration
+1. Navigate to the backend directory:
+   ```bash
+   cd Backend
+   ```
+2. Install dependencies:
+   ```bash
+   npm install
+   ```
+3. Create a `.env` file in the `Backend` folder and add the following (update with your MySQL credentials):
+   ```env
+   DB_HOST=localhost
+   DB_USER=root
+   DB_PASSWORD=your_password
+   DB_NAME=mlt_system
+   GEMINI_API_KEY=your_gemini_api_key_here
+   ```
+4. Initialize the database schema and seeded data:
+   ```bash
+   npm run init-db
+   ```
+5. Start the backend server:
+   ```bash
+   npm start
+   ```
+
+### 3. Frontend Configuration
+1. Open a new terminal and navigate to the frontend directory:
+   ```bash
+   cd MLTSystem
+   ```
+2. Install dependencies:
+   ```bash
+   npm install
+   ```
+3. Start the Vite development server:
+   ```bash
+   npm run dev
+   ```
+4. Open your browser and navigate to the URL shown in the terminal (usually `http://localhost:5173`).
+
+---
+
 # 🔑Authentication Subsystem
 **Developer: Chong Zu Wei**
 | Sprint | Module Name | Frontend | Backend | Database |
