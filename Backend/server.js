@@ -139,6 +139,14 @@ try {
     console.warn('Could not load messages routes:', err.message);
 }
 
+// Add AI Chatbot route
+try {
+    const aiRoutes = require('./app/routes/ai');
+    app.use('/api/ai', aiRoutes);
+} catch (err) {
+    console.warn('Could not load AI routes:', err.message);
+}
+
 // Socket.io events
 io.on('connection', (socket) => {
     console.log(`✅ User connected: ${socket.id}`);

@@ -19,6 +19,7 @@ import Materials from "./pages/Materials";
 import AdminSessions from "./pages/AdminSessions";
 import AdminUsers from "./pages/AdminUsers";
 import { useAuth } from "./context/AuthContext";
+import AIChatbot from "./components/AIChatbot";
 
 // Role-based materials view
 function MaterialsRoute() {
@@ -29,6 +30,15 @@ function MaterialsRoute() {
     return <Upload />;
   }
   return <Materials />;
+}
+
+// Student restricted components wrapper
+function StudentAIWrapper() {
+  const { currentUser } = useAuth();
+  if (currentUser?.role === 'student') {
+    return <AIChatbot />;
+  }
+  return null;
 }
 
 export default function App() {
@@ -141,6 +151,7 @@ export default function App() {
             }
           />
         </Routes>
+        <StudentAIWrapper />
       </Router>
     </AuthProvider>
   );
