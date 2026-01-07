@@ -80,10 +80,10 @@ In this project,we decided to solve the problem and challenges that are faced by
 **Developer: Teow Zi Xian**
 | Sprint | Module Name | Frontend | Backend | Database |
 |--------|----------|---------|---------|---------|
-| **1**  | Upload and categorize Materials Module | | | |
-| **2**  | Access Material Library Module | | | |
-| **3**  | Manage Learning Resource Module | | | |
-| **4**  | Delete Material Module | | | |
+| **1**  | Upload and categorize Materials Module | [MLTSystem/src/pages/Upload.jsx](MLTSystem/src/pages/Upload.jsx)<br>[MLTSystem/src/controllers/MessagesController.js](MLTSystem/src/controllers/MessagesController.js) | [Backend/app/routes/materials-upload.js](Backend/app/routes/materials-upload.js)<br>[Backend/routes/materials.js](Backend/routes/materials.js) | materials |
+| **2**  | Access Material Library Module | [MLTSystem/src/pages/Materials.jsx](MLTSystem/src/pages/Materials.jsx)<br>[MLTSystem/src/controllers/MessagesController.js](MLTSystem/src/controllers/MessagesController.js) | [Backend/app/routes/materials.js](Backend/app/routes/materials.js)<br>[Backend/routes/materials.js](Backend/routes/materials.js) | materials<br>tutor |
+| **3**  | Manage Learning Resource Module | [MLTSystem/src/pages/Materials.jsx](MLTSystem/src/pages/Materials.jsx)<br>[MLTSystem/src/pages/Upload.jsx](MLTSystem/src/pages/Upload.jsx)<br>[MLTSystem/src/controllers/MessagesController.js](MLTSystem/src/controllers/MessagesController.js) | [Backend/app/routes/materials.js](Backend/app/routes/materials.js)<br>[Backend/app/routes/materials-upload.js](Backend/app/routes/materials-upload.js)<br>[Backend/routes/materials.js](Backend/routes/materials.js) | materials |
+| **4**  | Delete Material Module | [MLTSystem/src/pages/Materials.jsx](MLTSystem/src/pages/Materials.jsx)<br>[MLTSystem/src/controllers/MessagesController.js](MLTSystem/src/controllers/MessagesController.js) | [Backend/app/routes/materials.js](Backend/app/routes/materials.js)<br>[Backend/routes/materials.js](Backend/routes/materials.js) | materials |
 
 
 # 📅 Booking Subsystem
