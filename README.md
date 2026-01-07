@@ -71,9 +71,9 @@ In this project,we decided to solve the problem and challenges that are faced by
 **Developer: Tay Wei Cheng**
 | Sprint | Module Name | Frontend | Backend | Database |
 |--------|----------|---------|---------|---------|
-| **1**  | Send Message and Receive Notification Module | | | |
-| **2**  | Submit Feedback Module | | | |
-| **3**  | Flag Report Module | | | |
+| **1**  | Send Message and Receive Notification Module | [MLTSystem/src/pages/Messages.jsx](MLTSystem/src/pages/Messages.jsx)<br>[MLTSystem/src/controllers/MessagesController.js](MLTSystem/src/controllers/MessagesController.js)<br>[MLTSystem/src/services/socketService.js](MLTSystem/src/services/socketService.js) | [Backend/routes/messages.js](Backend/routes/messages.js)<br>[Backend/app/routes/messages.js](Backend/app/routes/messages.js)<br>[Backend/server.js](Backend/server.js) | messages<br>users |
+| **2**  | Submit Feedback Module | [MLTSystem/src/pages/Bookings.jsx](MLTSystem/src/pages/Bookings.jsx)<br>[MLTSystem/src/components/BookingCard.jsx](MLTSystem/src/components/BookingCard.jsx)<br>[MLTSystem/src/controllers/BookingsController.js](MLTSystem/src/controllers/BookingsController.js) | [Backend/routes/bookings.js](Backend/routes/bookings.js)<br>[Backend/app/routes/bookings.js](Backend/app/routes/bookings.js) | feedback<br>booking |
+| **3**  | Flag Report Module | [MLTSystem/src/pages/Reports.jsx](MLTSystem/src/pages/Reports.jsx)<br>[MLTSystem/src/pages/Upload.jsx](MLTSystem/src/pages/Upload.jsx)<br>[MLTSystem/src/components/ReportDialog.jsx](MLTSystem/src/components/ReportDialog.jsx)<br>[MLTSystem/src/controllers/ReportsController.js](MLTSystem/src/controllers/ReportsController.js) | [Backend/routes/reports.js](Backend/routes/reports.js)<br>[Backend/app/routes/reports.js](Backend/app/routes/reports.js)<br>[Backend/app/routes/material-reports.js](Backend/app/routes/material-reports.js) | reports<br>material_reports |
 
 
 # 📚Learning Material Access Subsystem
