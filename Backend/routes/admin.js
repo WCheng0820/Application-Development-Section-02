@@ -290,6 +290,92 @@ router.post('/cancel-session/:bookingId', isAdmin, async (req, res) => {
   }
 });
 
+// Confirm a pending session (booking)
+router.post('/confirm-session/:bookingId', isAdmin, async (req, res) => {
+  try {
+    const { bookingId } = req.params;
+
+    // Check if booking exists
+    const bookings = await query('SELECT bookingId, status FROM booking WHERE bookingId = ?', [bookingId]);
+    if (bookings.length === 0) {
+      return res.status(404).json({ success: false, error: 'Booking not found' });
+    }
+
+    const booking = bookings[0];
+    if (booking.status !== 'pending') {
+      return res.status(400).json({ success: false, error: `Cannot confirm booking with status '${booking.status}'` });
+    }
+
+    // Update status to confirmed
+    await query('UPDATE booking SET status = ? WHERE bookingId = ?', ['confirmed', bookingId]);
+
+    // Update tutor schedule to booked
+    const bookingDetails = await query('SELECT tutorId, booking_date, start_time, end_time FROM booking WHERE bookingId = ?', [bookingId]);
+    if (bookingDetails.length > 0) {
+      const { tutorId, booking_date, start_time, end_time } = bookingDetails[0];
+      const dateStr = new Date(booking_date).toISOString().split('T')[0];
+      
+      await query(
+        `UPDATE tutor_schedule 
+         SET status = 'booked', booked_at = NOW() 
+         WHERE tutorId = ? AND schedule_date = ? AND start_time = ? AND end_time = ?`,
+        [tutorId, dateStr, start_time, end_time]
+      );
+    }
+
+    res.json({
+      success: true,
+      message: `Session ${bookingId} confirmed successfully`
+    });
+  } catch (err) {
+    console.error('Error confirming session:', err);
+    res.status(500).json({ success: false, error: 'Error confirming session' });
+  }
+});
+
+// Mark a session as completed
+router.post('/complete-session/:bookingId', isAdmin, async (req, res) => {
+  try {
+    const { bookingId } = req.params;
+
+    // Check if booking exists
+    const bookings = await query('SELECT bookingId, status FROM booking WHERE bookingId = ?', [bookingId]);
+    if (bookings.length === 0) {
+      return res.status(404).json({ success: false, error: 'Booking not found' });
+    }
+
+    const booking = bookings[0];
+    if (booking.status !== 'confirmed') {
+      return res.status(400).json({ success: false, error: `Cannot complete booking with status '${booking.status}'. Only confirmed bookings can be marked as completed.` });
+    }
+
+    // Update status to completed
+    await query('UPDATE booking SET status = ? WHERE bookingId = ?', ['completed', bookingId]);
+
+    // Update tutor schedule status
+    const bookingDetails = await query('SELECT tutorId, booking_date, start_time, end_time FROM booking WHERE bookingId = ?', [bookingId]);
+    if (bookingDetails.length > 0) {
+      const { tutorId, booking_date, start_time, end_time } = bookingDetails[0];
+      const dateStr = new Date(booking_date).toISOString().split('T')[0];
+      
+      await query(
+        `UPDATE tutor_schedule 
+         SET status = 'completed' 
+         WHERE tutorId = ? AND schedule_date = ? AND start_time = ? AND end_time = ?`,
+        [tutorId, dateStr, start_time, end_time]
+      );
+    }
+
+    res.json({
+      success: true,
+      message: `Session ${bookingId} marked as completed`
+    });
+  } catch (err) {
+    console.error('Error completing session:', err);
+    res.status(500).json({ success: false, error: 'Error completing session' });
+  }
+});
+
 // Get all users
 router.get('/users', isAdmin, async (req, res) => {
   try {

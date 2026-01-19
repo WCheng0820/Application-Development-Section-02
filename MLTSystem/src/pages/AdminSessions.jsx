@@ -119,7 +119,7 @@ export default function AdminSessions() {
       >
         <Box>
           <Typography variant="h4" fontWeight="bold" sx={{ color: '#7b1fa2' }}>
-            Monitor Sessions
+            Manage Bookings
           </Typography>
           <Typography variant="body1" sx={{ color: 'text.secondary' }}>
             Track and manage all tutoring sessions

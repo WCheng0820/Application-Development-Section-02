@@ -85,6 +85,32 @@ export const cancelSession = async (bookingId) => {
     }
 };
 
+export const confirmSession = async (bookingId) => {
+    try {
+        const response = await axios.post(`${API_URL}/api/admin/confirm-session/${bookingId}`, 
+            {},
+            { headers: getAuthHeader() }
+        );
+        return response.data;
+    } catch (error) {
+        console.error('Error confirming session:', error);
+        throw error;
+    }
+};
+
+export const completeSession = async (bookingId) => {
+    try {
+        const response = await axios.post(`${API_URL}/api/admin/complete-session/${bookingId}`, 
+            {},
+            { headers: getAuthHeader() }
+        );
+        return response.data;
+    } catch (error) {
+        console.error('Error completing session:', error);
+        throw error;
+    }
+};
+
 export const getAllUsers = async () => {
     try {
         const response = await axios.get(`${API_URL}/api/admin/users?t=${new Date().getTime()}`, {

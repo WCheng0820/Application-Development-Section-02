@@ -509,7 +509,7 @@ export default function AdminDashboard() {
                 <List disablePadding>
                   {[
                     { text: "Manage Users", icon: <PeopleIcon />, path: "/admin/users", color: '#2196f3', desc: "View and edit user accounts" },
-                    { text: "Monitor Sessions", icon: <ScheduleIcon />, path: "/admin/sessions", color: '#9c27b0', desc: "Track active sessions" },
+                    { text: "Manage Bookings", icon: <ScheduleIcon />, path: "/admin/sessions", color: '#9c27b0', desc: "Track active sessions" },
                     { text: "View Reports", icon: <FolderIcon />, path: "/reports", color: '#f44336', desc: "Handle user reports" },
                     { text: "Messages", icon: <MessageIcon />, path: "/messages", color: '#607d8b', desc: "Communicate with users" },
                   ].map((item, i) => (

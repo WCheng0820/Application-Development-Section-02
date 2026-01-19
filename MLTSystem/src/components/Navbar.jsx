@@ -34,9 +34,9 @@ const Navbar = () => {
   const navItems = [
     { label: "Dashboard", path: "/" },
     { label: "Find Tutors", path: "/find-tutors" },
-    // Admin sees "Monitor Sessions", others see "Bookings"
+    // Admin sees "Manage Bookings", others see "Bookings"
     ...(currentUser?.role === 'admin' 
-      ? [{ label: "Monitor Sessions", path: "/admin/sessions" }]
+      ? [{ label: "Manage Bookings", path: "/admin/sessions" }]
       : [{ label: "Bookings", path: "/bookings" }]
     ),
     { label: "Materials", path: "/materials" },
